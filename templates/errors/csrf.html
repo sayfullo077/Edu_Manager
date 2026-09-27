@@ -1,0 +1,12 @@
+{% extends "layouts/auth.html" %}
+
+{% block title %}Sahifa eskirgan{% endblock %}
+
+{% block card %}
+<span class="eyebrow">{% include "partials/icon.html" with name="shield" class="sm" %} Xavfsizlik</span>
+<h2>Sahifa eskirgan</h2>
+<p class="sub">Xavfsizlik uchun forma muddati tugadi. Sahifani yangilab, qaytadan urinib ko'ring.</p>
+<div class="form-actions">
+  <a class="btn btn-primary btn-lg btn-block" href="{% url 'accounts:login' %}">Qaytadan kirish</a>
+</div>
+{% endblock %}

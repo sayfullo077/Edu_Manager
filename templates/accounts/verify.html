@@ -1,0 +1,48 @@
+{% extends "layouts/auth.html" %}
+
+{% block title %}Kodni kiriting{% endblock %}
+
+{% block card %}
+<a class="back-link" href="{% url 'accounts:login' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Raqamni o'zgartirish</a>
+<h2 class="mt-20">Kodni kiriting</h2>
+{% if channel == "telegram" %}
+  <p class="sub">Agar <b class="strong">{{ phone_display }}</b> raqami tizimda bo'lsa va Telegram bot ulangan bo'lsa, kod botga yuborildi.</p>
+  <div class="tg-box">
+    <span>Kod kelmadimi? Avval botni oching va raqamingizni ulashing.</span>
+    {% if bot_link %}
+      <a class="btn btn-primary" href="{{ bot_link }}" target="_blank" rel="noopener">
+        {% include "partials/icon.html" with name="send" class="sm" %} Botni ochish
+      </a>
+    {% endif %}
+  </div>
+{% else %}
+  <p class="sub">Agar <b class="strong">{{ phone_display }}</b> raqami tizimda bo'lsa, unga SMS orqali 6 xonali kod yuborildi.</p>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="code" value="">
+  <div class="otp" data-otp {% if form.code.errors %}data-error{% endif %} role="group" aria-label="Tasdiqlash kodi">
+    {% for i in "123456" %}
+      <input type="text" inputmode="numeric" autocomplete="{% if forloop.first %}one-time-code{% else %}off{% endif %}"
+             maxlength="6" aria-label="{{ i }}-raqam">
+    {% endfor %}
+  </div>
+  {% for e in form.code.errors %}<p class="field-error mt-12">{{ e }}</p>{% endfor %}
+
+  <div class="form-actions">
+    <button class="btn btn-primary btn-lg btn-block" type="submit">
+      Tasdiqlash {% include "partials/icon.html" with name="check" class="sm" %}
+    </button>
+  </div>
+</form>
+
+<form method="post" action="{% url 'accounts:resend' %}" class="code-meta">
+  {% csrf_token %}
+  <span>{% include "partials/icon.html" with name="clock" class="sm" %} Kod {{ ttl }} soniya amal qiladi</span>
+  <span>
+    <button class="link" id="resend-btn" type="submit">Qayta yuborish</button>
+    <span data-countdown="{{ resend_in }}" data-target="#resend-btn" class="num"></span>
+  </span>
+</form>
+{% endblock %}

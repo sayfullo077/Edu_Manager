@@ -1,0 +1,31 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>{% block title %}{{ school.short_name }}{% endblock %} · {{ school.name }}</title>
+  {# Mavzuni sahifa chizilishidan oldin qo'llaymiz (oq "miltillash" bo'lmasin). CSP nonce bilan ruxsat etilgan. #}
+  <script nonce="{{ csp_nonce }}">try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Raleway:wght@600;700;800&display=swap">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style nonce="{{ csp_nonce }}">:root{--brand: {{ school.brand_color|default:"#08915E" }};}</style>
+  {% block head %}{% endblock %}
+</head>
+<body {% block body_attrs %}{% endblock %}>
+  {% include "partials/icons.html" %}
+  {% block body %}{% endblock %}
+
+  {% if messages %}
+    <div class="toasts" role="status">
+      {% for m in messages %}
+        <div class="toast {{ m.tags }}">{% if "error" in m.tags %}{% include "partials/icon.html" with name="alert" %}{% else %}{% include "partials/icon.html" with name="check" %}{% endif %}{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <script src="{% static 'js/app.js' %}" defer></script>
+</body>
+</html>

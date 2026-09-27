@@ -1,0 +1,13 @@
+{% if form.show_branch %}
+  <div class="field">
+    <label class="label" for="{{ form.branch.id_for_label }}">Filial</label>
+    <select class="input{% if form.branch.errors %} is-invalid{% endif %}" name="branch" id="{{ form.branch.id_for_label }}">
+      {% for value, label in form.branch.field.choices %}
+        <option value="{{ value }}" {% if value|stringformat:"s" == form.branch.value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% for e in form.branch.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+  </div>
+{% else %}
+  {{ form.branch }}
+{% endif %}

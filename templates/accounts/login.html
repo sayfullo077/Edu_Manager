@@ -1,0 +1,114 @@
+{% extends "layouts/auth.html" %}
+
+{% block title %}Kirish{% endblock %}
+
+{% block card %}
+<span class="eyebrow">{% include "partials/icon.html" with name="sparkles" class="sm" %} Xush kelibsiz</span>
+<h2>Tizimga kirish</h2>
+<p class="sub">Akkauntingizni maktab ma'muriyati yaratadi. Kirish uchun qulay usulni tanlang.</p>
+
+<nav class="segmented" aria-label="Kirish usuli">
+  <a href="?method=password{% if request.GET.next %}&amp;next={{ request.GET.next|urlencode }}{% endif %}" {% if method == "password" %}aria-current="page"{% endif %}>
+    {% include "partials/icon.html" with name="lock" class="sm" %} Parol
+  </a>
+  <a href="?method=code{% if request.GET.next %}&amp;next={{ request.GET.next|urlencode }}{% endif %}" {% if method == "code" %}aria-current="page"{% endif %}>
+    {% include "partials/icon.html" with name="phone" class="sm" %} Bir martalik kod
+  </a>
+</nav>
+
+{% if method == "password" %}
+  {% with form=password_form %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="method" value="password">
+    {% include "partials/form_errors.html" %}
+    {% include "accounts/_branch_field.html" %}
+
+    <div class="field">
+      <label class="label" for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+      <div class="input-group">
+        <span class="addon">+998</span>
+        <input class="input{% if form.phone.errors %} is-invalid{% endif %}" type="text" name="phone"
+               id="{{ form.phone.id_for_label }}" value="{{ form.phone.value|default:'' }}"
+               inputmode="tel" autocomplete="username" placeholder="90 123 45 67" data-phone-mask required>
+      </div>
+      {% for e in form.phone.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+      <div class="input-wrap">
+        <input class="input{% if form.password.errors %} is-invalid{% endif %}" type="password" name="password"
+               id="{{ form.password.id_for_label }}" autocomplete="current-password" required>
+        <button class="suffix-btn" type="button" data-toggle-password aria-label="Parolni ko'rsatish">
+          {% include "partials/icon.html" with name="eye" class="sm" %}
+        </button>
+      </div>
+      {% for e in form.password.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <div class="form-row">
+      <label class="check"><input type="checkbox" name="remember" {% if form.remember.value %}checked{% endif %}> Meni eslab qol</label>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary btn-lg btn-block" type="submit">
+        Kirish {% include "partials/icon.html" with name="arrow-right" class="sm" %}
+      </button>
+      <p class="hint">Parolni unutdingizmi? <a class="link" href="?method=code">SMS kod bilan kiring</a></p>
+    </div>
+  </form>
+  {% endwith %}
+{% else %}
+  {% with form=code_form %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="method" value="code">
+    {% include "partials/form_errors.html" %}
+    {% include "accounts/_branch_field.html" %}
+
+    {% if telegram_ready %}
+      <div class="field">
+        <span class="label">Kodni qayerga yuboraylik?</span>
+        <div class="channels" role="radiogroup">
+          <label class="channel">
+            <input type="radio" name="channel" value="sms" {% if form.channel.value != "telegram" %}checked{% endif %}>
+            <span class="channel-ico">{% include "partials/icon.html" with name="message" %}</span>
+            <span><b>SMS</b><small>Telefon raqamga</small></span>
+          </label>
+          <label class="channel channel-tg">
+            <input type="radio" name="channel" value="telegram" {% if form.channel.value == "telegram" %}checked{% endif %}>
+            <span class="channel-ico">{% include "partials/icon.html" with name="send" %}</span>
+            <span><b>Telegram</b><small>Bot orqali, bepul</small></span>
+          </label>
+        </div>
+      </div>
+    {% else %}
+      <input type="hidden" name="channel" value="sms">
+    {% endif %}
+
+    <div class="field">
+      <label class="label" for="{{ form.phone.id_for_label }}">Telefon raqam</label>
+      <div class="input-group">
+        <span class="addon">+998</span>
+        <input class="input{% if form.phone.errors %} is-invalid{% endif %}" type="text" name="phone"
+               id="{{ form.phone.id_for_label }}" value="{{ form.phone.value|default:'' }}"
+               inputmode="tel" autocomplete="tel-national" placeholder="90 123 45 67" data-phone-mask autofocus required>
+      </div>
+      {% for e in form.phone.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <div class="form-row">
+      <label class="check"><input type="checkbox" name="remember" {% if form.remember.value %}checked{% endif %}> Meni eslab qol</label>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary btn-lg btn-block" type="submit">
+        Kod yuborish {% include "partials/icon.html" with name="arrow-right" class="sm" %}
+      </button>
+      <p class="hint">{% include "partials/icon.html" with name="shield" class="sm" %} 6 xonali bir martalik kod 3 daqiqa amal qiladi</p>
+    </div>
+  </form>
+  {% endwith %}
+{% endif %}
+{% endblock %}

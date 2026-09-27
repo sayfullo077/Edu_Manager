@@ -1,0 +1,62 @@
+# ===== Maxfiy ma'lumotlar (HECH QACHON commit qilinmaydi) =====
+.env
+.env.*
+!.env.example
+demo_credentials.txt
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+
+# Haqiqiy ma'lumotli fayllar: oylik Excel'lari, eksportlar, DB dump/backup'lar.
+# Test uchun faqat anonimlashtirilgan CSV/JSON fixture'lar ishlatiladi.
+*.xlsx
+*.xls
+*.sql
+*.dump
+*.sqlite3
+backups/
+exports/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+
+# ===== Testlar va linterlar =====
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ===== Django =====
+/media/
+/staticfiles/
+*.log
+logs/
+locale/**/*.mo
+
+# ===== Docker =====
+docker-compose.override.yml
+
+# ===== Muharrir va OS =====
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ===== AI yordamchi (lokal) =====
+.claude/
+CLAUDE.md

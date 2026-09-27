@@ -1,0 +1,36 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Bosh sahifa{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Assalomu alaykum, {{ user.first_name }}!</h1>
+    <p class="sub">{% now "l, j-F Y" %} · {{ active_role.branch.name|default:school.name }}</p>
+  </div>
+  {% if active_role %}<span class="badge badge-accent">{{ active_role.get_role_display }} paneli</span>{% endif %}
+</div>
+
+<div class="grid grid-4">
+  {% for title, items in navigation %}
+    {% for item in items %}
+      {% if item.slug %}
+        <a class="card stat" href="{% url 'core:section' item.slug %}">
+          <div class="top">
+            <span class="label">{{ title|default:"Asosiy" }}</span>
+            <span class="ico">{% include "partials/icon.html" with name=item.icon class="sm" %}</span>
+          </div>
+          <div class="value value-sm">{{ item.label }}</div>
+          <div class="foot">Tez orada</div>
+        </a>
+      {% endif %}
+    {% endfor %}
+  {% empty %}
+    <div class="card empty span-all">
+      <span class="ico">{% include "partials/icon.html" with name="shield" class="lg" %}</span>
+      <h3>Sizga hali rol biriktirilmagan</h3>
+      <p>Admin panel orqali foydalanuvchiga rol qo'shing.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block body_attrs %}data-role="{{ active_role.role|default:'teacher' }}"{% endblock %}
+
+{% block body %}
+<div class="app">
+  <aside class="sidebar" aria-label="Asosiy menyu">
+    <div class="sidebar-head">
+      {% include "partials/brand_mark.html" %}
+      <div>
+        <div class="brand-name">{{ school.short_name }}</div>
+        <div class="brand-tag">{{ active_role.get_role_display|default:"Administrator" }}</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      {% for title, items in navigation %}
+        <div class="nav-group">
+          {% if title %}<div class="nav-title">{{ title }}</div>{% endif %}
+          {% for item in items %}
+            {% if item.slug %}
+              <a href="{% url 'core:section' item.slug %}" {% if active_slug == item.slug %}aria-current="page"{% endif %}>
+            {% else %}
+              <a href="{% url 'core:home' %}" {% if request.resolver_match.url_name == "home" %}aria-current="page"{% endif %}>
+            {% endif %}
+              {% include "partials/icon.html" with name=item.icon %}<span>{{ item.label }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% empty %}
+        {% if user.is_superuser %}
+          <a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="shield" %}<span>Admin panel</span></a>
+        {% endif %}
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <span class="avatar">{% if user.avatar %}<img src="{{ user.avatar.url }}" alt="">{% else %}{{ user.initials }}{% endif %}</span>
+        <div class="who">
+          <div class="name" title="{{ user.full_name }}">{{ user.short_name }}</div>
+          <div class="phone">{{ user.phone_display }}</div>
+        </div>
+        <form method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <button class="btn btn-ghost btn-icon" type="submit" aria-label="Chiqish" title="Chiqish">
+            {% include "partials/icon.html" with name="logout" %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </aside>
+  <div class="backdrop"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-icon menu-btn" type="button" data-nav-toggle aria-label="Menyu">
+        {% include "partials/icon.html" with name="menu" %}
+      </button>
+      <button class="search" type="button" aria-label="Qidirish">
+        {% include "partials/icon.html" with name="search" class="sm" %}
+        <span>O'quvchi, o'qituvchi yoki shartnoma…</span>
+        <kbd>⌘K</kbd>
+      </button>
+      <div class="spacer"></div>
+
+      {% if user_roles|length > 1 %}
+        <details class="dropdown">
+          <summary class="role-pill" aria-label="Rolni almashtirish">
+            <span class="role-dot"></span>
+            <span class="label-text">{{ active_role.get_role_display }}</span>
+            {% include "partials/icon.html" with name="chevron" class="sm" %}
+          </summary>
+          <div class="dropdown-menu">
+            <div class="head">Panelni almashtirish</div>
+            {% for r in user_roles %}
+              <form method="post" action="{% url 'accounts:switch_role' r.pk %}">
+                {% csrf_token %}
+                <button class="menu-item" type="submit" data-role="{{ r.role }}">
+                  <span class="role-dot"></span>
+                  <span>{{ r.get_role_display }}<small>{{ r.branch.name }}</small></span>
+                  {% if r.pk == active_role.pk %}<svg class="icon sm check-mark" aria-hidden="true"><use href="#i-check"/></svg>{% endif %}
+                </button>
+              </form>
+            {% endfor %}
+          </div>
+        </details>
+      {% elif active_role %}
+        <span class="role-pill"><span class="role-dot"></span><span class="label-text">{{ active_role.get_role_display }}</span></span>
+      {% endif %}
+
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Mavzuni almashtirish">
+        {% include "partials/icon.html" with name="moon" %}
+      </button>
+    </header>
+
+    <main class="content">{% block content %}{% endblock %}</main>
+  </div>
+</div>
+{% endblock %}

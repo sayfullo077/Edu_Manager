@@ -1,0 +1,13 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+media
+staticfiles
+demo_credentials.txt
+.claude

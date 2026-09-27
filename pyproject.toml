@@ -1,0 +1,42 @@
+[project]
+name = "edu-manager"
+version = "0.1.0"
+description = "Xususiy maktab boshqaruv platformasi"
+requires-python = ">=3.13"
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "django>=5.2,<6.1",
+    "django-environ>=0.14.0",
+    "django-htmx>=1.29.0",
+    "gunicorn>=26.2.0",
+    "pillow>=12.3.0",
+    "psycopg[binary,pool]>=3.3.6",
+    "redis>=8.1.0",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "ruff>=0.16.9",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+addopts = "-q"
+filterwarnings = ["ignore:No directory at:UserWarning"]  # dev/testda collectstatic qilinmaydi
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ", "S"]  # S = Bandit (xavfsizlik)
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["S101", "S105", "S106"]  # testlarda assert va soxta parollar normal
+"conftest.py" = ["S101"]
+"config/settings/test.py" = ["S105"]

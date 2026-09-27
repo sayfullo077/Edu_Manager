@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="auth">
+  <aside class="auth-hero">
+    <div class="brand">
+      {% include "partials/brand_mark.html" %}
+      <div>
+        <div class="brand-name">{{ school.name }}</div>
+        <div class="brand-tag">{{ school.tagline|default:"Maktab boshqaruv platformasi" }}</div>
+      </div>
+    </div>
+
+    <div>
+      <h1>Maktabingiz — bitta ekranda.</h1>
+      <p class="lead">Dars jadvali, to'lovlar, shartnomalar va o'qituvchilar oyligi bir joyda, shaffof va aniq.</p>
+      <ul class="features">
+        <li><span class="dot">{% include "partials/icon.html" with name="calendar" class="sm" %}</span>
+          <div><b>Jadval doim yoningizda</b><span>Haftalik darslar telefoningizda ham qulay.</span></div></li>
+        <li><span class="dot">{% include "partials/icon.html" with name="wallet" class="sm" %}</span>
+          <div><b>Shaffof oylik</b><span>Har bir so'm qayerdan kelganini ko'rasiz.</span></div></li>
+        <li><span class="dot">{% include "partials/icon.html" with name="shield" class="sm" %}</span>
+          <div><b>Xavfsiz kirish</b><span>Bir martalik SMS kod yoki shaxsiy parol.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="preview-card" aria-hidden="true">
+      <div class="row"><span class="k">To'lovlar · sentyabr</span><span class="k">80%</span></div>
+      <div class="v">48 250 000 <small class="unit">so'm</small></div>
+      <div class="bar"><i></i></div>
+      <div class="meta"><span>Kutilgan: 60 300 000</span><span>Bugun +3 to'lov</span></div>
+    </div>
+
+    <div class="auth-foot">© {% now "Y" %} {{ school.name }}</div>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-top">
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Mavzuni almashtirish">
+        {% include "partials/icon.html" with name="moon" %}
+      </button>
+    </div>
+    <div class="auth-panel">
+      <div class="auth-card">{% block card %}{% endblock %}</div>
+    </div>
+  </main>
+</div>
+{% endblock %}
