@@ -1,0 +1,59 @@
+{# O'quvchi formasi bo'limlari — qabul (student=None) va tahrirlash sahifalarida umumiy. #}
+<details class="card form-fold" open>
+  <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Shaxsiy ma'lumotlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+  <div class="form-grid cols-3">
+    {% include "partials/field.html" with field=form.last_name %}
+    {% include "partials/field.html" with field=form.first_name %}
+    {% include "partials/field.html" with field=form.middle_name %}
+    {% include "partials/field.html" with field=form.birth_date %}
+    {% include "partials/field.html" with field=form.gender %}
+    {% include "partials/field.html" with field=form.phone %}
+    {% include "partials/field.html" with field=form.region %}
+    {% include "partials/field.html" with field=form.district %}
+    {% include "partials/field.html" with field=form.mahalla %}
+    {% include "partials/field.html" with field=form.address class="span-all" %}
+  </div>
+  <datalist id="district-options">{% for v in suggestions.district %}<option value="{{ v }}">{% endfor %}</datalist>
+  <datalist id="mahalla-options">{% for v in suggestions.mahalla %}<option value="{{ v }}">{% endfor %}</datalist>
+</details>
+
+<details class="card form-fold" open>
+  <summary><h3>{% include "partials/icon.html" with name="shield" class="sm" %} Hujjatlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+  <div class="form-grid cols-3" data-doc-switch>
+    {% include "partials/field.html" with field=form.doc_type class="span-all" %}
+    <div data-doc="birth_certificate">{% include "partials/field.html" with field=form.birth_certificate %}</div>
+    <div data-doc="passport">{% include "partials/field.html" with field=form.passport %}</div>
+    {% include "partials/field.html" with field=form.pinfl %}
+    {% include "partials/field.html" with field=form.notes class="span-all" %}
+  </div>
+  <p class="note">{% include "partials/icon.html" with name="lock" class="sm" %} Hujjat raqamlari shifrlangan holda saqlanadi.</p>
+</details>
+
+<details class="card form-fold" open>
+  <summary><h3>{% include "partials/icon.html" with name="book" class="sm" %} O'quv ma'lumotlari</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+  <div class="form-grid cols-3">
+    <div class="field">
+      <span class="label">Filial</span>
+      <div class="input input-static">{{ request.branch.name }}</div>
+    </div>
+    {% include "partials/field.html" with field=form.joined_at %}
+    {% include "partials/field.html" with field=form.status %}
+    {% if student %}{% include "partials/field.html" with field=form.left_at %}{% endif %}
+    <div class="field span-all flag-fields">
+      <span class="label">Tizimlarda</span>
+      <div class="flag-checks">
+        {% include "partials/field.html" with field=form.in_erp %}
+        {% include "partials/field.html" with field=form.in_emaktab %}
+      </div>
+    </div>
+  </div>
+</details>
+
+<details class="card form-fold" open>
+  <summary><h3>{% include "partials/icon.html" with name="calendar" class="sm" %} O'quv yili va sinf</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+  <div class="form-grid cols-3">
+    {% include "partials/field.html" with field=form.academic_year %}
+    {% include "partials/field.html" with field=form.grade %}
+    {% include "partials/field.html" with field=form.school_class %}
+  </div>
+</details>

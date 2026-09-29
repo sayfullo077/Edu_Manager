@@ -1,0 +1,56 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Yotoqxona xonalari{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Yotoqxona xonalari</h1>
+    <p class="sub">{{ request.branch.name }} · xonalar, sig'im va bandlik</p>
+  </div>
+  <a class="btn btn-excel" href="{% url 'dorm:room_export' %}?{{ querystring }}" title="Excelga yuklab olish" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+</div>
+
+<div class="chip-row result-chips">
+  <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ rooms|length }} ta topildi</span>
+  {% if has_filters %}<a class="chip" href="{% url 'dorm:room_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>{% endif %}
+</div>
+
+<div class="grid grid-4 stats-row">
+  <a class="card stat" href="?"><div class="top"><span class="label">Jami</span><span class="ico tone-info">{% include "partials/icon.html" with name="bed" class="sm" %}</span></div><div class="value">{{ stats.total }} <span class="unit">ta</span></div></a>
+  <a class="card stat" href="?status=active"><div class="top"><span class="label">Faol</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value">{{ stats.active }} <span class="unit">ta</span></div></a>
+  <a class="card stat" href="?status=inactive"><div class="top"><span class="label">Nofaol</span><span class="ico">{% include "partials/icon.html" with name="power" class="sm" %}</span></div><div class="value">{{ stats.inactive }} <span class="unit">ta</span></div></a>
+  <a class="card stat" href="?status=repair"><div class="top"><span class="label">Ta'mirda</span><span class="ico tone-warning">{% include "partials/icon.html" with name="construction" class="sm" %}</span></div><div class="value">{{ stats.repair }} <span class="unit">ta</span></div></a>
+</div>
+
+{% url 'dorm:room_list' as reset_url %}
+{% include "partials/filter_bar.html" with placeholder="Xona raqami…" %}
+
+<div class="card">
+  {% if rooms %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th class="num-col">#</th><th>Xona</th><th class="hide-sm">Turi</th><th>Jinsi</th><th>Band/sig'im</th><th class="hide-sm">Holat</th><th class="actions">Amallar</th>
+        </tr></thead>
+        <tbody>
+          {% for r in rooms %}
+            <tr>
+              <td class="num-col">{{ forloop.counter }}</td>
+              <td><a class="entity-name" href="{% url 'dorm:room_detail' r.pk %}">{{ r.name }}</a>{% if r.floor %}<small class="muted block">{{ r.floor }}</small>{% endif %}</td>
+              <td class="hide-sm">{{ r.get_room_type_display }}</td>
+              <td><span class="badge {% if r.gender == 'female' %}badge-danger{% elif r.gender == 'male' %}badge-info{% else %}badge-muted{% endif %}">{{ r.get_gender_display }}</span></td>
+              <td class="occupancy-cell"><b class="num">{{ r.occupied }}/{{ r.capacity }}</b>{% widthratio r.occupied r.capacity 100 as pct %}{% bar pct "success" %}</td>
+              <td class="hide-sm"><span class="badge {% if r.status == 'active' %}badge-success{% elif r.status == 'repair' %}badge-warning{% else %}badge-muted{% endif %}">{{ r.get_status_display }}</span></td>
+              <td class="actions"><a class="icon-btn tone-info" href="{% url 'dorm:room_detail' r.pk %}" title="Xonani ochish" aria-label="Xonani ochish">{% include "partials/icon.html" with name="eye" class="sm" %}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-line">Xona topilmadi.</p>
+  {% endif %}
+</div>
+{% endblock %}

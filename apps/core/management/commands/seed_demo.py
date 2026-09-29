@@ -8,6 +8,9 @@ from django.db import transaction
 
 from apps.accounts.models import Role, User, UserRole
 from apps.core.models import AcademicYear, Branch, SchoolSettings
+from apps.dorm import demo as dorm_demo
+from apps.finance import demo as finance_demo
+from apps.people import demo as people_demo
 
 CREDENTIALS_FILE = settings.BASE_DIR / "demo_credentials.txt"
 
@@ -34,7 +37,7 @@ class Command(BaseCommand):
         school.save()
 
         branch, _ = Branch.objects.get_or_create(name="Oltiariq filiali")
-        AcademicYear.objects.update_or_create(
+        year, _ = AcademicYear.objects.update_or_create(
             name="2026-2027",
             defaults={"start_date": date(2026, 9, 2), "end_date": date(2027, 6, 30), "is_current": True},
         )
@@ -52,8 +55,16 @@ class Command(BaseCommand):
         admin.set_password(password)
         admin.save()
 
+        teacher_users = User.objects.filter(roles__role=Role.TEACHER, roles__branch=branch).distinct()
+        result = people_demo.seed(branch, year, list(teacher_users.order_by("phone")))
+        reception_user = User.objects.get(phone="998900000004")
+        finance_result = finance_demo.seed(branch, reception_user)
+        dorm_demo.seed(branch, reception_user)
+
         self.stdout.write(self.style.SUCCESS(
-            f"Tayyor. {len(DEMO_USERS) + 1} ta demo foydalanuvchi, parol: {CREDENTIALS_FILE.name} "
+            f"Tayyor. {result['classes']} sinf, {result['students']} o'quvchi, "
+            f"{finance_result.get('contracts', 0)} shartnoma, {finance_result.get('payments', 0)} to'lov. "
+            f"{len(DEMO_USERS) + 1} ta demo foydalanuvchi, parol: {CREDENTIALS_FILE.name} "
             f"(yoki DEMO_PASSWORD). SMS backend: {settings.SMS_BACKEND.rsplit('.', 1)[-1]}"
         ))
 

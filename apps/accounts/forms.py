@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
 
 from apps.core.models import Branch
@@ -40,18 +41,27 @@ class PhoneField(forms.CharField):
             "data-phone-mask": "",
         })
 
+    def prepare_value(self, value):
+        # Bazadagi 998901234567 → formada "90 123 45 67"
+        if isinstance(value, str) and len(value) == 12 and value.startswith("998"):
+            return f"{value[3:5]} {value[5:8]} {value[8:10]} {value[10:12]}"
+        return value
+
     def clean(self, value):
-        return normalize_phone(super().clean(value))
+        value = super().clean(value)
+        if not value and not self.required:
+            return ""
+        return normalize_phone(value)
 
 
 class CodeRequestForm(BranchMixin):
     channel = forms.ChoiceField(choices=OneTimeCode.Channel.choices, initial=OneTimeCode.Channel.SMS,
                                 widget=forms.RadioSelect, label="Kodni qayerga yuboraylik?", required=False)
     phone = PhoneField()
+    remember = forms.BooleanField(label="Meni eslab qol", required=False, initial=True)
 
     def clean_channel(self):
         return self.cleaned_data.get("channel") or OneTimeCode.Channel.SMS
-    remember = forms.BooleanField(label="Meni eslab qol", required=False, initial=True)
 
 
 class CodeVerifyForm(forms.Form):
@@ -69,3 +79,14 @@ class PasswordLoginForm(BranchMixin):
     password = forms.CharField(label="Parol", strip=False, widget=forms.PasswordInput(
         attrs={"autocomplete": "current-password"}))
     remember = forms.BooleanField(label="Meni eslab qol", required=False, initial=True)
+
+
+class StyledPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {"old_password": "Joriy parol", "new_password1": "Yangi parol",
+                  "new_password2": "Yangi parol (takror)"}
+        for name, field in self.fields.items():
+            field.label = labels.get(name, field.label)
+            field.widget.attrs["class"] = "input"
+        self.fields["new_password1"].help_text = "Kamida 10 belgi; faqat raqamlardan iborat bo'lmasin."

@@ -1,0 +1,24 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Ota-ona qo'shish · {{ student.short_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'people:student_detail' student.pk %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} {{ student.short_name }}</a>
+    <h1 class="mt-12">Ota-ona / vasiy qo'shish</h1>
+    <p class="sub">{{ student.full_name }} · {{ student.code }}</p>
+  </div>
+</div>
+
+<form class="card form-card" method="post" novalidate>
+  {% csrf_token %}
+  {% with form=guardian_form %}{% include "partials/form_errors.html" %}{% endwith %}
+  {% include "people/_guardian_fields.html" %}
+  <div class="form-grid mt-12">{% include "partials/field.html" with field=relation_form.is_primary class="span-2" %}</div>
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% url 'people:student_detail' student.pk %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Biriktirish</button>
+  </div>
+</form>
+{% endblock %}

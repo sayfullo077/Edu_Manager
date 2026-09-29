@@ -1,0 +1,187 @@
+{% extends "layouts/app.html" %}
+{% load ui l10n %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="sub">{{ request.branch.name }} · {{ today|date:"j-F Y, l" }}</p>
+  </div>
+</div>
+
+{# ---------- Yuqori kartalar ---------- #}
+<div class="grid grid-5 stats-row">
+  <a class="card stat" href="{% url 'people:student_list' %}">
+    <div class="top"><span class="label">O'quvchilar</span><span class="ico">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div>
+    <div class="value">{{ students.active }}</div>
+    <div class="foot trend-up">↑ +{{ students.new }} bu oy</div>
+  </a>
+  <div class="card stat">
+    <div class="top"><span class="label">O'qituvchilar</span><span class="ico tone-info">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div>
+    <div class="value">{{ teachers.total }}</div>
+    <div class="foot">{{ teachers.vacation }} ta ta'tilda</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Bugungi kirim</span><span class="ico tone-success">{% include "partials/icon.html" with name="chart" class="sm" %}</span></div>
+    <div class="value money-sm">{{ today_flow.income|money }}</div>
+    <div class="foot {% if income_change is not None and income_change < 0 %}trend-down{% else %}trend-up{% endif %}">
+      {% if income_change is None %}{{ today_flow.income_count }} ta to'lov{% elif income_change >= 0 %}↑ +{{ income_change }}% kechaga nisbatan{% else %}↓ {{ income_change }}% kechaga nisbatan{% endif %}
+    </div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Bugungi chiqim</span><span class="ico tone-danger">{% include "partials/icon.html" with name="receipt" class="sm" %}</span></div>
+    <div class="value money-sm">{{ today_flow.expense|money }}</div>
+    <div class="foot">{{ today_flow.expense_count }} ta xarajat</div>
+  </div>
+  <a class="card stat" href="{% url 'finance:cashbox' %}">
+    <div class="top"><span class="label">Kassa (naqd)</span><span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div>
+    <div class="value money-sm">{{ cash_balance|money }}</div>
+    <div class="foot">Joriy qoldiq</div>
+  </a>
+</div>
+
+{# ---------- Oylik kirim / chiqim ---------- #}
+<div class="grid grid-2 stats-row">
+  <section class="card card-pad">
+    <div class="split">
+      <div>
+        <p class="label">Oylik kirim · {{ month_label }}</p>
+        <p class="money-lg text-success">{{ summary.received|money }} <small>so'm</small></p>
+      </div>
+      {% if summary.change_percent is not None %}
+        <span class="badge {% if summary.change_percent >= 0 %}badge-success{% else %}badge-danger{% endif %}">
+          {% if summary.change_percent >= 0 %}↑ +{% else %}↓ {% endif %}{{ summary.change_percent }}%</span>
+      {% endif %}
+    </div>
+    <p class="muted small">Kutilgan: <b class="num">{{ summary.expected|money }}</b> · Yig'ilgan: <b class="num">{{ summary.collected_for_month|money }}</b></p>
+    <div class="bar-label"><span>To'lov foizi</span><b>{{ summary.paid_percent }}%</b></div>
+    {% localize off %}<svg class="bar stacked" preserveAspectRatio="none" role="img" aria-label="To'lov holati bo'yicha taqsimot">
+      <rect class="bar-track" width="100%" height="100%" rx="5"/>
+      {% for arc in donut.arcs %}{% if arc.value %}<rect class="{{ forloop.counter|seg_class }}" x="{{ arc.x }}%" width="{{ arc.w }}%" height="100%"><title>{{ arc.label }}: {{ arc.value }}</title></rect>{% endif %}{% endfor %}
+    </svg>{% endlocalize %}
+    <ul class="legend">
+      {% for arc in donut.arcs %}<li><i class="{{ forloop.counter|seg_class }}"></i>{{ arc.label }} <b>{{ arc.value }}</b></li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="card card-pad">
+    <div class="split">
+      <div>
+        <p class="label">Oylik chiqim</p>
+        <p class="money-lg text-danger">{{ summary.outflow|money }} <small>so'm</small></p>
+      </div>
+      <span class="badge badge-danger">Maosh fondi + xarajatlar</span>
+    </div>
+    <div class="bar-label mt-12"><span>Chiqim / kirim nisbati</span><b>{{ summary.outflow_ratio }}%</b></div>
+    {% bar summary.outflow_ratio "danger" %}
+    <div class="mini-grid">
+      <div><span>Maosh fondi</span><b class="text-warning">{{ summary.payroll|money }}</b></div>
+      <div><span>Xarajatlar</span><b class="text-danger">{{ summary.expenses|money }}</b></div>
+      <div><span>Sof foyda</span><b class="{% if summary.profit >= 0 %}text-success{% else %}text-danger{% endif %}">{{ summary.profit|money }}</b></div>
+    </div>
+  </section>
+</div>
+
+{# ---------- Filial byudjeti ---------- #}
+<section class="section-block">
+  <div class="page-head">
+    <div>
+      <h2>Filial byudjeti</h2>
+      <p class="sub">{{ month_label }}</p>
+    </div>
+    <div class="page-actions">
+      <form method="get" class="inline-form">
+        <select class="input input-sm" name="month" aria-label="Oy" data-autosubmit>
+          {% for value, label in months %}<option value="{{ value }}" {% if value == month_value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </form>
+      {% if budget_page_enabled %}<a class="btn btn-secondary" href="{% url 'finance:budget_edit' %}?month={{ month_value }}">{% include "partials/icon.html" with name="pencil" class="sm" %} Limitlar</a>{% endif %}
+    </div>
+  </div>
+
+  <div class="card card-pad budget-head">
+    {% localize off %}<div class="ring">
+      <svg viewBox="0 0 {{ ring.size }} {{ ring.size }}" aria-hidden="true">
+        <circle class="ring-track" cx="{{ ring.center }}" cy="{{ ring.center }}" r="{{ ring.radius }}" stroke-width="{{ ring.stroke }}"/>
+        <circle class="ring-fill" cx="{{ ring.center }}" cy="{{ ring.center }}" r="{{ ring.radius }}" stroke-width="{{ ring.stroke }}" stroke-dasharray="{{ ring.dash }}" transform="rotate(-90 {{ ring.center }} {{ ring.center }})"/>
+      </svg>
+      <span><b>{{ budget.percent }}%</b><small>ishlatildi</small></span>
+    </div>{% endlocalize %}
+    <div><span class="label">Ishlatish mumkin</span><p class="money-md">{{ budget.limit|money }} <small>so'm</small></p></div>
+    <div><span class="label">Sarflangan</span><p class="money-md text-danger">{{ budget.spent|money }} <small>so'm</small></p></div>
+    <div><span class="label">Qoldiq</span><p class="money-md {% if budget.remaining >= 0 %}text-success{% else %}text-danger{% endif %}">{{ budget.remaining|money }} <small>so'm</small></p></div>
+  </div>
+
+  {% for title, hint, rows in budget|budget_groups %}
+    <h3 class="group-title">{{ title }} <small>{{ hint }}</small></h3>
+    <div class="card budget-list">
+      {% for r in rows %}
+        <div class="budget-row">
+          <span class="cat-ico">{% include "partials/icon.html" with name=r.category.icon class="sm" %}</span>
+          <div class="cat-name"><b>{{ r.category.name }}</b><small class="{% if r.over %}text-danger{% elif r.remaining %}text-success{% else %}muted{% endif %}">{% if r.over %}Limitdan oshdi{% elif not r.limit %}Limit belgilanmagan{% elif r.remaining %}Qoldiq bor{% else %}Limit tugadi{% endif %}</small></div>
+          {% if r.over %}{% bar r.percent "danger" %}{% else %}{% bar r.percent %}{% endif %}
+          <div class="cat-nums">
+            <span>Limit: <b class="num">{{ r.limit|money }}</b></span>
+            <span>Sarflangan: <b class="num text-danger">{{ r.spent|money }}</b></span>
+            <span>Qoldiq: <b class="num {% if r.remaining >= 0 %}text-success{% else %}text-danger{% endif %}">{{ r.remaining|money }}</b></span>
+          </div>
+          <a class="round-btn" href="{% url 'finance:expense_create' %}?category={{ r.category.pk }}"
+             data-expense data-category="{{ r.category.pk }}" data-name="{{ r.category.name }}" data-icon="{{ r.category.icon }}"
+             data-limit="{{ r.limit|money }}" data-remaining="{{ r.remaining|money }}" data-over="{{ r.over|yesno:'1,' }}"
+             title="Xarajat qo'shish" aria-label="{{ r.category.name }}: xarajat qo'shish" aria-haspopup="dialog">{% include "partials/icon.html" with name="plus" class="sm" %}</a>
+        </div>
+      {% empty %}
+        <p class="muted card-pad">Kategoriyalar yo'q (admin panel → Xarajat kategoriyalari).</p>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</section>
+
+{# ---------- Grafiklar ---------- #}
+<div class="grid grid-charts section-block">
+  <section class="card card-pad">
+    <div class="split">
+      <div><h3>O'quvchilar o'sish trendi</h3><p class="muted small">Oxirgi 6 oy · oylar kesimida</p></div>
+      <ul class="legend inline"><li><i class="seg-info"></i>Jami o'quvchilar</li><li><i class="seg-danger"></i>Ketganlar</li></ul>
+    </div>
+    {% localize off %}{% with c=trend_chart %}
+    <div class="chart-wrap" data-line-chart data-series="{{ trend|tojson }}">
+    <svg class="chart" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img" aria-label="O'quvchilar soni oylar bo'yicha">
+      <defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="stop-a"/><stop offset="1" class="stop-b"/></linearGradient></defs>
+      {% for t in c.y_ticks %}<line class="grid-line" x1="{{ c.left }}" x2="{{ c.x_end }}" y1="{{ t.y }}" y2="{{ t.y }}"/><text class="axis" x="{{ c.left|add:-10 }}" y="{{ t.y }}" text-anchor="end" dominant-baseline="middle">{{ t.value }}</text>{% endfor %}
+      {% for t in c.y2_ticks %}{% if forloop.first or forloop.last %}<text class="axis axis-danger" x="{{ c.x_end|add:10 }}" y="{{ t.y }}" dominant-baseline="middle">{{ t.value }}</text>{% endif %}{% endfor %}
+      <line class="guide" x1="0" x2="0" y1="{{ c.top }}" y2="{{ c.y_base }}"/>
+      <path class="area" d="{{ c.primary.area }}"/>
+      <path class="line line-primary" d="{{ c.primary.path }}"/>
+      <path class="line line-danger" d="{{ c.secondary.path }}"/>
+      {% for p in c.primary.points %}<circle class="dot dot-primary" data-i="{{ forloop.counter0 }}" cx="{{ p.x }}" cy="{{ p.y }}" r="4"/>{% endfor %}
+      {% for p in c.secondary.points %}<circle class="dot dot-danger" data-i="{{ forloop.counter0 }}" cx="{{ p.x }}" cy="{{ p.y }}" r="3.5"/>{% endfor %}
+      {% for l in c.labels %}<text class="axis" data-i="{{ forloop.counter0 }}" x="{{ l.x }}" y="{{ c.height|add:-8 }}" text-anchor="middle">{{ l.text }}</text>{% endfor %}
+      {% for col in c.columns %}<rect class="hover-col" data-i="{{ col.i }}" data-x="{{ col.x }}" data-y="{{ col.y }}" x="{{ col.x0 }}" y="0" width="{{ col.w }}" height="{{ c.height }}" tabindex="0" aria-label="{{ col.label }}"/>{% endfor %}
+    </svg>
+    <div class="chart-tip" role="tooltip"></div>
+    </div>
+    {% endwith %}{% endlocalize %}
+  </section>
+
+  <section class="card card-pad">
+    <h3>O'quvchilar to'lov holati</h3>
+    <p class="muted small">{{ month_label }} taqsimoti</p>
+    <div class="donut-wrap chart-wrap" data-donut>
+      {% localize off %}<svg class="donut" viewBox="0 0 {{ donut.size }} {{ donut.size }}" role="img" aria-label="To'lov holati: {{ summary.paid_percent }}% to'langan">
+        <circle class="donut-track" cx="{{ donut.center }}" cy="{{ donut.center }}" r="{{ donut.radius }}" stroke-width="{{ donut.stroke }}"/>
+        {% for a in donut.arcs %}{% if a.value %}<circle class="donut-arc {{ forloop.counter|seg_class }}" cx="{{ donut.center }}" cy="{{ donut.center }}" r="{{ donut.radius }}" stroke-width="{{ donut.stroke }}" stroke-dasharray="{{ a.dash }}" stroke-dashoffset="{{ a.offset }}" transform="rotate(-90 {{ donut.center }} {{ donut.center }})" tabindex="0" data-label="{{ a.label }}" data-value="{{ a.value }}" data-percent="{{ a.percent }}" data-cls="{{ forloop.counter|seg_class }}" aria-label="{{ a.label }}: {{ a.value }} ({{ a.percent }}%)"/>{% endif %}{% endfor %}
+        <text class="donut-label" x="50%" y="46%" text-anchor="middle">To'lov foizi</text>
+        <text class="donut-value" x="50%" y="60%" text-anchor="middle">{{ summary.paid_percent }}%</text>
+      </svg>{% endlocalize %}
+      <div class="chart-tip" role="tooltip"></div>
+    </div>
+    <ul class="legend stacked">
+      {% for a in donut.arcs %}<li><span><i class="{{ forloop.counter|seg_class }}"></i>{{ a.label }}</span><span><b>{{ a.value }}</b> <small class="muted">({{ a.percent }}%)</small></span></li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% include "finance/_expense_drawer.html" %}
+{% endblock %}

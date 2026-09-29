@@ -1,0 +1,1 @@
+{% load ui %}{% with s=invoice|invoice_state %}<span class="badge {% if s == 'paid' %}badge-success{% elif s == 'partial' %}badge-info{% elif s == 'overdue' %}badge-danger{% else %}badge-warning{% endif %}">{% if s == 'paid' %}To'langan{% elif s == 'partial' %}Qisman{% elif s == 'overdue' %}Muddati o'tgan{% else %}Kutilmoqda{% endif %}</span>{% endwith %}

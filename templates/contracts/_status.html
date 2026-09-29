@@ -1,0 +1,1 @@
+<span class="badge {% if contract.status == 'signed' %}badge-success{% elif contract.status == 'sent' %}badge-info{% elif contract.status == 'draft' %}badge-warning{% else %}badge-muted{% endif %}">{{ contract.get_status_display }}</span>

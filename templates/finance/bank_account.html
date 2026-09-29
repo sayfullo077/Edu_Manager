@@ -1,0 +1,81 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Bank hisobi{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bank hisobi</h1>
+    <p class="sub">Bank o'tkazmalari, terminal va ichki o'tkazmalar holati · {{ date_from|date:"d.m.Y" }} — {{ date_to|date:"d.m.Y" }}</p>
+  </div>
+  <span class="badge badge-lg {% if o.stable %}badge-success{% else %}badge-danger{% endif %}">{% if o.stable %}Barqaror{% else %}Manfiy{% endif %}</span>
+</div>
+
+<form class="card card-pad payments-filter" method="get">
+  <div class="period-bar">
+    {% include "partials/field.html" with field=form.date_from %}
+    {% include "partials/field.html" with field=form.date_to %}
+    <div class="pf-actions">
+      <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="search" class="sm" %} Qidirish</button>
+      <a class="btn btn-secondary" href="{% url 'finance:bank_account' %}">{% include "partials/icon.html" with name="rotate" class="sm" %} Tozalash</a>
+    </div>
+  </div>
+</form>
+
+<div class="grid grid-4 bank-cards">
+  <div class="card card-pad flow-card tone-success">
+    <div class="split"><div><span class="label">Umumiy bank qoldig'i</span><b class="flow-value text-success" title="{{ o.total|money }} so'm">{{ o.total|short_money }}</b></div>
+      <span class="ico tone-success">{% include "partials/icon.html" with name="bank" %}</span></div>
+    <small>Bank + Terminal (net) + O'tkazmalar</small>
+    <small>Barcha vaqt: <b class="num">{{ o.all_time|money }}</b> so'm</small>
+  </div>
+  <div class="card card-pad flow-card">
+    <div class="split"><div><span class="label">Bank o'tkazmalari</span><b class="flow-value text-success" title="{{ o.bank.net|money }} so'm">{{ o.bank.net|short_money }}</b></div>
+      <span class="ico tone-info">{% include "partials/icon.html" with name="arrows" %}</span></div>
+    <div class="split small"><span>Kirim: <b class="text-success">+{{ o.bank.income|short_money }}</b></span><span>Chiqim: <b class="text-danger">−{{ o.bank.outcome|short_money }}</b></span></div>
+  </div>
+  <div class="card card-pad flow-card">
+    <div class="split"><div><span class="label">Terminal (net)</span><b class="flow-value text-success" title="{{ o.terminal.net|money }} so'm">{{ o.terminal.net|short_money }}</b></div>
+      <span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" %}</span></div>
+    <dl class="flow-list compact">
+      <dt>Jami</dt><dd>{{ o.terminal.income|short_money }}</dd>
+      <dt>Komissiya</dt><dd class="text-danger">−{{ o.terminal.commission|money }}</dd>
+    </dl>
+  </div>
+  <div class="card card-pad flow-card">
+    <div class="split"><div><span class="label">Ichki o'tkazmalar</span><b class="flow-value" title="{{ o.transfers.net|money }} so'm">{{ o.transfers.net|short_money }}</b></div>
+      <span class="ico tone-info">{% include "partials/icon.html" with name="arrows" %}</span></div>
+    <div class="split small"><span>Kirgan: <b class="text-success">+{{ o.transfers.income|short_money }}</b></span><span>Chiqqan: <b class="text-danger">−{{ o.transfers.outcome|short_money }}</b></span></div>
+  </div>
+</div>
+
+<section class="card mt-20">
+  <div class="card-title"><h3>Tafsilot</h3></div>
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr><th>Sana</th><th>Turi</th><th class="text-right">Summa</th><th class="text-right">Komissiya</th><th class="text-right">Net</th><th class="hide-sm">Tavsif</th></tr></thead>
+        <tbody>
+          {% for t in page.object_list %}
+            <tr>
+              <td class="num nowrap">{{ t.occurred_at|date:"d.m.Y" }}<small class="muted block">{{ t.occurred_at|date:"H:i" }} · TRX-{{ t.pk }}</small></td>
+              <td class="nowrap">
+                <span class="badge {% if t.account.kind == 'terminal' %}badge-warning{% else %}badge-info{% endif %}">{% if t.account.kind == "terminal" %}Terminal{% if t.payment.card_network %} – {{ t.payment.get_card_network_display }}{% endif %}{% else %}Bank o'tkazmasi{% endif %}</span>
+                <span class="badge {% if t.direction == 'in' %}badge-success{% else %}badge-danger{% endif %}">{% if t.kind == "transfer" %}O'tkazma{% else %}{{ t.get_direction_display }}{% endif %}</span>
+              </td>
+              <td class="text-right num nowrap"><b class="{% if t.direction == 'in' %}text-success{% else %}text-danger{% endif %}">{% if t.direction == 'in' %}+{% else %}−{% endif %}{{ t.amount|money }}</b></td>
+              <td class="text-right num {% if t.commission %}text-danger{% else %}muted{% endif %}">{% if t.commission %}−{{ t.commission|money }}{% else %}—{% endif %}</td>
+              <td class="text-right num"><b>{{ t.net|money }}</b></td>
+              <td class="hide-sm"><small>{{ t.description|truncatechars:70 }}</small></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <p class="empty-line">Bu davrda bank yoki terminal orqali harakat yo'q.</p>
+  {% endif %}
+</section>
+{% endblock %}

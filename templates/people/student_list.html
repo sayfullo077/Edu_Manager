@@ -1,0 +1,134 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}O'quvchilar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>O'quvchilar</h1>
+    <p class="sub">{{ request.branch.name }} · {{ page.paginator.count }} ta topildi</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'people:student_create' %}">
+      {% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish
+    </a>
+  </div>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'people:student_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat">
+    <div class="top"><span class="label">Jami</span><span class="ico">{% include "partials/icon.html" with name="users" class="sm" %}</span></div>
+    <div class="value">{{ stats.total }}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Faol</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div>
+    <div class="value">{{ stats.active }}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Bitirgan</span><span class="ico tone-info">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div>
+    <div class="value">{{ stats.graduated }}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Shu oy qo'shilgan</span><span class="ico tone-warning">{% include "partials/icon.html" with name="plus" class="sm" %}</span></div>
+    <div class="value">{{ stats.joined_this_month }}</div>
+  </div>
+</div>
+
+{% url 'people:student_list' as reset_url %}{% url 'people:student_export' as export_url %}
+{% with q=filter_form.q.value %}{% include "partials/filter_bar.html" with placeholder="F.I.O, kod yoki telefon…" show_labels=True %}{% endwith %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead>
+          <tr>
+            <th class="num-col">#</th>
+            <th>O'quvchi</th>
+            <th>Sinf</th>
+            <th class="hide-sm hide-xl">Tug'ilgan</th>
+            <th class="hide-sm hide-lg">Telefon</th>
+            <th>Holati</th>
+            <th class="hide-sm">ERP</th>
+            <th class="hide-sm">E-maktab</th>
+            <th class="actions"><span class="sr-only">Amallar</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in page.object_list %}
+            <tr>
+              <td class="num-col">{{ page.start_index|add:forloop.counter0 }}</td>
+              <td>
+                <a class="person" href="{% url 'people:student_detail' s.pk %}">
+                  <span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span>
+                  <span><b>{{ s.full_name }}</b><small>{{ s.code }}</small></span>
+                </a>
+              </td>
+              <td class="class-cell">
+                {% if s.school_class %}<span class="badge badge-accent">{{ s.school_class.name }}</span>{% endif %}
+                <small class="muted">{{ s.grade }}-sinf</small>
+              </td>
+              <td class="hide-sm hide-xl num nowrap">{{ s.birth_date|date:"d.m.Y" }}</td>
+              <td class="hide-sm hide-lg num nowrap">{{ s.phone|phone }}</td>
+              <td>
+                <span class="badge {% if s.status == 'active' %}badge-success{% elif s.status == 'graduated' %}badge-info{% elif s.status == 'frozen' %}badge-warning{% elif s.status == 'expelled' %}badge-danger{% else %}badge-muted{% endif %}">
+                  {{ s.get_status_display }}
+                </span>
+              </td>
+              {% for field, on in s|flags %}
+                <td class="hide-sm">
+                  <form class="inline-form" method="post" action="{% url 'people:student_toggle_flag' s.pk field %}">
+                    {% csrf_token %}<input type="hidden" name="qs" value="{{ querystring }}&page={{ page.number }}">
+                    <button class="flag{% if on %} on{% endif %}" type="submit" title="Belgini o'zgartirish">
+                      {% if on %}{% include "partials/icon.html" with name="check" class="sm" %} Bor{% else %}Yo'q{% endif %}
+                    </button>
+                  </form>
+                </td>
+              {% endfor %}
+              <td class="actions">
+                <div class="row-actions">
+                  <a class="icon-btn tone-info" href="{% url 'people:student_detail' s.pk %}" title="Batafsil ma'lumot" aria-label="Batafsil ma'lumot">
+                    {% include "partials/icon.html" with name="eye" class="sm" %}
+                  </a>
+                  {% if show_finance %}
+                    <a class="icon-btn tone-success" href="{% url 'people:student_detail' s.pk %}?view=payment" title="To'lovlar" aria-label="To'lovlar">
+                      {% include "partials/icon.html" with name="wallet" class="sm" %}
+                    </a>
+                  {% endif %}
+                  <a class="icon-btn tone-warning" href="{% url 'people:student_update' s.pk %}" title="Tahrirlash" aria-label="Tahrirlash">
+                    {% include "partials/icon.html" with name="pencil" class="sm" %}
+                  </a>
+                  <form class="inline-form" method="post" action="{% url 'people:student_delete' s.pk %}"
+                        data-confirm="{{ s.full_name }} o'chirilsinmi? To'lov grafigi yoki to'lovlari bo'lsa, o'chirilmaydi — avval o'qishdan chiqarish hisob-kitobi ochiladi."
+                        data-confirm-ok="O'chirish">
+                    {% csrf_token %}<input type="hidden" name="qs" value="{{ querystring }}&page={{ page.number }}">
+                    <button class="icon-btn tone-danger" type="submit" title="O'chirish" aria-label="O'chirish">
+                      {% include "partials/icon.html" with name="trash" class="sm" %}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="search" class="lg" %}</span>
+      <h3>O'quvchi topilmadi</h3>
+      <p>Qidiruv so'zini yoki filtrlarni o'zgartirib ko'ring, yoki yangi o'quvchi qo'shing.</p>
+      <a class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Yangi o'quvchi</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

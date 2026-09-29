@@ -1,0 +1,115 @@
+{% load ui %}
+{# O'quvchi kartasi → "To'lov" ko'rinishi (faqat Reception). Kontekst: finance.selectors.student_finance #}
+<section class="card card-pad" id="tolovlar">
+  <h3 class="block-title">{% include "partials/icon.html" with name="book" class="sm" %} O'qish to'lovi</h3>
+  <div class="sum-grid">
+    <div><span>Hisoblangan</span><b class="num">{{ charged|money }}</b><small class="muted">{{ invoices|length }} oy</small></div>
+    <div><span>To'langan</span><b class="num text-success">{{ paid_total|money }}</b></div>
+    <div class="{% if debt %}is-debt{% endif %}"><span>Qarz</span><b class="num">{{ debt|money }}</b>
+      {% if overdue %}<small class="text-danger">muddati o'tgan: {{ overdue|money }}</small>{% endif %}</div>
+  </div>
+  {% if missing_months %}
+    <p class="small muted mt-12">Grafik oyma-oy yaratiladi: yana <b class="strong">{{ missing_months|length }} oy</b>
+      ({{ missing_months.0|date:"Y-m" }} dan) har oy boshida avtomatik qo'shiladi. Oldindan to'lov uchun — "Grafik".</p>
+  {% endif %}
+</section>
+
+<section class="card mt-20" id="grafik">
+  <div class="card-title wrap">
+    <div>
+      <h3>{% include "partials/icon.html" with name="calendar" class="sm" %} Hisoblangan oylar</h3>
+      {% with c=schedule_contract|default:contract %}{% if c %}
+        <p class="small muted mt-4">
+          Oyiga <b class="strong num">{{ c.monthly_fee|money }}</b> so'm · {% include "contracts/_status.html" with contract=c %}
+          · {{ c.academic_year.name }} · {{ c.start_date|date:"d.m.Y" }}
+          {% if c.discount_percent %} · <span class="text-info">chegirma {{ c.discount_percent|floatformat:"-2" }}%{% if c.discount_reason %} ({{ c.discount_reason }}){% endif %}</span>{% endif %}
+        </p>
+      {% endif %}{% endwith %}
+    </div>
+    <div class="page-actions">
+      {% if debt %}<a class="btn btn-primary btn-sm" href="{% url 'finance:payment_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} To'lov</a>{% endif %}
+      {% if schedule_form %}<button class="btn btn-outline btn-sm" type="button" data-open-dialog="schedule-dialog">{% include "partials/icon.html" with name="calendar" class="sm" %} Grafik</button>{% endif %}
+      {% if invoices %}<a class="btn btn-excel btn-sm" href="{% url 'finance:student_invoices_export' student.pk %}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>{% endif %}
+    </div>
+  </div>
+  {% if invoices %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>Oy</th><th class="text-right">Hisob</th><th class="text-right">Chegirma</th><th class="text-right hide-sm">Kechilgan</th>
+          <th class="text-right">To'langan</th><th class="text-right">Qoldiq</th><th class="text-right">Holati</th>
+        </tr></thead>
+        <tbody>
+          {% for i in invoices %}
+            <tr>
+              <td class="nowrap num">{{ i.month|date:"Y-m" }} <span class="muted small">{{ i.month|date:"F" }}</span></td>
+              <td class="text-right num">{{ i.full_amount|money }}</td>
+              <td class="text-right num {% if i.discount %}text-info{% else %}muted{% endif %}">{% if i.discount %}{{ i.discount|money }}{% else %}—{% endif %}</td>
+              <td class="text-right num hide-sm {% if not i.waived %}muted{% endif %}" {% if i.waived %}title="Oy o'rtasida kelgani uchun"{% endif %}>{% if i.waived %}{{ i.waived|money }}{% else %}—{% endif %}</td>
+              <td class="text-right num text-success">{{ i.paid|money }}</td>
+              <td class="text-right num {% if i.remaining %}text-warning{% endif %}"><b>{{ i.remaining|money }}</b></td>
+              <td class="text-right">{% include "finance/_invoice_status.html" with invoice=i %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif schedule_form %}
+    <p class="empty-line">Hali hisoblangan oy yo'q — shartnoma boshlanganda avtomatik qo'shiladi yoki "Grafik" orqali yarating.</p>
+  {% else %}
+    <p class="muted card-pad">To'lov grafigi shartnoma imzolangach yaratiladi.</p>
+  {% endif %}
+</section>
+
+{% if payments %}
+  <section class="card mt-20">
+    <div class="card-title"><h3>{% include "partials/icon.html" with name="receipt" class="sm" %} To'lovlar tarixi</h3></div>
+    <ul class="list-plain">
+      {% for p in payments %}
+        <li>
+          <span><b class="num">{{ p.amount|money }}</b> <span class="muted">· {{ p.get_method_display }} · {{ p.paid_at|date:"d.m.Y H:i" }} · {{ p.number }}</span>
+            {% if p.status == "reversed" %}<span class="badge badge-warning" title="{{ p.reverse_reason }}">Storno</span>{% endif %}</span>
+          <span class="row-actions">
+          <a class="icon-btn tone-info" href="{% url 'finance:payment_receipt' p.pk %}?next={{ request.get_full_path|urlencode:'' }}" title="Kvitansiya" aria-label="Kvitansiya">{% include "partials/icon.html" with name="receipt" class="sm" %}</a>
+          {% if p.status == "ok" %}
+            <details class="dropdown">
+              <summary class="flag">Storno</summary>
+              <form class="dropdown-menu storno-menu" method="post" action="{% url 'finance:payment_reverse' p.pk %}">
+                {% csrf_token %}
+                <label class="label" for="r{{ p.pk }}">Sababi</label>
+                <input class="input" id="r{{ p.pk }}" name="reason" maxlength="255" required>
+                <button class="btn btn-danger btn-block mt-12" type="submit">Storno qilish</button>
+              </form>
+            </details>
+          {% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+{% if schedule_form %}
+  <dialog class="modal" id="schedule-dialog" aria-labelledby="schedule-title">
+    <form method="post" action="{% url 'finance:schedule_create' student.pk %}" novalidate>
+      {% csrf_token %}
+      <div class="modal-head">
+        <h3 id="schedule-title">{% include "partials/icon.html" with name="book" class="sm" %} O'qish to'lovi grafigi</h3>
+        <button class="icon-btn" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" class="sm" %}</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %}
+          <div>{{ student.short_name }} uchun o'qish to'lovi grafigi yaratiladi. Mavjud oylar takror yaratilmaydi.</div></div>
+        <div class="form-grid cols-2">
+          {% include "partials/field.html" with field=schedule_form.start_month %}
+          {% include "partials/field.html" with field=schedule_form.months %}
+          {% include "partials/field.html" with field=schedule_form.due_date class="span-all" %}
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" type="button" data-close-dialog>Bekor</button>
+        <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Yaratish</button>
+      </div>
+    </form>
+  </dialog>
+{% endif %}

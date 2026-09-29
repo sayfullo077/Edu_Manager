@@ -1,0 +1,118 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ contract.number }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <a class="back-link" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'contracts:contract_print' contract.pk %}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</a>
+    {% if contract.is_editable %}<a class="btn btn-secondary" href="{% url 'contracts:contract_update' contract.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>{% endif %}
+  </div>
+</div>
+
+<div class="card profile-head">
+  <span class="avatar t{{ contract.student.code|tone }}">{% include "partials/icon.html" with name="file" %}</span>
+  <div>
+    <h2>{{ contract.number }}</h2>
+    <div class="meta">
+      {% include "contracts/_status.html" %}
+      <a class="badge badge-accent" href="{% url 'people:student_detail' contract.student.pk %}">{{ contract.student.short_name }}</a>
+      <span class="badge badge-muted">{{ contract.academic_year.name }}</span>
+    </div>
+  </div>
+</div>
+
+{% if contract.status != "cancelled" %}
+<ol class="steps mt-20" aria-label="Shartnoma holati">
+  <li class="done"><span>✓</span> Qabul</li>
+  <li class="{% if contract.status == 'draft' %}current{% else %}done{% endif %}"><span>{% if contract.status == 'draft' %}2{% else %}✓{% endif %}</span> Qoralama</li>
+  <li class="{% if contract.status == 'sent' %}current{% elif contract.status == 'signed' %}done{% endif %}"><span>{% if contract.status == 'signed' %}✓{% else %}3{% endif %}</span> SMS tasdiqlash</li>
+  <li class="{% if contract.status == 'signed' %}done{% endif %}"><span>{% if contract.status == 'signed' %}✓{% else %}4{% endif %}</span> Imzolangan</li>
+</ol>
+{% endif %}
+
+<div class="detail-grid mt-20">
+  <div class="card">
+    <div class="card-title"><h3>Shartnoma shartlari</h3></div>
+    <dl class="kv">
+      <dt>O'quvchi</dt><dd>{{ contract.student.full_name }}</dd>
+      <dt>Shartnoma tomoni</dt><dd>{{ contract.guardian.full_name }} · <span class="num">{{ contract.guardian.phone|phone }}</span></dd>
+      <dt>Sinf</dt><dd>{{ contract.class_name|default:"—" }}</dd>
+      <dt>Muddat</dt><dd class="num">{{ contract.start_date|date:"d.m.Y" }} — {{ contract.end_date|date:"d.m.Y" }} ({{ contract.months }} oy)</dd>
+      <dt>To'liq tarif</dt><dd class="num">{{ contract.full_tariff|money }} so'm</dd>
+      <dt>Chegirma</dt><dd>{% if contract.discount_percent %}{{ contract.discount_percent|floatformat:"-2" }}% · {{ contract.discount_reason }}{% else %}—{% endif %}</dd>
+      <dt>Oylik to'lov</dt><dd class="num fee-value">{{ contract.monthly_fee|money }} so'm</dd>
+      <dt>Jami (taxminiy)</dt><dd class="num">{{ contract.total_amount|money }} so'm</dd>
+      {% if contract.notes %}<dt>Izoh</dt><dd>{{ contract.notes|linebreaksbr }}</dd>{% endif %}
+      <dt>Tuzgan xodim</dt><dd>{{ contract.created_by.short_name }} · <span class="num">{{ contract.created_at|date:"d.m.Y H:i" }}</span></dd>
+    </dl>
+  </div>
+
+  <div class="stack">
+    {% if contract.status == "draft" %}
+      <div class="card card-pad action-card">
+        <h3>Ota-onadan tasdiq olish</h3>
+        <p class="muted">Shartnomani chop eting va ota-onaga imzolatib oling. So'ng tasdiqlash kodi
+          <b class="strong num">{{ contract.guardian.phone|phone }}</b> raqamiga SMS orqali yuboriladi.</p>
+        <form method="post" action="{% url 'contracts:contract_send_code' contract.pk %}">
+          {% if has_next %}<input type="hidden" name="next" value="{{ back_url }}">{% endif %}
+          {% csrf_token %}
+          <button class="btn btn-primary btn-block" type="submit">{% include "partials/icon.html" with name="send" class="sm" %} Kod yuborish</button>
+        </form>
+      </div>
+    {% elif contract.status == "sent" %}
+      <div class="card card-pad action-card">
+        <h3>Kodni kiriting</h3>
+        <p class="muted">Kod <b class="strong num">{{ contract.guardian.phone|phone }}</b> raqamiga yuborildi. Ota-onadan so'rab kiriting.</p>
+        <form method="post" action="{% url 'contracts:contract_confirm' contract.pk %}" novalidate>
+          {% if has_next %}<input type="hidden" name="next" value="{{ back_url }}">{% endif %}
+          {% csrf_token %}
+          {% include "partials/field.html" with field=code_form.code %}
+          <button class="btn btn-primary btn-block mt-12" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Tasdiqlash</button>
+        </form>
+        <form method="post" action="{% url 'contracts:contract_send_code' contract.pk %}" class="mt-12">
+          {% if has_next %}<input type="hidden" name="next" value="{{ back_url }}">{% endif %}
+          {% csrf_token %}<button class="link" type="submit">Kodni qayta yuborish</button>
+        </form>
+      </div>
+    {% elif contract.status == "signed" %}
+      <div class="card card-pad action-card signed">
+        <h3>{% include "partials/icon.html" with name="shield" class="sm" %} Imzolangan</h3>
+        <p class="muted num">{{ contract.signed_at|date:"d.m.Y H:i" }} · {{ contract.signed_phone|phone }} orqali SMS kod bilan tasdiqlangan.</p>
+      </div>
+    {% else %}
+      <div class="card card-pad action-card">
+        <h3>Bekor qilingan</h3>
+        <p class="muted">{{ contract.cancelled_at|date:"d.m.Y H:i" }} · {{ contract.cancel_reason }}</p>
+      </div>
+    {% endif %}
+
+    {% if contract.status != "cancelled" %}
+      <div class="card card-pad">
+        <h3>Qog'oz nusxa skaneri</h3>
+        {% if contract.scan %}
+          <p class="mt-12"><a class="btn btn-secondary btn-block" href="{% url 'contracts:contract_scan' contract.pk %}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="eye" class="sm" %} PDF'ni ochish</a></p>
+        {% endif %}
+        <form method="post" action="{% url 'contracts:contract_upload_scan' contract.pk %}" enctype="multipart/form-data" class="mt-12" novalidate>
+          {% if has_next %}<input type="hidden" name="next" value="{{ back_url }}">{% endif %}
+          {% csrf_token %}
+          {% include "partials/field.html" with field=scan_form.scan %}
+          <button class="btn btn-secondary btn-block mt-12" type="submit">{% if contract.scan %}Almashtirish{% else %}Yuklash{% endif %}</button>
+        </form>
+      </div>
+
+      <details class="card card-pad danger-zone" {% if cancel_form.errors %}open{% endif %}>
+        <summary>Shartnomani bekor qilish</summary>
+        <form method="post" action="{% url 'contracts:contract_cancel' contract.pk %}" class="mt-12" novalidate>
+          {% if has_next %}<input type="hidden" name="next" value="{{ back_url }}">{% endif %}
+          {% csrf_token %}
+          {% include "partials/field.html" with field=cancel_form.reason %}
+          <button class="btn btn-danger btn-block mt-12" type="submit">Bekor qilish</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1 @@
+{% load l10n %}<svg class="bar{% if tone %} bar-{{ tone }}{% endif %}" preserveAspectRatio="none" aria-hidden="true"><rect class="bar-track" width="100%" height="100%" rx="4"/>{% if percent %}<rect class="bar-fill" width="{{ percent|unlocalize }}%" height="100%" rx="4"/>{% endif %}</svg>

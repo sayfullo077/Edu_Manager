@@ -1,0 +1,31 @@
+{% load ui %}
+<section class="card mt-20" id="shartnomalar">
+  <div class="card-title">
+    <h3 class="with-count">{% include "partials/icon.html" with name="file" class="sm" %} Shartnomalar <span class="badge badge-muted">{{ contracts|length }} ta</span></h3>
+    {% if not contract and student.status == "active" %}
+      <a class="btn btn-primary btn-sm" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma tuzish</a>
+    {% endif %}
+  </div>
+  {% if contracts %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr><th>Shartnoma</th><th class="text-right">Oylik to'lov</th><th>Holati</th><th class="hide-sm">Sana</th><th class="actions"><span class="sr-only">Amal</span></th></tr></thead>
+        <tbody>
+          {% for contract in contracts %}
+            <tr>
+              <td><b class="num">{{ contract.number }}</b><br><small class="muted">{{ contract.academic_year.name }} o'quv yili</small></td>
+              <td class="text-right num">{{ contract.monthly_fee|money }}</td>
+              <td>{% include "contracts/_status.html" %}</td>
+              <td class="hide-sm num">{% if contract.signed_at %}{{ contract.signed_at|date:"d.m.Y" }}{% else %}{{ contract.created_at|date:"d.m.Y" }}{% endif %}</td>
+              <td class="actions">
+                <a class="icon-btn tone-info" href="{% url 'contracts:contract_detail' contract.pk %}?next={{ request.get_full_path|add:'#shartnomalar'|urlencode:'' }}" title="Ochish" aria-label="Shartnomani ochish">{% include "partials/icon.html" with name="eye" class="sm" %}</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-line">Shartnoma tuzilmagan.</p>
+  {% endif %}
+</section>

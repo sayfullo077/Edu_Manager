@@ -1,0 +1,43 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Sozlamalar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div><h1>Sozlamalar</h1><p class="sub">Xavfsizlik va bildirishnomalar</p></div>
+</div>
+
+<div class="detail-grid">
+  <form class="card form-card" method="post" novalidate>
+    {% csrf_token %}
+    <h3>Parolni o'zgartirish</h3>
+    {% if impersonating %}
+      <div class="alert alert-info mt-12">{% include "partials/icon.html" with name="shield" class="sm" %}<div>Qiyofa rejimida xodimning parolini o'zgartirib bo'lmaydi.</div></div>
+    {% else %}
+      {% include "partials/form_errors.html" %}
+      <div class="form-grid mt-12">
+        {% include "partials/field.html" with field=form.old_password class="span-2" %}
+        {% include "partials/field.html" with field=form.new_password1 %}
+        {% include "partials/field.html" with field=form.new_password2 %}
+      </div>
+      <div class="form-footer"><button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button></div>
+      <p class="muted small">Parol o'zgarsa, boshqa qurilmalardagi barcha sessiyalar avtomatik yopiladi.</p>
+    {% endif %}
+  </form>
+
+  <div class="stack">
+    <div class="card card-pad action-card{% if telegram %} signed{% endif %}">
+      <h3>{% include "partials/icon.html" with name="send" class="sm" %} Telegram orqali kod olish</h3>
+      {% if telegram %}
+        <p class="muted">Bot ulangan. Kirishda «Telegram» usulini tanlasangiz, kod shu yerga keladi.</p>
+      {% else %}
+        <ol class="muted small steps-list">
+          <li>Maktab botini oching{% if bot_link %}: <a class="link" href="{{ bot_link }}" target="_blank" rel="noopener">botga o'tish</a>{% endif %}.</li>
+          <li><b>/start</b> bosing va «📱 Raqamni ulashish» tugmasini bosing.</li>
+          <li>Tayyor — kirish kodlari botga keladi.</li>
+        </ol>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

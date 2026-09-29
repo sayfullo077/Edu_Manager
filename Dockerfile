@@ -17,10 +17,11 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 # collectstatic uchun vaqtinchalik qiymatlar (runtime'da haqiqiylari .env.prod'dan keladi)
 RUN SECRET_KEY=build-only-$(head -c 48 /dev/urandom | base64) ALLOWED_HOSTS=build REDIS_URL=redis://build \
+    FIELD_ENCRYPTION_KEYS=$(head -c 32 /dev/urandom | base64 | tr '+/' '-_') FIELD_INDEX_KEY=build \
     uv run --no-sync python manage.py collectstatic --noinput
 
 # Root'siz ishlash: konteyner buzilsa ham tizimga ta'sir kamroq.
-RUN useradd --system --uid 10001 app && mkdir -p /app/media && chown -R app /app/media
+RUN useradd --system --uid 10001 app && mkdir -p /app/media /app/private_media && chown -R app /app/media /app/private_media
 USER app
 
 EXPOSE 8000

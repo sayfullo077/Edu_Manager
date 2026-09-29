@@ -1,0 +1,64 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Shartnomalar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Shartnomalar</h1>
+    <p class="sub">O'quvchi — maktab shartnomalari · {{ page.paginator.count }} ta topildi</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish</a>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <a class="card stat" href="?"><div class="top"><span class="label">Jami (amaldagi)</span><span class="ico">{% include "partials/icon.html" with name="file" class="sm" %}</span></div><div class="value">{{ stats.total }}</div></a>
+  <a class="card stat" href="?status=draft"><div class="top"><span class="label">Qoralama</span><span class="ico tone-warning">{% include "partials/icon.html" with name="pencil" class="sm" %}</span></div><div class="value">{{ stats.draft }}</div></a>
+  <a class="card stat" href="?status=sent"><div class="top"><span class="label">Yuborilgan</span><span class="ico tone-info">{% include "partials/icon.html" with name="send" class="sm" %}</span></div><div class="value">{{ stats.sent }}</div></a>
+  <a class="card stat" href="?status=signed"><div class="top"><span class="label">Imzolangan</span><span class="ico tone-success">{% include "partials/icon.html" with name="shield" class="sm" %}</span></div><div class="value">{{ stats.signed }}</div></a>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'contracts:contract_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+{% url 'contracts:contract_list' as reset_url %}{% url 'contracts:contract_export' as export_url %}
+{% include "partials/filter_bar.html" with placeholder="Raqam, o'quvchi ismi yoki kodi…" menu_title="Filtr" %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>Raqam</th><th>O'quvchi</th><th class="hide-sm">Sinf</th><th class="hide-sm">O'quv yili</th>
+          <th class="text-right">Oylik to'lov</th><th>Holati</th><th class="actions"><span class="sr-only">Amallar</span></th>
+        </tr></thead>
+        <tbody>
+          {% for c in page.object_list %}
+            <tr>
+              <td><span class="badge badge-muted num">{{ c.number }}</span></td>
+              <td><a class="person" href="{% url 'contracts:contract_detail' c.pk %}?next={{ request.get_full_path|urlencode:'' }}"><span><b>{{ c.student.short_name }}</b><small>{{ c.guardian.short_name }}</small></span></a></td>
+              <td class="hide-sm">{{ c.class_name|default:"—" }}</td>
+              <td class="hide-sm num">{{ c.academic_year.name }}</td>
+              <td class="text-right num nowrap">{{ c.monthly_fee|money }}{% if c.discount_percent %} <span class="badge badge-warning">−{{ c.discount_percent|floatformat:"-1" }}%</span>{% endif %}</td>
+              <td>{% include "contracts/_status.html" with contract=c %}</td>
+              <td class="actions"><a class="icon-btn" href="{% url 'contracts:contract_detail' c.pk %}?next={{ request.get_full_path|urlencode:'' }}" aria-label="Ochish" title="Ochish">{% include "partials/icon.html" with name="eye" class="sm" %}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="file" class="lg" %}</span>
+      <h3>Shartnoma topilmadi</h3>
+      <p>Shartnoma o'quvchi sahifasidan tuziladi: O'quvchilar → o'quvchi → «Shartnoma tuzish».</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

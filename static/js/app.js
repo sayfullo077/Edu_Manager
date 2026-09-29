@@ -16,6 +16,23 @@
   if (storedTheme()) root.dataset.theme = storedTheme();
   syncThemeIcons();
 
+  // --- Yig'iladigan menyu (akkordeon): bittasi ochilsa, boshqalari yopiladi; tanlov eslab qolinadi ---
+  const navGroups = [...document.querySelectorAll("[data-nav-group]")];
+  if (navGroups.length) {
+    const KEY = "nav:open";
+    let saved = null;
+    try { saved = localStorage.getItem(KEY); } catch {}
+    // Faol sahifa guruhi har doim ochiq; aks holda oxirgi ochilgan guruh.
+    if (!navGroups.some((g) => g.hasAttribute("data-active")) && saved) {
+      navGroups.forEach((g) => { g.open = g.dataset.navGroup === saved; });
+    }
+    navGroups.forEach((g) => g.addEventListener("toggle", () => {
+      if (!g.open) return;
+      navGroups.forEach((other) => { if (other !== g) other.open = false; });
+      try { localStorage.setItem(KEY, g.dataset.navGroup); } catch {}
+    }));
+  }
+
   // --- Mobil sidebar ---
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-nav-toggle]")) document.body.classList.toggle("nav-open");
@@ -103,6 +120,288 @@
       btn.disabled = true; left -= 1; setTimeout(tick, 1000);
     };
     tick();
+  });
+
+  // --- Chop etish tugmasi (inline onclick CSP'da taqiqlangan) ---
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-print]")) window.print(); });
+
+  // --- Shartnoma: oylik to'lovni jonli hisoblash (server bilan bir xil: so'mgacha yaxlitlash) ---
+  document.querySelectorAll("[data-fee-calc]").forEach((form) => {
+    const tariff = form.querySelector("[name=full_tariff]");
+    const discount = form.querySelector("[name=discount_percent]");
+    const out = form.querySelector("[data-fee-output]");
+    const fmt = (n) => Math.round(n).toLocaleString("ru-RU").replace(/,/g, " ");
+    const calc = () => {
+      const t = parseFloat(tariff.value) || 0;
+      const d = Math.min(100, Math.max(0, parseFloat(discount.value) || 0));
+      out.textContent = fmt((t * (100 - d)) / 100);
+    };
+    [tariff, discount].forEach((el) => el.addEventListener("input", calc));
+    calc();
+  });
+
+  // --- Passport: avtomatik katta harf ---
+  document.querySelectorAll("[data-upper]").forEach((el) =>
+    el.addEventListener("input", () => { el.value = el.value.toUpperCase().replace(/\s/g, ""); }));
+
+  // --- Select o'zgarganda formani yuborish (oy tanlash va h.k.) ---
+  document.addEventListener("change", (e) => {
+    if (e.target.matches("[data-autosubmit]")) e.target.form.requestSubmit();
+  });
+
+  // --- Ro'yxat filtrlari: "Filtr qo'shish" menyusi maydonni ochadi, × olib tashlaydi.
+  //     So'rov faqat "Qidirish" bosilganda ketadi; qo'llanmagan o'zgarish bo'lsa tugma belgilanadi. ---
+  document.querySelectorAll("[data-filter-form]").forEach((form) => {
+    const fieldOf = (name) => form.querySelector(`.filter-field[data-filter="${name}"]`);
+    const submitBtn = form.querySelector("[data-filter-submit]");
+    const markPending = () => submitBtn?.classList.add("is-pending");
+    form.addEventListener("change", markPending);
+    form.addEventListener("click", (e) => {
+      const add = e.target.closest("[data-filter-add]");
+      if (add) {
+        const field = fieldOf(add.dataset.filterAdd);
+        field.hidden = false;
+        add.closest("details").removeAttribute("open");
+        field.querySelector("select, input").focus();
+        return;
+      }
+      const remove = e.target.closest("[data-filter-remove]");
+      if (remove) {
+        const field = remove.closest(".filter-field");
+        field.querySelectorAll("select, input").forEach((el) => { el.value = ""; });
+        field.hidden = true;
+        markPending();
+      }
+    });
+    // Bo'sh maydonlar URL'ga tushmasin (?grade=&tariff=… o'rniga toza manzil).
+    form.addEventListener("submit", () => {
+      form.querySelectorAll("select, input").forEach((el) => {
+        if (!el.value && !el.hasAttribute("data-keep-empty")) el.disabled = true;
+      });
+    });
+    window.addEventListener("pageshow", () => form.querySelectorAll(":disabled").forEach((el) => { el.disabled = false; }));
+  });
+
+  // --- O'quvchi formasi: hujjat turi (metrika / passport) — faqat tanlangan maydon ko'rinadi ---
+  document.querySelectorAll("[data-doc-switch]").forEach((wrap) => {
+    const sync = () => {
+      const chosen = wrap.querySelector("input[name$=doc_type]:checked")?.value || "birth_certificate";
+      wrap.querySelectorAll("[data-doc]").forEach((el) => {
+        // Qiymati bor maydon yashirilmaydi — ma'lumot ko'zdan "yo'qolib" qolmasin.
+        el.hidden = el.dataset.doc !== chosen && !el.querySelector("input").value;
+      });
+    };
+    wrap.addEventListener("change", (e) => { if (e.target.name?.endsWith("doc_type")) sync(); });
+    sync();
+  });
+
+  // --- O'quv yili tanlanganda sinflar ro'yxati shu yilga saralanadi ---
+  document.querySelectorAll("[data-year-select]").forEach((yearSel) => {
+    const classSel = yearSel.form?.querySelector("[data-class-select]");
+    if (!classSel) return;
+    const sync = () => {
+      [...classSel.options].forEach((o) => {
+        if (!o.value) return;
+        o.hidden = !!yearSel.value && o.dataset.year !== yearSel.value;
+      });
+      if (classSel.selectedOptions[0]?.hidden) classSel.value = "";
+    };
+    yearSel.addEventListener("change", sync);
+    sync();
+  });
+
+  // --- Tahrirlash: yangi vasiy bloki ("Ota kiritilmagan" / "Yangi vasiy qo'shish") ---
+  const newGuardian = document.querySelector("[data-new-guardian-box]");
+  if (newGuardian) {
+    const enabled = newGuardian.querySelector("[data-new-enabled]");
+    document.addEventListener("click", (e) => {
+      const open = e.target.closest("[data-new-guardian]");
+      if (open) {
+        newGuardian.hidden = false; enabled.value = "1";
+        const radio = newGuardian.querySelector(`input[name$="relation"][value="${open.dataset.newGuardian}"]`);
+        if (radio) radio.checked = true;
+        newGuardian.querySelector("input[name$=last_name]").focus();
+      } else if (e.target.closest("[data-new-guardian-cancel]")) {
+        newGuardian.hidden = true; enabled.value = "0";
+      }
+    });
+  }
+
+  // --- Modal oynalar: <button data-open-dialog="id">, ichida [data-close-dialog] ---
+  document.addEventListener("click", (e) => {
+    const opener = e.target.closest("[data-open-dialog]");
+    if (opener) { document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
+    const closer = e.target.closest("[data-close-dialog]");
+    if (closer) closer.closest("dialog")?.close();
+    else if (e.target.matches("dialog.modal")) e.target.close();  // fon bosilganda
+  });
+
+  // --- Ko'p tanlovli filtr: tanlanganlar yozuvi ("Barchasi" yoki "Naqd, Bank") ---
+  document.querySelectorAll("[data-multiselect]").forEach((box) => {
+    const label = box.querySelector("[data-multiselect-label]");
+    const sync = () => {
+      const picked = [...box.querySelectorAll("input:checked")].map((i) => i.parentElement.textContent.trim());
+      label.textContent = picked.length ? picked.join(", ") : label.dataset.empty;
+      label.classList.toggle("is-empty", !picked.length);
+    };
+    box.addEventListener("change", sync);
+    sync();
+  });
+
+  // --- Yon panel (<dialog class="side-panel">): [data-panel-url] kontentni serverdan oladi ---
+  const sidePanel = document.getElementById("side-panel");
+  if (sidePanel) {
+    const body = sidePanel.querySelector("[data-panel-body]");
+    document.addEventListener("click", async (e) => {
+      const opener = e.target.closest("[data-panel-url]");
+      if (!opener) return;
+      e.preventDefault();
+      body.innerHTML = '<p class="empty-line">Yuklanmoqda…</p>';
+      if (!sidePanel.open) sidePanel.showModal();
+      try {
+        const resp = await fetch(opener.dataset.panelUrl, { headers: { "X-Requested-With": "fetch" } });
+        if (!resp.ok) throw new Error(resp.status);
+        body.innerHTML = await resp.text();  // o'z serverimizdagi shablon (skriptsiz)
+        body.querySelector("input:not([type=hidden]), select")?.focus();
+      } catch {
+        body.innerHTML = '<p class="empty-line">Yuklab bo\'lmadi. Sahifani yangilab qayta urinib ko\'ring.</p>';
+      }
+    });
+    sidePanel.addEventListener("click", (e) => { if (e.target === sidePanel) sidePanel.close(); });
+  }
+
+  // --- Tasdiqlash oynasi: <form data-confirm="..."> ---
+  const confirmDialog = document.getElementById("confirm-dialog");
+  document.addEventListener("submit", (e) => {
+    const form = e.target;
+    if (!form.matches("form[data-confirm]") || form.dataset.confirmed) return;
+    e.preventDefault();
+    if (!confirmDialog?.showModal) {
+      if (window.confirm(form.dataset.confirm)) { form.dataset.confirmed = "1"; form.requestSubmit(); }
+      return;
+    }
+    confirmDialog.querySelector("[data-confirm-text]").textContent = form.dataset.confirm;
+    confirmDialog.querySelector("[data-confirm-ok]").textContent = form.dataset.confirmOk || "Ha";
+    confirmDialog.onclose = () => {
+      if (confirmDialog.returnValue === "ok") { form.dataset.confirmed = "1"; form.requestSubmit(); }
+    };
+    confirmDialog.returnValue = "";
+    confirmDialog.showModal();
+  });
+  confirmDialog?.addEventListener("click", (e) => { if (e.target === confirmDialog) confirmDialog.close(); });
+
+  // --- Yon panel (xarajat qo'shish) ---
+  const drawer = document.getElementById("expense-drawer");
+  if (drawer) {
+    const backdrop = document.querySelector(".drawer-backdrop");
+    const field = (name) => drawer.querySelector(`[data-f="${name}"]`);
+    let lastTrigger = null;
+    const open = () => {
+      drawer.hidden = false; backdrop.hidden = false;
+      requestAnimationFrame(() => drawer.classList.add("open"));
+      document.body.classList.add("drawer-open");
+      drawer.querySelector("[name=amount]").focus();
+    };
+    const close = () => {
+      drawer.classList.remove("open"); backdrop.hidden = true; document.body.classList.remove("drawer-open");
+      setTimeout(() => { drawer.hidden = true; }, 240);
+      if (lastTrigger) lastTrigger.focus();
+    };
+    document.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-expense]");
+      if (t) {
+        e.preventDefault(); lastTrigger = t;
+        field("category").value = t.dataset.category;
+        field("name").textContent = t.dataset.name;
+        field("icon").setAttribute("href", `#i-${t.dataset.icon}`);
+        field("limit").textContent = t.dataset.limit;
+        field("remaining").textContent = t.dataset.remaining;
+        field("remaining").classList.toggle("text-danger", !!t.dataset.over);
+        drawer.querySelectorAll(".field-error, .alert-error").forEach((el) => el.remove());
+        drawer.querySelectorAll(".is-invalid").forEach((el) => el.classList.remove("is-invalid"));
+        drawer.querySelector("form").reset();
+        open();
+      } else if (e.target.closest("[data-drawer-close]")) {
+        close();
+      }
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && drawer.classList.contains("open")) close(); });
+    if (drawer.classList.contains("open")) { document.body.classList.add("drawer-open"); }
+  }
+
+  // --- Grafik tooltip'lari (chiziqli grafik: ustun bo'yicha; doiraviy: segment bo'yicha) ---
+  const tipHTML = (head, rows) =>
+    `<div class="tip-head"></div>${rows.map(() => '<div class="tip-row"><i></i><span></span><b></b></div>').join("")}`;
+  const fillTip = (tip, head, rows) => {
+    tip.innerHTML = tipHTML(head, rows);
+    tip.querySelector(".tip-head").textContent = head;
+    tip.querySelectorAll(".tip-row").forEach((row, i) => {
+      row.querySelector("i").className = rows[i].cls;
+      row.querySelector("span").textContent = rows[i].label;
+      row.querySelector("b").textContent = rows[i].value;
+    });
+  };
+  const place = (wrap, tip, x, y) => {
+    const w = wrap.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = x + 14; if (left + tw > w) left = x - tw - 14;
+    tip.style.left = `${Math.max(0, left)}px`;
+    tip.style.top = `${Math.max(0, y - th - 10)}px`;
+  };
+
+  document.querySelectorAll("[data-line-chart]").forEach((wrap) => {
+    const svg = wrap.querySelector("svg"), tip = wrap.querySelector(".chart-tip");
+    const guide = svg.querySelector(".guide");
+    const labels = JSON.parse(wrap.dataset.series);
+    const show = (col) => {
+      const i = +col.dataset.i, d = labels[i];
+      svg.querySelectorAll(".hot").forEach((el) => el.classList.remove("hot"));
+      svg.querySelectorAll(`[data-i="${i}"]:not(.hover-col)`).forEach((el) => el.classList.add("hot"));
+      guide.setAttribute("x1", col.dataset.x); guide.setAttribute("x2", col.dataset.x); guide.classList.add("show");
+      fillTip(tip, d.label, [
+        { cls: "seg-info", label: "Jami o'quvchilar", value: d.total },
+        { cls: "seg-danger", label: "Ketganlar", value: d.left },
+      ]);
+      const r = svg.getBoundingClientRect(), scale = r.width / svg.viewBox.baseVal.width;
+      place(wrap, tip, col.dataset.x * scale, col.dataset.y * scale + (r.top - wrap.getBoundingClientRect().top));
+      tip.classList.add("show");
+    };
+    const hide = () => {
+      tip.classList.remove("show"); guide.classList.remove("show");
+      svg.querySelectorAll(".hot").forEach((el) => el.classList.remove("hot"));
+    };
+    svg.querySelectorAll(".hover-col").forEach((col) => {
+      col.addEventListener("mouseenter", () => show(col));
+      col.addEventListener("focus", () => show(col));
+      col.addEventListener("blur", hide);
+    });
+    svg.addEventListener("mouseleave", hide);
+  });
+
+  document.querySelectorAll("[data-donut]").forEach((wrap) => {
+    const svg = wrap.querySelector("svg"), tip = wrap.querySelector(".chart-tip");
+    const show = (arc, x, y) => {
+      svg.classList.add("has-hot");
+      svg.querySelectorAll(".donut-arc").forEach((a) => a.classList.toggle("hot", a === arc));
+      fillTip(tip, arc.dataset.label, [
+        { cls: arc.dataset.cls, label: "O'quvchilar", value: arc.dataset.value },
+        { cls: arc.dataset.cls, label: "Ulushi", value: `${arc.dataset.percent}%` },
+      ]);
+      place(wrap, tip, x, y);
+      tip.classList.add("show");
+    };
+    const hide = () => {
+      svg.classList.remove("has-hot"); tip.classList.remove("show");
+      svg.querySelectorAll(".donut-arc").forEach((a) => a.classList.remove("hot"));
+    };
+    svg.querySelectorAll(".donut-arc").forEach((arc) => {
+      arc.addEventListener("mousemove", (e) => {
+        const r = wrap.getBoundingClientRect();
+        show(arc, e.clientX - r.left, e.clientY - r.top);
+      });
+      arc.addEventListener("focus", () => show(arc, wrap.clientWidth / 2, wrap.clientHeight / 3));
+      arc.addEventListener("blur", hide);
+      arc.addEventListener("mouseleave", hide);
+    });
   });
 
   // --- Toastlar avtomatik yo'qoladi ---

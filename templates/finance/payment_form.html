@@ -1,0 +1,63 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}To'lov · {{ student.short_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} {{ student.short_name }}</a>
+    <h1 class="mt-12">To'lov qabul qilish</h1>
+    <p class="sub">{{ student.full_name }} · {{ student.code }}</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <form class="card form-card" method="post" novalidate data-payment-form>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ back_url }}">
+    {% include "partials/form_errors.html" %}
+    {% if not session %}
+      <div class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %}
+        <div>Kassa yopiq — naqd to'lov qabul qilish uchun kassani oching. Karta va o'tkazma qabul qilinaveradi.</div>
+      </div>
+    {% endif %}
+    <div class="form-grid mt-12">
+      {% include "partials/field.html" with field=form.amount %}
+      {% include "partials/field.html" with field=form.method class="span-2" %}
+      {% include "partials/field.html" with field=form.card_network %}
+      {% include "partials/field.html" with field=form.payer_name %}
+      {% include "partials/field.html" with field=form.paid_on %}
+      {% include "partials/field.html" with field=form.note class="span-2" %}
+    </div>
+    <div class="fee-summary"><span>Umumiy qarz (grafik bo'yicha)</span><strong>{{ debt|money }} so'm</strong></div>
+    <div class="form-footer">
+      <label class="check">{% include "partials/icon.html" with name="receipt" class="sm" %}<input type="checkbox" name="print" value="1" {% if request.POST.print %}checked{% endif %}> Kvitansiya chop etish</label>
+      <a class="btn btn-secondary" href="{{ back_url }}">Bekor qilish</a>
+      <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Qabul qilish</button>
+    </div>
+  </form>
+
+  <div class="stack">
+    {% if not session %}
+      <form class="card card-pad" method="post" action="{% url 'finance:cashbox_open' %}">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+        <h3>Kassa yopiq</h3>
+        <p class="muted small mt-12">Naqd pul qabul qilishdan oldin kassa sessiyasini oching.</p>
+        <button class="btn btn-secondary btn-block mt-12" type="submit">{% include "partials/icon.html" with name="wallet" class="sm" %} Kassani ochish</button>
+      </form>
+    {% endif %}
+    <div class="card">
+      <div class="card-title"><h3>To'lanmagan oylar</h3></div>
+      <ul class="list-plain">
+        {% for inv in unpaid %}
+          <li><span>{{ inv.month|date:"F Y" }} {% if inv.status == "partial" %}<span class="badge badge-info">qisman</span>{% endif %}</span><b class="num">{{ inv.remaining|money }}</b></li>
+        {% empty %}
+          <li class="muted">Qarz yo'q. Shartnoma imzolanganmi?</li>
+        {% endfor %}
+      </ul>
+      <p class="muted small card-pad">To'lov eng eski oydan boshlab avtomatik taqsimlanadi.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

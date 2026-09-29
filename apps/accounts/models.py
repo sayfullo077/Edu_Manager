@@ -85,6 +85,10 @@ class Role(models.TextChoices):
     # Keyinroq: DIRECTOR, SUPERADMIN
 
 
+# Rol almashtirgichdagi tartib (asl tizimdagidek): Reception → Zavuch → O'qituvchi.
+ROLE_ORDER = {Role.RECEPTION: 0, Role.HEAD_TEACHER: 1, Role.TEACHER: 2}
+
+
 class UserRole(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="roles")
     role = models.CharField("rol", max_length=20, choices=Role.choices)
@@ -116,6 +120,8 @@ class OneTimeCode(models.Model):
     phone = models.CharField(max_length=12, db_index=True)
     purpose = models.CharField(max_length=20, choices=Purpose.choices)
     channel = models.CharField(max_length=10, choices=Channel.choices, default=Channel.SMS)
+    subject = models.CharField(max_length=40, blank=True, default="",
+                               help_text="Kod qaysi obyekt uchun, masalan: contract:15")
     code_hash = models.CharField(max_length=128)
     attempts = models.PositiveSmallIntegerField(default=0)
     expires_at = models.DateTimeField()
@@ -145,3 +151,32 @@ class TelegramLink(models.Model):
 
     def __str__(self):
         return f"{self.user.short_name} → {self.chat_id}"
+
+
+class ImpersonationLog(models.Model):
+    """Superadmin kim/qaysi rol qiyofasida qachon ishlaganining audit jurnali (o'chirilmaydi)."""
+
+    class Mode(models.TextChoices):
+        ROLE = "role", "Rol sifatida ko'rish"
+        USER = "user", "Foydalanuvchi sifatida kirish"
+
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name="impersonations_made",
+                              verbose_name="superadmin")
+    mode = models.CharField("rejim", max_length=10, choices=Mode.choices)
+    target = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True,
+                               related_name="impersonations_received", verbose_name="kim sifatida")
+    role = models.CharField("rol", max_length=20, blank=True)
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, null=True, blank=True, verbose_name="filial")
+    ip = models.GenericIPAddressField("IP", null=True, blank=True)
+    started_at = models.DateTimeField("boshlangan", auto_now_add=True)
+    ended_at = models.DateTimeField("tugagan", null=True, blank=True)
+    actions = models.PositiveIntegerField("o'zgartirish so'rovlari", default=0)
+
+    class Meta:
+        verbose_name = "impersonation jurnali"
+        verbose_name_plural = "impersonation jurnali"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        who = self.target.short_name if self.target else self.role
+        return f"{self.actor.short_name} → {who} ({self.started_at:%d.%m.%Y %H:%M})"

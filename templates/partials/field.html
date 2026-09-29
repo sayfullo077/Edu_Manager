@@ -1,0 +1,20 @@
+{# Bitta forma maydoni: {% include "partials/field.html" with field=form.name %} (ixtiyoriy: class="span-2") #}
+{% with widget=field.field.widget.input_type %}
+<div class="field{% if class %} {{ class }}{% endif %}">
+  {% if widget == "checkbox" %}
+    <label class="check">{{ field }} {{ field.label }}</label>
+  {% elif widget == "radio" %}
+    <span class="label">{{ field.label }}{% if field.field.required %} *{% endif %}</span>
+    <div class="radio-row">
+      {% for choice in field %}<label>{{ choice.tag }} {{ choice.choice_label }}</label>{% endfor %}
+    </div>
+  {% else %}
+    <label class="label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+    {% if "data-phone-mask" in field.field.widget.attrs %}
+      <div class="input-group"><span class="addon">+998</span>{{ field }}</div>
+    {% else %}{{ field }}{% endif %}
+  {% endif %}
+  {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
+  {% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+</div>
+{% endwith %}

@@ -1,0 +1,156 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Tahrirlash · {{ student.short_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>O'quvchini tahrirlash</h1>
+    <p class="sub">{{ student.full_name }} · <span class="num">{{ student.code }}</span></p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'people:student_detail' student.pk %}">{% include "partials/icon.html" with name="eye" class="sm" %} Profilni ko'rish</a>
+    <a class="btn btn-ghost" href="{% url 'people:student_detail' student.pk %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  </div>
+</div>
+
+<form class="edit-form" method="post" novalidate>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+
+  {% include "people/_student_fields.html" %}
+
+  {# ---------- Tarif: shartnomadan (faqat ko'rish) ---------- #}
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="wallet" class="sm" %} Tarif</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    {% if contract %}
+      <div class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %}
+        <div>Tarif va chegirma shartnomada saqlanadi.
+          {% if contract.is_editable %}Shartnoma hali imzolanmagan — o'zgartirish uchun shartnomani tahrirlang.
+          {% else %}Shartnoma imzolangan — tarifni bu yerdan o'zgartirib bo'lmaydi.{% endif %}</div>
+      </div>
+      <dl class="info-grid cols-3">
+        <div><dt>To'liq tarif</dt><dd class="num">{{ contract.full_tariff|money }} so'm</dd></div>
+        <div><dt>Chegirma</dt><dd>{% if contract.discount_percent %}{{ contract.discount_percent|floatformat:"-2" }}%{% else %}—{% endif %}</dd></div>
+        <div><dt>Oylik to'lov</dt><dd class="num">{{ contract.monthly_fee|money }} so'm</dd></div>
+        <div><dt>Boshlanish sanasi</dt><dd class="num">{{ contract.start_date|date:"d.m.Y" }}</dd></div>
+        <div><dt>Holati</dt><dd>{% include "contracts/_status.html" %}</dd></div>
+        {% if contract.discount_reason %}<div><dt>Chegirma sababi</dt><dd>{{ contract.discount_reason }}</dd></div>{% endif %}
+      </dl>
+      {% if contract.is_editable %}
+        <a class="btn btn-secondary btn-sm mt-12" href="{% url 'contracts:contract_update' contract.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Shartnomani tahrirlash</a>
+      {% endif %}
+    {% else %}
+      <p class="muted">Tarif shartnoma tuzilganda belgilanadi — hozircha shartnoma yo'q.</p>
+    {% endif %}
+  </details>
+
+  {# ---------- Ota-ona va vasiylar ---------- #}
+  <details class="card form-fold" id="vasiylar" open>
+    <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Ota-ona va vasiylar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+
+    {% for link, gf in guardian_forms %}
+      <div class="guardian-box{% if link.is_primary %} is-primary{% endif %}" id="g{{ link.pk }}">
+        <div class="guardian-head">
+          <b>{{ link.get_relation_display }}</b>
+          {% if link.is_primary %}<span class="badge badge-success">Asosiy</span>{% endif %}
+          {% if link.children_total > 1 %}
+            <span class="badge badge-warning" title="O'zgartirish shu vasiyning barcha farzandlarida ko'rinadi">
+              {% include "partials/icon.html" with name="users" class="sm" %} {{ link.children_total }} o'quvchi</span>
+          {% endif %}
+          <span class="grow"></span>
+          {% if not link.is_primary %}
+            <button class="btn btn-ghost btn-sm" type="submit" form="primary-{{ link.pk }}">Asosiy qilish</button>
+            <button class="icon-btn tone-danger" type="submit" form="detach-{{ link.pk }}" title="O'quvchidan ajratish" aria-label="O'quvchidan ajratish">
+              {% include "partials/icon.html" with name="x" class="sm" %}
+            </button>
+          {% endif %}
+        </div>
+        {% include "partials/form_errors.html" with form=gf %}
+        <div class="form-grid cols-4">
+          {% include "partials/field.html" with field=gf.last_name %}
+          {% include "partials/field.html" with field=gf.first_name %}
+          {% include "partials/field.html" with field=gf.middle_name %}
+          {% include "partials/field.html" with field=gf.phone %}
+          {% include "partials/field.html" with field=gf.pinfl %}
+          {% include "partials/field.html" with field=gf.passport %}
+          {% include "partials/field.html" with field=gf.workplace %}
+          {% include "partials/field.html" with field=gf.position %}
+          {% include "partials/field.html" with field=gf.extra_phone %}
+          {% include "partials/field.html" with field=gf.address class="span-3" %}
+        </div>
+      </div>
+    {% empty %}
+      <p class="muted">Vasiy biriktirilmagan.</p>
+    {% endfor %}
+
+    {% for value, label in missing_relations %}
+      <button class="missing-row" type="button" data-new-guardian="{{ value }}">
+        <span class="switch" aria-hidden="true"></span>
+        {% include "partials/icon.html" with name="users" class="sm" %} <b>{{ label }}</b> <span class="text-warning small">Kiritilmagan</span>
+      </button>
+    {% endfor %}
+
+    <div class="guardian-box is-new" data-new-guardian-box {% if not add_guardian %}hidden{% endif %}>
+      <input type="hidden" name="new-enabled" value="{% if add_guardian %}1{% else %}0{% endif %}" data-new-enabled>
+      <div class="guardian-head">
+        <b>Yangi vasiy</b><span class="grow"></span>
+        <button class="btn btn-ghost btn-sm" type="button" data-new-guardian-cancel>{% include "partials/icon.html" with name="x" class="sm" %} Bekor qilish</button>
+      </div>
+      {% include "partials/form_errors.html" with form=new_form %}
+      <div class="form-grid cols-4">
+        {% include "partials/field.html" with field=new_relation.relation class="span-all" %}
+        {% include "partials/field.html" with field=new_form.last_name %}
+        {% include "partials/field.html" with field=new_form.first_name %}
+        {% include "partials/field.html" with field=new_form.middle_name %}
+        {% include "partials/field.html" with field=new_form.phone %}
+        {% include "partials/field.html" with field=new_form.pinfl %}
+        {% include "partials/field.html" with field=new_form.passport %}
+        {% include "partials/field.html" with field=new_form.workplace %}
+        {% include "partials/field.html" with field=new_form.position %}
+      </div>
+      <p class="note">{% include "partials/icon.html" with name="shield" class="sm" %}
+        Vasiy tizimda bo'lsa (JSHSHIR yoki telefon + familiya bo'yicha), yangi yozuv yaratilmaydi — mavjudiga biriktiriladi.</p>
+    </div>
+
+    <button class="btn btn-outline mt-12" type="button" data-new-guardian="other">{% include "partials/icon.html" with name="plus" class="sm" %} Yangi vasiy qo'shish</button>
+  </details>
+
+  {# ---------- Shartnomalar (faqat ko'rish) ---------- #}
+  <details class="card form-fold" id="shartnomalar" open>
+    <summary><h3>{% include "partials/icon.html" with name="file" class="sm" %} Shartnomalar <span class="badge badge-muted">faqat ko'rish</span></h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <ul class="entity-list flush">
+      {% for c in contracts %}
+        <li>
+          <div class="grow"><b class="num">{{ c.number }}</b> {% include "contracts/_status.html" with contract=c %}
+            <small>{{ c.academic_year.name }} · oyiga <span class="num">{{ c.monthly_fee|money }}</span> so'm</small></div>
+          <a class="btn btn-secondary btn-sm" href="{% url 'contracts:contract_detail' c.pk %}?next={{ request.get_full_path|add:'#shartnomalar'|urlencode:'' }}">{% include "partials/icon.html" with name="eye" class="sm" %} Ko'rish</a>
+        </li>
+      {% empty %}
+        <li class="muted">Shartnoma tuzilmagan.</li>
+      {% endfor %}
+    </ul>
+    {% if not contract and student.status == "active" %}
+      <div class="text-right mt-12"><a class="btn btn-outline btn-sm" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma yaratish</a></div>
+    {% endif %}
+  </details>
+
+  <div class="form-footer sticky-footer">
+    <a class="btn btn-secondary" href="{% url 'people:student_detail' student.pk %}">Orqaga</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+
+{# Asosiy formaga joylab bo'lmaydigan (ichma-ich forma taqiqlangan) amallar — tugmalar form="..." orqali bog'langan. #}
+{% for link, gf in guardian_forms %}
+  {% if not link.is_primary %}
+    <form id="primary-{{ link.pk }}" method="post" action="{% url 'people:student_set_primary_guardian' student.pk link.pk %}">
+      {% csrf_token %}<input type="hidden" name="back" value="edit">
+    </form>
+    <form id="detach-{{ link.pk }}" method="post" action="{% url 'people:student_detach_guardian' student.pk link.pk %}"
+          data-confirm="{{ link.guardian.short_name }} shu o'quvchidan ajratilsinmi? Vasiy yozuvi o'chirilmaydi. Saqlanmagan o'zgarishlar yo'qoladi."
+          data-confirm-ok="Ajratish">{% csrf_token %}</form>
+  {% endif %}
+{% endfor %}
+{% endblock %}

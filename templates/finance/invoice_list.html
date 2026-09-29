@@ -1,0 +1,79 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}To'lov grafiklari{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>To'lov grafiklari</h1>
+    <p class="sub">Barcha o'quvchilarning oylik o'qish to'lovi hisoblari · {{ page.paginator.count }} ta</p>
+  </div>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'finance:invoice_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-5 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami hisoblangan</span><span class="ico tone-info">{% include "partials/icon.html" with name="calendar" class="sm" %}</span></div><div class="value money-sm">{{ stats.total|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Chegirma</span><span class="ico tone-danger">{% include "partials/icon.html" with name="sparkles" class="sm" %}</span></div><div class="value money-sm">{{ stats.discount|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Kechilgan</span><span class="ico tone-info">{% include "partials/icon.html" with name="info" class="sm" %}</span></div><div class="value money-sm">{{ stats.waived|money }} <span class="unit">so'm</span></div><div class="foot">Oy o'rtasida kelgan / chiqqan</div></div>
+  <div class="card stat"><div class="top"><span class="label">To'langan</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value money-sm text-success">{{ stats.paid|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Qoldiq (qarz)</span><span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value money-sm text-warning">{{ stats.remaining|money }} <span class="unit">so'm</span></div></div>
+</div>
+<div class="card stat stats-row"><div class="top"><span class="label">Grafiklar soni</span><span class="ico">{% include "partials/icon.html" with name="receipt" class="sm" %}</span></div><div class="value">{{ stats.count }}</div></div>
+
+{% url 'finance:invoice_list' as reset_url %}{% url 'finance:invoice_export' as export_url %}
+{% include "partials/filter_bar.html" with placeholder="O'quvchi (F.I.O) yoki kodi…" show_labels=True %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>O'quvchi</th><th>Oy</th><th class="text-right hide-xs">Jami</th><th class="text-right hide-sm">Chegirma</th>
+          <th class="text-right">To'langan</th><th class="text-right">Qoldiq</th><th class="hide-xs">Holati</th><th class="actions">Amallar</th>
+        </tr></thead>
+        <tbody>
+          {% for i in page.object_list %}
+            {% with s=i.student %}
+            <tr class="{% if i.remaining and i.paid %}row-partial{% endif %}">
+              <td><a class="person" href="{% url 'people:student_detail' s.pk %}?view=payment">
+                {% if s.school_class %}
+                  <span class="avatar class-avatar t{{ s.school_class.name|tone }}" title="Sinf: {{ s.school_class.name }}">{{ s.school_class.name|class_short }}</span>
+                {% else %}
+                  <span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span>
+                {% endif %}
+                <span><b>{{ s.short_name }}</b></span></a></td>
+              <td><span class="badge badge-info num">{{ i.month|date:"Y-m" }}</span></td>
+              <td class="text-right num hide-xs">{{ i.gross|money }}{% if i.waived %}<small class="muted block" title="Kechilgan">−{{ i.waived|money }}</small>{% endif %}</td>
+              <td class="text-right num hide-sm {% if i.discount %}text-info{% else %}muted{% endif %}">{{ i.discount|money }}</td>
+              <td class="text-right num text-success">{{ i.paid|money }}</td>
+              <td class="text-right num {% if i.remaining %}text-danger{% else %}text-success{% endif %}"><b>{{ i.remaining|money }}</b></td>
+              <td class="hide-xs">{% include "finance/_invoice_status.html" with invoice=i %}</td>
+              <td class="actions">
+                <div class="row-actions">
+                  <a class="icon-btn tone-info" href="{% url 'people:student_detail' s.pk %}?view=payment#grafik" title="O'quvchi grafigi" aria-label="O'quvchi grafigi">{% include "partials/icon.html" with name="eye" class="sm" %}</a>
+                  {% if i.remaining %}<a class="icon-btn tone-success" href="{% url 'finance:payment_create' s.pk %}" title="To'lov qabul qilish" aria-label="To'lov qabul qilish">{% include "partials/icon.html" with name="wallet" class="sm" %}</a>{% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="calendar" class="lg" %}</span>
+      <h3>Grafik topilmadi</h3>
+      <p>Filtrlarni o'zgartirib ko'ring.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

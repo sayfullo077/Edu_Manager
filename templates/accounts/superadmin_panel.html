@@ -1,0 +1,93 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Panel almashtirish{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Panel almashtirish</h1>
+    <p class="sub">Superadmin: istalgan panelni o'z akkauntingizda ko'ring yoki aniq xodim qiyofasida tekshiring.</p>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="shield" class="sm" %} Admin panel</a>
+</div>
+
+<section class="section-block mt-12">
+  <h2 class="group-title">1. Rol sifatida ko'rish <small>o'z akkauntingizda, hech kimning nomidan emas</small></h2>
+  {% for branch in branches %}
+    {% if branches|length > 1 %}<p class="muted small mt-12">{{ branch.name }}</p>{% endif %}
+    <div class="role-grid mt-12">
+      {% for code, label in roles %}
+        <form method="post" action="{% url 'accounts:superadmin_view_as' %}" data-role="{{ code }}">
+          {% csrf_token %}<input type="hidden" name="role" value="{{ code }}"><input type="hidden" name="branch" value="{{ branch.pk }}">
+          <button class="role-card" type="submit">
+            <span class="ico">{% if code == "reception" %}{% include "partials/icon.html" with name="wallet" %}{% elif code == "head_teacher" %}{% include "partials/icon.html" with name="school" %}{% else %}{% include "partials/icon.html" with name="graduation" %}{% endif %}</span>
+            <span><b>{{ label }}</b><small>{{ branch.name }} · paneli</small></span>
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  {% endfor %}
+  <p class="note">{% include "partials/icon.html" with name="info" class="sm" %}
+    O'qituvchi panelida shaxsiy ma'lumotlar (guruhlarim, oyligim) aniq o'qituvchiga bog'liq — ularni tekshirish uchun pastdan xodim qiyofasida kiring.</p>
+</section>
+
+<section class="section-block">
+  <h2 class="group-title">2. Xodim qiyofasida kirish <small>xodim ko'radigan hamma narsani ko'rasiz; har bir amal audit jurnaliga yoziladi</small></h2>
+  <form class="card toolbar" method="get" role="search">
+    <label class="search-input">
+      <span class="sr-only">Qidirish</span>
+      {% include "partials/icon.html" with name="search" class="sm" %}
+      <input class="input" type="search" name="q" value="{{ q }}" placeholder="Ism yoki telefon…" autocomplete="off">
+    </label>
+    <select class="input" name="role" aria-label="Rol" data-autosubmit>
+      <option value="">Barcha rollar</option>
+      {% for code, label in roles %}<option value="{{ code }}" {% if code == role %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-secondary" type="submit">Qidirish</button>
+  </form>
+
+  <div class="card">
+    {% if page.object_list %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Xodim</th><th class="hide-sm">Telefon</th><th>Rollari</th><th class="actions"><span class="sr-only">Amal</span></th></tr></thead>
+          <tbody>
+            {% for u in page.object_list %}
+              <tr>
+                <td><span class="person"><span class="avatar t{{ u.pk|tone }}">{{ u.initials }}</span><span><b>{{ u.full_name }}</b></span></span></td>
+                <td class="hide-sm num nowrap">{{ u.phone|phone }}</td>
+                <td>{% for r in u.roles.all %}{% if r.is_active %}<span class="badge badge-muted" data-role="{{ r.role }}">{{ r.get_role_display }}</span> {% endif %}{% endfor %}</td>
+                <td class="actions">
+                  <form class="inline-form" method="post" action="{% url 'accounts:superadmin_impersonate' u.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-secondary btn-sm" type="submit">{% include "partials/icon.html" with name="switch" class="sm" %} Qiyofasida kirish</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "partials/pagination.html" %}
+    {% else %}
+      <div class="empty"><span class="ico">{% include "partials/icon.html" with name="users" class="lg" %}</span><h3>Xodim topilmadi</h3></div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section-block">
+  <h2 class="group-title">Oxirgi kirishlar <small>audit jurnali (to'liq ro'yxat — admin panelda)</small></h2>
+  <div class="card">
+    <ul class="list-plain">
+      {% for log in logs %}
+        <li>
+          <span><b>{{ log.actor.short_name }}</b> → {% if log.target %}{{ log.target.short_name }}{% else %}{{ log.role|role_label }} paneli{% endif %}
+            <span class="muted">· {{ log.started_at|date:"d.m.Y H:i" }}{% if log.actions %} · {{ log.actions }} ta amal{% endif %}</span></span>
+          {% if log.ended_at %}<span class="badge badge-muted">Tugagan</span>{% else %}<span class="badge badge-info">Faol</span>{% endif %}
+        </li>
+      {% empty %}<li class="muted">Hali yo'q</li>{% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}

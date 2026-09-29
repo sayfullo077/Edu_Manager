@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static ui %}<!doctype html>
 <html lang="uz">
 <head>
   <meta charset="utf-8">
@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Raleway:wght@600;700;800&display=swap">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static_v 'css/app.css' %}">
   <style nonce="{{ csp_nonce }}">:root{--brand: {{ school.brand_color|default:"#08915E" }};}</style>
   {% block head %}{% endblock %}
 </head>
@@ -26,6 +26,6 @@
     </div>
   {% endif %}
 
-  <script src="{% static 'js/app.js' %}" defer></script>
+  <script src="{% static_v 'js/app.js' %}" defer></script>
 </body>
 </html>

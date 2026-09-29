@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{% if contract %}{{ contract.number }} · tahrirlash{% else %}Yangi shartnoma{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% if contract %}{% url 'contracts:contract_detail' contract.pk %}{% else %}{% url 'people:student_detail' student.pk %}{% endif %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+    <h1 class="mt-12">{% if contract %}{{ contract.number }}{% else %}Yangi shartnoma{% endif %}</h1>
+    <p class="sub">{{ student.full_name }} · {{ student.code }}{% if student.school_class %} · {{ student.school_class.name }}{% endif %}</p>
+  </div>
+</div>
+
+{% if not contract %}
+<ol class="steps" aria-label="Qabul bosqichlari">
+  <li class="done"><span>✓</span> O'quvchi va ota-ona</li>
+  <li class="current"><span>2</span> Shartnoma</li>
+  <li><span>3</span> Tasdiqlash (SMS kod)</li>
+</ol>
+{% endif %}
+
+<form class="card form-card" method="post" novalidate data-fee-calc>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.full_tariff %}
+    {% include "partials/field.html" with field=form.discount_percent %}
+    {% include "partials/field.html" with field=form.discount_reason class="span-2" %}
+    {% include "partials/field.html" with field=form.start_date %}
+    {% include "partials/field.html" with field=form.end_date %}
+    {% include "partials/field.html" with field=form.notes class="span-2" %}
+  </div>
+
+  <div class="fee-summary">
+    <span>Oylik to'lov</span>
+    <strong><span data-fee-output>—</span> so'm</strong>
+  </div>
+
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% if contract %}{% url 'contracts:contract_detail' contract.pk %}{% else %}{% url 'people:student_detail' student.pk %}{% endif %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} {% if contract %}Saqlash{% else %}Qoralama tuzish{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

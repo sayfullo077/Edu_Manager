@@ -19,6 +19,9 @@ secrets/
 backups/
 exports/
 
+# Asl platforma skrinshotlari — haqiqiy shaxsiy ma'lumotlar bor
+reference/
+
 # ===== Python =====
 __pycache__/
 *.py[cod]
@@ -41,6 +44,7 @@ coverage.xml
 
 # ===== Django =====
 /media/
+/private_media/
 /staticfiles/
 *.log
 logs/

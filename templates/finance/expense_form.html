@@ -1,0 +1,28 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Xarajat qo'shish{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'finance:dashboard' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Dashboard</a>
+    <h1 class="mt-12">Xarajat qo'shish</h1>
+  </div>
+</div>
+<form class="card form-card narrow" method="post" novalidate>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  {% if not session %}<div class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %}<div>Kassa yopiq — naqd xarajat uchun avval <a class="link" href="{% url 'finance:cashbox' %}">kassani oching</a>. Bank orqali xarajat kiritish mumkin.</div></div>{% endif %}
+  <div class="form-grid mt-12">
+    {% include "partials/field.html" with field=form.category %}
+    {% include "partials/field.html" with field=form.amount %}
+    {% include "partials/field.html" with field=form.account_kind class="span-2" %}
+    {% include "partials/field.html" with field=form.spent_at %}
+    {% include "partials/field.html" with field=form.description class="span-2" %}
+  </div>
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% url 'finance:dashboard' %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+{% endblock %}

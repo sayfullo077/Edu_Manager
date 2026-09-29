@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Byudjet limitlari{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'finance:dashboard' %}?month={{ month|date:'Y-m' }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Dashboard</a>
+    <h1 class="mt-12">Byudjet limitlari</h1>
+    <p class="sub">{{ month_label }} · har bir xarajat kategoriyasi uchun oylik limit</p>
+  </div>
+</div>
+<form class="card form-card narrow" method="post" novalidate>
+  {% csrf_token %}
+  {% for title, rows in groups %}
+    <section class="form-section">
+      <h3>{{ title }}</h3>
+      {% for row, field in rows %}
+        <div class="limit-row">
+          <label for="{{ field.id_for_label }}"><b>{{ row.category.name }}</b><small class="muted">Sarflangan: {{ row.spent|money }}</small></label>
+          {{ field }}
+        </div>
+        {% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+      {% endfor %}
+    </section>
+  {% endfor %}
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% url 'finance:dashboard' %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+{% endblock %}

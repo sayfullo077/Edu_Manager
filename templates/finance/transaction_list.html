@@ -1,0 +1,106 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Tranzaksiyalar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Tranzaksiyalar</h1>
+    <p class="sub">Barcha kirim, chiqim, storno va to'lov harakatlari shu yerda jamlanadi ·
+      {% if filters.date_from == filters.date_to and filters.date_from %}{{ filters.date_from|date:"d.m.Y" }}{% else %}{{ filters.date_from|date:"d.m.Y"|default:"…" }} — {{ filters.date_to|date:"d.m.Y"|default:"…" }}{% endif %}</p>
+  </div>
+  <a class="btn btn-excel" href="{% url 'finance:transaction_export' %}?{{ querystring }}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+</div>
+
+<div class="grid grid-5 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami kirim</span><span class="ico tone-success">{% include "partials/icon.html" with name="chart" class="sm" %}</span></div><div class="value money-sm text-success">{{ stats.income|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Jami chiqim</span><span class="ico tone-danger">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</span></div><div class="value money-sm text-danger">{{ stats.outcome|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Sof balans</span><span class="ico tone-info">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value money-sm {% if stats.net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ stats.net|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Bank komissiyasi</span><span class="ico tone-warning">{% include "partials/icon.html" with name="bank" class="sm" %}</span></div><div class="value money-sm text-warning">{{ stats.commission|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Tranzaksiyalar</span><span class="ico">{% include "partials/icon.html" with name="arrows" class="sm" %}</span></div><div class="value">{{ stats.count }}</div></div>
+</div>
+
+{% if stats.by_kind %}
+  <section class="card card-pad">
+    <div class="split">
+      <div><h3>To'lov turlari bo'yicha</h3><p class="muted small">Joriy filtrlarga mos kirim, chiqim va sof total.</p></div>
+      <span class="badge badge-info">{{ stats.by_kind|length }} tur</span>
+    </div>
+    <div class="kind-grid">
+      {% for k in stats.by_kind %}
+        <div class="kind-card">
+          <div class="split"><div><b>{{ k.label }}</b><small class="muted block">Komissiya: {{ k.percent }}%</small></div><span class="badge badge-muted">{{ k.count }}</span></div>
+          <dl class="flow-list">
+            <dt>Kirim</dt><dd class="text-success">+{{ k.income|money }}</dd>
+            <dt>Chiqim</dt><dd class="text-danger">−{{ k.outcome|money }}</dd>
+            <dt>Komissiya</dt><dd class="text-warning">−{{ k.commission|money }}</dd>
+            <dt class="total">Sof</dt><dd class="total {% if k.net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ k.net|money }} so'm</dd>
+          </dl>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<form class="card card-pad payments-filter mt-20" method="get" role="search">
+  <div class="pf-grid pf-5">
+    {% include "partials/field.html" with field=form.q class="pf-q" %}
+    {% include "partials/field.html" with field=form.direction %}
+    {% include "partials/multiselect.html" with field=form.category %}
+    {% include "partials/multiselect.html" with field=form.account_kind %}
+    {% include "partials/field.html" with field=form.card_network %}
+    {% include "partials/field.html" with field=form.status %}
+    {% include "partials/field.html" with field=form.created_by %}
+    {% include "partials/field.html" with field=form.date_from %}
+    {% include "partials/field.html" with field=form.date_to %}
+    {% include "partials/field.html" with field=form.min_amount %}
+    <div class="pf-actions">
+      <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="search" class="sm" %} Qidirish</button>
+      <a class="btn btn-secondary" href="{% url 'finance:transaction_list' %}" title="Bugungi kunga qaytarish">Tozalash</a>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>Sana</th><th class="text-right">Summa</th><th class="text-right hide-sm">Komissiya</th><th>Turi</th>
+          <th>Kategoriya</th><th class="hide-sm">To'lov turi</th><th class="hide-sm hide-xl">Tavsif</th>
+          <th class="hide-sm hide-lg">Yaratuvchi</th><th class="text-right">Status</th>
+        </tr></thead>
+        <tbody>
+          {% for t in page.object_list %}
+            {% with p=t.payment %}
+            <tr>
+              <td class="num nowrap">{{ t.occurred_at|date:"d/m/Y" }}<small class="muted block">{{ t.occurred_at|date:"H:i" }} · TRX-{{ t.pk }}</small></td>
+              <td class="text-right num nowrap"><b class="{% if t.direction == 'in' %}text-success{% else %}text-danger{% endif %}">{% if t.direction == 'in' %}+{% else %}−{% endif %}{{ t.amount|money }}</b></td>
+              <td class="text-right num hide-sm {% if t.commission %}text-warning{% else %}muted{% endif %}">{% if t.commission %}{{ t.commission|money }}{% else %}—{% endif %}</td>
+              <td><span class="badge {% if t.direction == 'in' %}badge-success{% else %}badge-danger{% endif %}">{{ t.get_direction_display }}</span></td>
+              <td><span class="badge badge-muted">{{ t.category_label }}</span></td>
+              <td class="hide-sm"><span class="badge badge-info">{{ t.account.get_kind_display }}</span>{% if p.card_network %} <small class="muted">{{ p.get_card_network_display }}</small>{% endif %}</td>
+              <td class="hide-sm hide-xl">{% if p %}<a class="entity-name" href="{% url 'finance:payment_receipt' p.pk %}?next={{ request.get_full_path|urlencode:'' }}">{{ p.number }}</a> {% endif %}<small class="muted">{{ t.description|truncatechars:60 }}</small></td>
+              <td class="hide-sm hide-lg">{{ t.created_by.full_name }}</td>
+              <td class="text-right">{% with st=t.status_key %}{% if st == "storno" %}<span class="badge badge-warning">Storno</span>{% elif st == "cancelled" %}<span class="badge badge-danger" title="{{ p.reverse_reason }}">Bekor qilingan</span>{% else %}<span class="badge badge-success">Muvaffaqiyatli</span>{% endif %}{% endwith %}</td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="table-total">
+      <span class="muted">Jami: {{ stats.count }} ta tranzaksiya</span>
+      <b>Sof total: <span class="{% if stats.net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ stats.net|money }} so'm</span></b>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="arrows" class="lg" %}</span>
+      <h3>Tranzaksiya topilmadi</h3>
+      <p>Tanlangan davr va filtrlar bo'yicha harakat yo'q. Sanalarni kengaytirib ko'ring.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

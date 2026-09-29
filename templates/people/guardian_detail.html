@@ -1,0 +1,152 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ guardian.short_name }} · Ota-ona kartasi{% endblock %}
+
+{% block content %}
+{# ---------- Sarlavha ---------- #}
+<div class="card student-hero">
+  <span class="avatar hero-avatar t{{ guardian.pk|tone }}">{{ guardian.initials }}</span>
+  <div class="hero-info">
+    <h1>{{ guardian.full_name }}</h1>
+    <div class="meta">
+      {% for r in relations %}<span class="badge badge-info">{{ r }}</span>{% endfor %}
+      <span class="badge {% if guardian.status == 'active' %}badge-success{% else %}badge-muted{% endif %}">{{ guardian.get_status_display }}</span>
+      {% if is_primary %}<span class="badge badge-warning" title="Shartnoma va SMS'lar shu odamga yuboriladi">{% include "partials/icon.html" with name="sparkles" class="sm" %} Asosiy vasiy</span>{% endif %}
+    </div>
+    <ul class="hero-facts">
+      <li>{% include "partials/icon.html" with name="phone" class="sm" %}<span class="num">{{ guardian.phone|phone }}</span></li>
+      {% if guardian.extra_phone %}<li>{% include "partials/icon.html" with name="phone" class="sm" %}<span class="num">{{ guardian.extra_phone|phone }}</span></li>{% endif %}
+      {% if guardian.pinfl %}<li>{% include "partials/icon.html" with name="shield" class="sm" %}JSHSHIR: <code class="doc-code">{{ guardian.pinfl|mask }}</code></li>{% endif %}
+      {% if guardian.passport %}<li>{% include "partials/icon.html" with name="file" class="sm" %}Passport: <code class="doc-code">{{ guardian.passport|mask }}</code></li>{% endif %}
+      {% if guardian.workplace %}<li>{% include "partials/icon.html" with name="briefcase" class="sm" %}{{ guardian.workplace }}{% if guardian.position %} · {{ guardian.position }}{% endif %}</li>{% endif %}
+    </ul>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-ghost btn-icon" href="{% url 'people:guardian_list' %}" title="Ota-onalar ro'yxatiga" aria-label="Ota-onalar ro'yxatiga">{% include "partials/icon.html" with name="arrow-left" %}</a>
+  </div>
+</div>
+
+{# ---------- Ko'rsatkichlar ---------- #}
+<div class="grid grid-3 mt-20 info-tiles">
+  <div class="card tile">
+    <span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span>
+    <div><span class="label">Farzandlar soni</span><b>{{ links|length }} ta</b><small>Vasiylikdagi o'quvchilar</small></div>
+  </div>
+  {% if finance_allowed %}
+    <div class="card tile">
+      <span class="ico tone-warning">{% include "partials/icon.html" with name="alert" class="sm" %}</span>
+      <div><span class="label">Jami qarz</span><b class="{% if total_debt %}text-warning{% endif %}">{{ total_debt|money }} <small class="inline">so'm</small></b><small>Barcha farzandlar qarzi</small></div>
+    </div>
+    <div class="card tile">
+      <span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span>
+      <div><span class="label">Jami to'langan</span><b class="text-success">{{ total_paid|money }} <small class="inline">so'm</small></b><small>Amalga oshirilgan to'lovlar</small></div>
+    </div>
+  {% endif %}
+</div>
+
+{# ---------- Bo'limlar ---------- #}
+<section class="card mt-20">
+  <nav class="tabs" aria-label="Bo'limlar">
+    <a href="?tab=children" {% if tab == "children" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" class="sm" %} Farzandlar <span class="tab-count">{{ links|length }}</span></a>
+    {% if finance_allowed %}
+      <a href="?tab=debts" {% if tab == "debts" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="calendar" class="sm" %} Qarzdorliklar (grafiklar) {% if debt_count %}<span class="tab-count warn" title="Qarzdor oylar">{{ debt_count }}</span>{% endif %}</a>
+      <a href="?tab=payments" {% if tab == "payments" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="clock" class="sm" %} To'lovlar tarixi <span class="tab-count">{{ payments|length }}</span></a>
+    {% endif %}
+  </nav>
+
+  {% if tab == "children" %}
+    <div class="child-grid">
+      {% for link in links %}
+        {% with s=link.student %}
+        <article class="child-card">
+          <div class="child-head">
+            <span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span>
+            <div class="grow">
+              <a class="entity-name" href="{% url 'people:student_detail' s.pk %}">{{ s.full_name }}</a>
+              <small class="muted"><span class="num">{{ s.code }}</span> · {{ s.branch.name }}</small>
+              <div class="meta-row">
+                {% if s.school_class %}<span class="badge badge-info">{{ s.school_class.name }}</span>{% endif %}
+                <span class="badge badge-muted">{{ link.get_relation_display }}</span>
+                {% if link.is_primary %}<span class="badge badge-warning">Asosiy aloqa</span>{% endif %}
+                {% if s.status != "active" %}<span class="badge badge-muted">{{ s.get_status_display }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% if finance_allowed %}
+            <div class="child-money">
+              <div><span>Qarz</span><b class="num {% if link.finance.debt %}text-warning{% else %}text-success{% endif %}">{{ link.finance.debt|money }}</b></div>
+              <div><span>To'langan</span><b class="num text-success">{{ link.finance.paid|money }}</b></div>
+            </div>
+          {% endif %}
+          <div class="child-actions">
+            <a class="btn btn-outline btn-sm" href="{% url 'people:student_detail' s.pk %}?view=academic">{% include "partials/icon.html" with name="book" class="sm" %} Akademik</a>
+            {% if finance_allowed %}<a class="btn btn-excel btn-sm" href="{% url 'people:student_detail' s.pk %}?view=payment">{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov</a>{% endif %}
+          </div>
+        </article>
+        {% endwith %}
+      {% endfor %}
+    </div>
+
+  {% elif tab == "debts" %}
+    {% if invoices %}
+      <div class="table-wrap">
+        <table class="table table-dense">
+          <thead><tr>
+            <th>Oy</th><th>Farzand</th><th class="hide-sm">Tarif</th><th class="hide-sm">Muddat</th>
+            <th class="text-right">Hisoblangan</th><th class="text-right">To'langan</th><th class="text-right">Qoldiq (qarz)</th><th class="text-right">Holat</th>
+          </tr></thead>
+          <tbody>
+            {% for i in invoices %}
+              <tr>
+                <td class="nowrap num"><b>{{ i.month|date:"Y-m" }}</b></td>
+                <td><a class="entity-name" href="{% url 'people:student_detail' i.student_id %}?view=payment">{{ i.student.short_name }}</a>
+                  <small class="muted block">{{ i.student.branch.name }}</small></td>
+                <td class="hide-sm">{{ i.get_category_display }}{% if i.contract.class_name %} <span class="muted">({{ i.contract.class_name }})</span>{% endif %}</td>
+                <td class="hide-sm num">{{ i.due_date|date:"d.m.Y" }}</td>
+                <td class="text-right num">{{ i.amount|money }}</td>
+                <td class="text-right num text-success">{{ i.paid|money }}</td>
+                <td class="text-right num {% if i.remaining %}text-warning{% else %}text-success{% endif %}"><b>{{ i.remaining|money }}</b></td>
+                <td class="text-right">{% include "finance/_invoice_status.html" with invoice=i %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-line">To'lov grafigi hali yo'q.</p>
+    {% endif %}
+
+  {% else %}
+    {% if payments %}
+      <div class="table-wrap">
+        <table class="table table-dense">
+          <thead><tr>
+            <th># / TRX</th><th>Sana</th><th>Farzand</th><th class="hide-sm">To'lov turi</th><th class="text-right">Summa</th>
+            <th class="hide-sm">Qabul qildi</th><th class="text-right">Holat</th><th class="actions">Kvitansiya</th>
+          </tr></thead>
+          <tbody>
+            {% for p in payments %}
+              <tr class="{% if p.status == 'reversed' %}row-muted{% endif %}">
+                <td class="num nowrap"><b class="text-info">{{ p.number }}</b>{% with t=p.payment_trx.0 %}{% if t %}<small class="muted block">TRX-{{ t.pk }}</small>{% endif %}{% endwith %}</td>
+                <td class="num nowrap">{{ p.paid_at|date:"d.m.Y" }}<small class="muted block">{{ p.paid_at|date:"H:i" }}</small></td>
+                <td><a class="entity-name" href="{% url 'people:student_detail' p.student_id %}?view=payment">{{ p.student.short_name }}</a></td>
+                <td class="hide-sm"><span class="badge badge-info">{{ p.get_method_display }}</span></td>
+                <td class="text-right num nowrap"><b class="text-success">{{ p.amount|money }}</b> <small class="muted">so'm</small></td>
+                <td class="hide-sm">{{ p.received_by.short_name }}</td>
+                <td class="text-right">{% if p.status == "reversed" %}<span class="badge badge-warning" title="{{ p.reverse_reason }}">Storno</span>{% else %}<span class="badge badge-success">Qabul qilindi</span>{% endif %}</td>
+                <td class="actions"><a class="icon-btn tone-info" href="{% url 'finance:payment_receipt' p.pk %}?next={{ request.get_full_path|urlencode:'' }}" title="Kvitansiya" aria-label="Kvitansiya">{% include "partials/icon.html" with name="receipt" class="sm" %}</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-line">To'lovlar hali yo'q.</p>
+    {% endif %}
+  {% endif %}
+</section>
+
+<p class="note">{% include "partials/icon.html" with name="info" class="sm" %}
+  Vasiy ma'lumotlarini o'zgartirish — farzandining kartasi → «Tahrirlash» → «Ota-ona va vasiylar» bo'limida.</p>
+{% endblock %}

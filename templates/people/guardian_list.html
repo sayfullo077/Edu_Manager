@@ -1,0 +1,71 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Ota-onalar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Ota-onalar</h1>
+    <p class="sub">{{ request.branch.name }} · {{ page.paginator.count }} ta topildi</p>
+  </div>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'people:guardian_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-5 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami</span><span class="ico">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.total }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Otalar</span><span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.fathers }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Onalar</span><span class="ico tone-danger">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.mothers }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Boshqa vasiylar</span><span class="ico tone-warning">{% include "partials/icon.html" with name="shield" class="sm" %}</span></div><div class="value">{{ stats.others }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Shu oy qo'shilgan</span><span class="ico tone-success">{% include "partials/icon.html" with name="plus" class="sm" %}</span></div><div class="value">{{ stats.new_this_month }}</div></div>
+</div>
+
+{% url 'people:guardian_list' as reset_url %}{% url 'people:guardian_export' as export_url %}
+{% include "partials/filter_bar.html" with placeholder="Ism, telefon, to'liq JSHSHIR yoki passport…" show_labels=True %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th class="num-col">#</th><th>F.I.O</th><th class="hide-sm hide-xl">JSHSHIR</th><th>Telefon</th>
+          <th class="hide-sm hide-lg">Passport</th><th class="hide-sm">Munosabat</th><th>Farzandlar</th>
+          <th class="hide-sm">Holat</th><th class="actions"><span class="sr-only">Amallar</span></th>
+        </tr></thead>
+        <tbody>
+          {% for g in page.object_list %}
+            <tr>
+              <td class="num-col">{{ page.start_index|add:forloop.counter0 }}</td>
+              <td><a class="person" href="{% url 'people:guardian_detail' g.pk %}">
+                <span class="avatar t{{ g.pk|tone }}">{{ g.initials }}</span>
+                <span><b>{{ g.full_name }}</b></span></a></td>
+              <td class="hide-sm hide-xl num nowrap">{% if g.pinfl %}<code class="doc-code">{{ g.pinfl|mask }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="num nowrap">{{ g.phone|phone }}</td>
+              <td class="hide-sm hide-lg num nowrap">{% if g.passport %}<code class="doc-code">{{ g.passport|mask }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="hide-sm">{% for r in g.relations %}<span class="badge {% if r == 'mother' %}badge-danger{% elif r == 'father' %}badge-info{% else %}badge-warning{% endif %}">{{ r|relation_label }}</span> {% endfor %}</td>
+              <td><span class="badge badge-info">{% include "partials/icon.html" with name="users" class="sm" %} {{ g.children_count }}</span></td>
+              <td class="hide-sm"><span class="badge {% if g.status == 'active' %}badge-success{% else %}badge-muted{% endif %}">{{ g.get_status_display }}</span></td>
+              <td class="actions">
+                <a class="icon-btn tone-info" href="{% url 'people:guardian_detail' g.pk %}" aria-label="Ko'rish" title="Ko'rish">{% include "partials/icon.html" with name="eye" class="sm" %}</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="search" class="lg" %}</span>
+      <h3>Ota-ona topilmadi</h3>
+      <p>JSHSHIR va passport shifrlangan — ular bo'yicha faqat to'liq qiymat bilan qidirish mumkin.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

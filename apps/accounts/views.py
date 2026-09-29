@@ -6,23 +6,24 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.crypto import constant_time_compare
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
+from apps.common.http import safe_next
 from apps.core.models import Branch, SchoolSettings
 
+from . import superadmin
 from .domain.exceptions import AuthError, OTPError, RateLimited
 from .domain.phone import format_phone
-from .forms import CodeRequestForm, CodeVerifyForm, PasswordLoginForm
+from .forms import CodeRequestForm, CodeVerifyForm, PasswordLoginForm, StyledPasswordChangeForm
 from .infrastructure import telegram
 from .models import OneTimeCode, UserRole
 from .services import auth, otp
@@ -36,10 +37,7 @@ security_log = logging.getLogger("security")
 
 def _safe_next(request, candidate: str | None) -> str:
     """Open redirect himoyasi: faqat o'z saytimizdagi manzillarga qaytaramiz."""
-    if candidate and url_has_allowed_host_and_scheme(
-            candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-        return candidate
-    return settings.LOGIN_REDIRECT_URL
+    return safe_next(request, candidate, settings.LOGIN_REDIRECT_URL)
 
 
 @never_cache
@@ -143,6 +141,10 @@ def resend_view(request):
 
 @require_POST
 def logout_view(request):
+    if getattr(request, "impersonator", None):
+        # Superadmin xodim qiyofasida: "Chiqish" — tizimdan emas, qiyofadan chiqish.
+        superadmin.stop_impersonation(request)
+        return redirect("accounts:superadmin")
     logout(request)
     return redirect(settings.LOGOUT_REDIRECT_URL)
 
@@ -181,3 +183,36 @@ def telegram_webhook_view(request, secret):
     if isinstance(update, dict):
         handle_update(update, SchoolSettings.load().short_name)
     return HttpResponse("ok")
+
+
+@login_required
+def profile_view(request):
+    user = request.user
+    return render(request, "accounts/profile.html", {
+        "roles": user.roles.filter(is_active=True).select_related("branch"),
+        "telegram": getattr(user, "telegram", None) if hasattr(user, "telegram") else None,
+        "teacher": getattr(user, "teacher", None) if hasattr(user, "teacher") else None,
+    })
+
+
+@login_required
+@sensitive_post_parameters()
+def settings_view(request):
+    impersonating = bool(getattr(request, "impersonator", None))
+    form = StyledPasswordChangeForm(request.user, request.POST or None)
+    if request.method == "POST":
+        if impersonating:
+            # Superadmin xodim qiyofasida parolini o'zgartira olmaydi.
+            messages.error(request, "Qiyofa rejimida parolni o'zgartirib bo'lmaydi.")
+            return redirect("accounts:settings")
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, form.user)  # joriy sessiya saqlanadi, boshqalari tugaydi
+            security_log.info("Parol o'zgartirildi: user=%s", request.user.pk)
+            messages.success(request, "Parol o'zgartirildi. Boshqa qurilmalardagi sessiyalar yopildi.")
+            return redirect("accounts:settings")
+    return render(request, "accounts/settings.html", {
+        "form": form, "impersonating": impersonating,
+        "telegram": getattr(request.user, "telegram", None) if hasattr(request.user, "telegram") else None,
+        "bot_link": telegram.bot_link(),
+    })

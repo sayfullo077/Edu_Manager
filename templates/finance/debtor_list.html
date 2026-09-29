@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Qarzdorlar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Qarzdorlar</h1>
+    <p class="sub">Kelgan oylar (joriy oygacha) bo'yicha qarzi bor o'quvchilar · qoldiq kamayishi bo'yicha</p>
+  </div>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'finance:debtor_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-5 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami hisoblangan</span><span class="ico tone-info">{% include "partials/icon.html" with name="calendar" class="sm" %}</span></div><div class="value money-sm">{{ stats.total|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Chegirma</span><span class="ico tone-danger">{% include "partials/icon.html" with name="sparkles" class="sm" %}</span></div><div class="value money-sm">{{ stats.discount|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Kechilgan</span><span class="ico tone-info">{% include "partials/icon.html" with name="info" class="sm" %}</span></div><div class="value money-sm">{{ stats.waived|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">To'langan</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value money-sm text-success">{{ stats.paid|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Qoldiq (qarz)</span><span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value money-sm text-warning">{{ stats.remaining|money }} <span class="unit">so'm</span></div></div>
+</div>
+<div class="card stat stats-row"><div class="top"><span class="label">O'quvchilar soni (qarzdor)</span><span class="ico tone-danger">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.students }}</div></div>
+
+{% url 'finance:debtor_list' as reset_url %}{% url 'finance:debtor_export' as export_url %}
+{% include "partials/filter_bar.html" with placeholder="O'quvchi (F.I.O) yoki kodi…" show_labels=True %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>O'quvchi</th><th>Qarzdor oylar</th><th class="text-right hide-xs">Jami</th><th class="text-right hide-sm">To'langan</th>
+          <th class="text-right">Qoldiq</th><th class="hide-sm hide-lg">Oxirgi to'lov</th><th class="actions">Amallar</th>
+        </tr></thead>
+        <tbody>
+          {% for s in page.object_list %}
+            <tr>
+              <td><a class="person" href="{% url 'people:student_detail' s.pk %}?view=payment">
+                {% if s.school_class %}<span class="avatar class-avatar t{{ s.school_class.name|tone }}" title="Sinf: {{ s.school_class.name }}">{{ s.school_class.name|class_short }}</span>
+                {% else %}<span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span>{% endif %}
+                <span><b>{{ s.short_name }}</b></span></a></td>
+              <td><span class="badge {% if s.overdue_months %}badge-danger{% else %}badge-warning{% endif %}" title="{% if s.overdue_months %}{{ s.overdue_months }} oyning muddati o'tgan{% else %}muddati hali kelmagan{% endif %}">{{ s.debt_months }} oy</span></td>
+              <td class="text-right num hide-xs">{{ s.total|money }}</td>
+              <td class="text-right num hide-sm text-success">{{ s.paid_sum|money }}</td>
+              <td class="text-right num text-danger"><b>{{ s.remaining|money }}</b></td>
+              <td class="hide-sm hide-lg num">{% if s.last_paid_at %}<span class="text-success">{{ s.last_amount|money }}</span><small class="muted block">{{ s.last_paid_at|date:"d.m.Y" }}</small>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="actions">
+                <div class="split-btn">
+                  <button class="btn btn-sm btn-outline" type="button" data-panel-url="{% url 'finance:debtor_panel' s.pk 'info' %}" title="Ma'lumot" aria-label="Ma'lumot">{% include "partials/icon.html" with name="info" class="sm" %}</button>
+                  <button class="btn btn-sm btn-success" type="button" data-panel-url="{% url 'finance:debtor_panel' s.pk 'pay' %}?next={{ request.get_full_path|urlencode:'' }}">{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov</button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="check" class="lg" %}</span>
+      <h3>Qarzdor yo'q</h3>
+      <p>Tanlangan filtr bo'yicha qarzi bor o'quvchi topilmadi.</p>
+    </div>
+  {% endif %}
+</div>
+
+{# Yon panel: tugma bosilganda kontent serverdan olinadi (app.js [data-panel-url]) #}
+<dialog class="side-panel" id="side-panel" aria-label="Yon panel"><div class="side-panel-body" data-panel-body></div></dialog>
+{% endblock %}

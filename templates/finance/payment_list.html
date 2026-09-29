@@ -1,0 +1,74 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}To'lovlar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>To'lovlar</h1>
+    <p class="sub">{% include "partials/icon.html" with name="receipt" class="sm" %} Qabul qilingan to'lovlar tarixi ·
+      {% if filters.date_from == filters.date_to and filters.date_from %}{{ filters.date_from|date:"d.m.Y" }}{% else %}{{ filters.date_from|date:"d.m.Y"|default:"…" }} — {{ filters.date_to|date:"d.m.Y"|default:"…" }}{% endif %}</p>
+  </div>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami kirim</span><span class="ico tone-success">{% include "partials/icon.html" with name="chart" class="sm" %}</span></div><div class="value money-sm">{{ stats.total|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">To'lovlar soni</span><span class="ico tone-info">{% include "partials/icon.html" with name="receipt" class="sm" %}</span></div><div class="value">{{ stats.count }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Qaytarilgan</span><span class="ico tone-danger">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</span></div><div class="value money-sm">{{ stats.refunded|money }} <span class="unit">so'm</span></div><div class="foot">O'qishdan chiqqanda</div></div>
+  <div class="card stat"><div class="top"><span class="label">Storno soni</span><span class="ico tone-warning">{% include "partials/icon.html" with name="x" class="sm" %}</span></div><div class="value">{{ stats.storno_count }}</div></div>
+</div>
+
+<form class="card card-pad payments-filter" method="get" role="search">
+  <div class="pf-grid">
+    {% include "partials/field.html" with field=form.q class="pf-q" %}
+    {% include "partials/field.html" with field=form.date_from %}
+    {% include "partials/field.html" with field=form.date_to %}
+    {% include "partials/field.html" with field=form.method %}
+    {% include "partials/field.html" with field=form.school_class %}
+    {% include "partials/field.html" with field=form.received_by %}
+    <div class="pf-actions">
+      <button class="btn btn-primary" type="submit" title="Qidirish">{% include "partials/icon.html" with name="search" class="sm" %}<span class="hide-sm">Qidirish</span></button>
+      <a class="btn btn-excel" href="{% url 'finance:payment_export' %}?{{ querystring }}" title="Excelga yuklab olish" download>{% include "partials/icon.html" with name="sheet" class="sm" %}<span class="hide-sm">Excel</span></a>
+      <a class="btn btn-secondary btn-icon" href="{% url 'finance:payment_list' %}" title="Tozalash (bugungi)" aria-label="Tozalash">{% include "partials/icon.html" with name="rotate" class="sm" %}</a>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th class="num-col">#</th><th>Sana</th><th>O'quvchi</th><th class="text-right">Summa</th><th>To'lov turi</th>
+          <th class="hide-sm">Qabul qildi</th><th class="hide-sm">Holat</th><th class="actions">Amallar</th>
+        </tr></thead>
+        <tbody>
+          {% for p in page.object_list %}
+            <tr class="{% if p.status == 'reversed' %}row-muted{% endif %}">
+              <td class="num-col">{{ page.start_index|add:forloop.counter0 }}</td>
+              <td class="num nowrap">{{ p.paid_at|date:"d/m/Y" }}<small class="muted block">{{ p.paid_at|date:"H:i" }} · {{ p.number }}</small></td>
+              <td><a class="entity-name" href="{% url 'people:student_detail' p.student_id %}?view=payment">{{ p.student.short_name }}</a>
+                <small class="muted block">{{ p.student.code }}{% if p.student.school_class %} · {{ p.student.school_class.name }}{% endif %}</small></td>
+              <td class="text-right num nowrap"><b>{{ p.amount|money }}</b></td>
+              <td class="nowrap"><span class="badge badge-info" title="{{ p.get_method_display }}{% if p.card_network %} · {{ p.get_card_network_display }}{% endif %}">{% if p.method == "card" %}Karta{% elif p.method == "transfer" %}Bank{% else %}Naqd{% endif %}</span></td>
+              <td class="hide-sm">{{ p.received_by.full_name }}</td>
+              <td class="hide-sm">{% if p.status == "reversed" %}<span class="badge badge-warning" title="{{ p.reverse_reason }}">Storno</span>{% else %}<span class="badge badge-success">Muvaffaqiyatli</span>{% endif %}</td>
+              <td class="actions">
+                <a class="icon-btn tone-info" href="{% url 'finance:payment_receipt' p.pk %}?next={{ request.get_full_path|urlencode:'' }}" title="Kvitansiyani chop etish" aria-label="Kvitansiyani chop etish">{% include "partials/icon.html" with name="receipt" class="sm" %}</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="receipt" class="lg" %}</span>
+      <h3>To'lov topilmadi</h3>
+      <p>Tanlangan davr va filtrlar bo'yicha to'lov yo'q. Sanalarni kengaytirib ko'ring.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% load ui %}
+{# Xarajat qo'shish yon paneli. "+" tugmalari data-atributlar orqali to'ldiradi (static/js/app.js). #}
+<div class="drawer-backdrop" data-drawer-close {% if not drawer_row and not expense_form.errors %}hidden{% endif %}></div>
+<aside class="drawer{% if drawer_row or expense_form.errors %} open{% endif %}" id="expense-drawer" role="dialog"
+       aria-modal="true" aria-labelledby="expense-drawer-title" {% if not drawer_row and not expense_form.errors %}hidden{% endif %}>
+  <header class="drawer-head">
+    <h2 id="expense-drawer-title">{% include "partials/icon.html" with name="plus" class="sm" %} Chiqim yaratish</h2>
+    <button class="btn btn-ghost btn-icon" type="button" data-drawer-close aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button>
+  </header>
+
+  <form class="drawer-body" method="post" action="{% url 'finance:expense_create' %}" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="from" value="drawer">
+    <input type="hidden" name="category" value="{{ drawer_row.category.pk|default:'' }}" data-f="category">
+
+    <div class="drawer-cat">
+      <span class="cat-ico"><svg class="icon" aria-hidden="true"><use href="#i-{{ drawer_row.category.icon|default:'receipt' }}" data-f="icon"/></svg></span>
+      <div><b data-f="name">{{ drawer_row.category.name|default:"" }}</b><small>Xarajat kategoriyasi</small></div>
+    </div>
+
+    <div class="drawer-stats">
+      <div><span>Limit</span><b class="text-info num" data-f="limit">{{ drawer_row.limit|money }}</b><small>so'm</small></div>
+      <div class="accent"><span>Qoldiq</span><b class="num text-success" data-f="remaining">{{ drawer_row.remaining|money }}</b><small>so'm</small></div>
+    </div>
+
+    {% with form=expense_form %}{% include "partials/form_errors.html" %}{% endwith %}
+
+    <div class="field">
+      <label class="label" for="exp-amount">Summa <span class="text-danger">*</span></label>
+      <div class="input-group suffix">
+        <input class="input num text-right{% if expense_form.amount.errors %} is-invalid{% endif %}" id="exp-amount" name="amount"
+               inputmode="numeric" type="number" min="1" step="1" placeholder="0" value="{{ expense_form.amount.value|default:'' }}" required>
+        <span class="addon">so'm</span>
+      </div>
+      {% for e in expense_form.amount.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <div class="field">
+      <span class="label">Qayerdan</span>
+      <div class="radio-row">
+        {% for choice in expense_form.account_kind %}<label>{{ choice.tag }} {{ choice.choice_label }}</label>{% endfor %}
+      </div>
+      {% if not cash_open %}<span class="hint">Kassa yopiq — naqd chiqim uchun avval <a class="link" href="{% url 'finance:cashbox' %}">kassani oching</a>.</span>{% endif %}
+      {% for e in expense_form.account_kind.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="label" for="exp-desc">Izoh <span class="text-danger">*</span></label>
+      <textarea class="input{% if expense_form.description.errors %} is-invalid{% endif %}" id="exp-desc" name="description" rows="3" maxlength="255"
+                placeholder="Masalan: Sentabr oyi uchun elektr energiyasi" required>{{ expense_form.description.value|default:'' }}</textarea>
+      {% for e in expense_form.description.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="label" for="exp-date">Sana</label>
+      <input class="input{% if expense_form.spent_at.errors %} is-invalid{% endif %}" id="exp-date" name="spent_at" type="date"
+             value="{{ expense_form.spent_at.value|date:'Y-m-d'|default:expense_form.spent_at.value }}" max="{{ today|date:'Y-m-d' }}">
+      {% for e in expense_form.spent_at.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+
+    <button class="btn btn-success btn-lg btn-block" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Chiqim saqlash</button>
+  </form>
+</aside>

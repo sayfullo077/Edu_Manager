@@ -1,0 +1,47 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Profil{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div><h1>Profil</h1></div>
+  <a class="btn btn-secondary" href="{% url 'accounts:settings' %}">{% include "partials/icon.html" with name="lock" class="sm" %} Sozlamalar</a>
+</div>
+
+<div class="card profile-head">
+  <span class="avatar t{{ user.pk|tone }}">{% if user.avatar %}<img src="{{ user.avatar.url }}" alt="">{% else %}{{ user.initials }}{% endif %}</span>
+  <div>
+    <h2>{{ user.full_name }}</h2>
+    <div class="meta">
+      {% for r in roles %}<span class="badge badge-accent" data-role="{{ r.role }}">{{ r.get_role_display }} · {{ r.branch.name }}</span>{% endfor %}
+      {% if user.is_superuser %}<span class="badge badge-info">Superadmin</span>{% endif %}
+      {% if teacher %}<span class="badge badge-muted num">{{ teacher.code }}</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid mt-20">
+  <div class="card">
+    <div class="card-title"><h3>Ma'lumotlar</h3></div>
+    <dl class="kv">
+      <dt>Familiya</dt><dd>{{ user.last_name }}</dd>
+      <dt>Ism</dt><dd>{{ user.first_name }}</dd>
+      <dt>Otasining ismi</dt><dd>{{ user.middle_name|default:"—" }}</dd>
+      <dt>Telefon (login)</dt><dd class="num">{{ user.phone_display }}</dd>
+      <dt>Oxirgi kirish</dt><dd class="num">{{ user.last_login|date:"d.m.Y H:i"|default:"—" }}</dd>
+      <dt>Tizimda</dt><dd class="num">{{ user.date_joined|date:"d.m.Y" }} dan</dd>
+    </dl>
+  </div>
+  <div class="card card-pad action-card{% if telegram %} signed{% endif %}">
+    <h3>{% include "partials/icon.html" with name="send" class="sm" %} Telegram</h3>
+    {% if telegram %}
+      <p class="muted">Bot ulangan{% if telegram.username %} (@{{ telegram.username }}){% endif %} · {{ telegram.linked_at|date:"d.m.Y" }}. Kirish kodlari botga keladi.</p>
+    {% else %}
+      <p class="muted">Bot ulanmagan. Ulansa, kirish kodlarini Telegram orqali bepul olasiz.</p>
+      <a class="btn btn-secondary btn-block" href="{% url 'accounts:settings' %}">Ulash yo'riqnomasi</a>
+    {% endif %}
+  </div>
+</div>
+<p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Ism, telefon va rollarni maktab administratori o'zgartiradi.</p>
+{% endblock %}

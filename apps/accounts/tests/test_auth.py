@@ -120,3 +120,21 @@ def test_section_placeholder_respects_role(client, teacher):
     client.force_login(teacher)
     assert client.get(reverse("core:section", args=["my-schedule"])).status_code == 200
     assert client.get(reverse("core:section", args=["cashbox"])).status_code == 404  # reception bo'limi
+
+
+def test_profile_and_settings_pages(client, teacher):
+    client.force_login(teacher)
+    assert "Aliyev Vali" in client.get(reverse("accounts:profile")).content.decode()
+    resp = client.post(reverse("accounts:settings"), {
+        "old_password": PASSWORD, "new_password1": "Yangi-parol-2026!", "new_password2": "Yangi-parol-2026!"})
+    assert resp.status_code == 302
+    teacher.refresh_from_db()
+    assert teacher.check_password("Yangi-parol-2026!")
+    assert client.get(reverse("core:home")).status_code == 200  # joriy sessiya saqlanadi
+
+
+def test_user_menu_in_topbar(client, teacher):
+    client.force_login(teacher)
+    page = client.get(reverse("core:home")).content.decode()
+    assert 'class="user-name">Aliyev Vali' in page
+    assert reverse("accounts:profile") in page and reverse("accounts:settings") in page

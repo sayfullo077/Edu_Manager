@@ -1,0 +1,15 @@
+{% load ui %}
+{% if page.paginator.num_pages > 1 %}
+  <nav class="pagination" aria-label="Sahifalar">
+    <span>{{ page.start_index }}–{{ page.end_index }} / {{ page.paginator.count }}</span>
+    <span class="pages">
+      {% if page.has_previous %}<a href="{% page_url querystring page.previous_page_number %}" aria-label="Oldingi">‹</a>{% endif %}
+      {% for n in page_range %}
+        {% if n == page.number %}<span class="cur">{{ n }}</span>
+        {% elif n == page.paginator.ELLIPSIS %}<span>…</span>
+        {% else %}<a href="{% page_url querystring n %}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if page.has_next %}<a href="{% page_url querystring page.next_page_number %}" aria-label="Keyingi">›</a>{% endif %}
+    </span>
+  </nav>
+{% endif %}

@@ -1,0 +1,103 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Yotoqxona — umumiy ko'rinish{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Yotoqxona — umumiy ko'rinish</h1>
+    <p class="sub">{{ request.branch.name }} · bandlik va hozir yashayotgan o'quvchilar</p>
+  </div>
+  <a class="btn btn-outline" href="{% url 'dorm:room_list' %}">{% include "partials/icon.html" with name="bed" class="sm" %} Xonalar ro'yxati</a>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami xonalar</span><span class="ico tone-info">{% include "partials/icon.html" with name="bed" class="sm" %}</span></div><div class="value">{{ o.rooms }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Jami o'rinlar</span><span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ o.capacity }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Band</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value text-success">{{ o.occupied }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Bo'sh</span><span class="ico tone-warning">{% include "partials/icon.html" with name="plus" class="sm" %}</span></div><div class="value text-warning">{{ o.free }} <span class="unit">ta</span></div></div>
+</div>
+
+<section class="card card-pad">
+  <div class="bar-label"><b>Umumiy bandlik</b><b>{{ o.percent }}%</b></div>
+  {% bar o.percent "success" %}
+  <div class="split small muted mt-12"><span>{{ o.occupied }} band</span><span>{{ o.free }} bo'sh</span><span>{{ o.capacity }} jami</span></div>
+</section>
+
+<section class="card mt-20">
+  <div class="card-title"><h3>{% include "partials/icon.html" with name="building" class="sm" %} Filiallar bo'yicha statistika</h3></div>
+  <div class="table-wrap">
+    <table class="table table-dense">
+      <thead><tr>
+        <th>Filial</th><th class="text-right">Xonalar</th><th class="text-right hide-sm">O'g'il</th><th class="text-right hide-sm">Qiz</th>
+        <th class="text-right hide-sm">Aralash</th><th class="text-right">Jami o'rin</th><th class="text-right">Band</th><th class="text-right">Bo'sh</th><th>Bandlik</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><b class="text-info">{{ request.branch.name }}</b></td>
+          <td class="text-right"><span class="badge badge-info">{{ o.rooms }}</span></td>
+          <td class="text-right hide-sm"><span class="badge badge-info">{{ o.male }}</span></td>
+          <td class="text-right hide-sm"><span class="badge badge-danger">{{ o.female }}</span></td>
+          <td class="text-right hide-sm"><span class="badge badge-muted">{{ o.mixed }}</span></td>
+          <td class="text-right num">{{ o.capacity }}</td>
+          <td class="text-right num text-success"><b>{{ o.occupied }}</b></td>
+          <td class="text-right num text-warning"><b>{{ o.free }}</b></td>
+          <td class="bandlik-cell">{% bar o.percent "success" %}<span class="num">{{ o.percent }}%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="section-intro" id="yashovchilar">
+  <div>
+    <h2>{% include "partials/icon.html" with name="users" %} Hozirda yashayotgan o'quvchilar</h2>
+    <p class="muted">Jami: {{ total }}</p>
+  </div>
+</div>
+
+<form class="card card-pad payments-filter" method="get" role="search">
+  <div class="resident-filter">
+    {{ form.q }}{{ form.room }}{{ form.gender }}{{ form.date_from }}{{ form.date_to }}
+    <div class="pf-actions">
+      <button class="btn btn-primary btn-icon" type="submit" title="Qidirish" aria-label="Qidirish">{% include "partials/icon.html" with name="search" class="sm" %}</button>
+      <a class="btn btn-excel btn-icon" href="{% url 'dorm:residents_export' %}?{{ querystring }}" title="Excelga yuklab olish" aria-label="Excel" download>{% include "partials/icon.html" with name="sheet" class="sm" %}</a>
+      <a class="btn btn-secondary btn-icon" href="{% url 'dorm:dashboard' %}" title="Tozalash" aria-label="Tozalash">{% include "partials/icon.html" with name="rotate" class="sm" %}</a>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  {% if residents %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th class="num-col">#</th><th>O'quvchi</th><th>Jinsi</th><th class="hide-sm hide-lg">Filial (o'quvchi)</th><th>Xona</th>
+          <th class="hide-sm hide-xl">Xona filiali</th><th class="hide-sm">Kirgan sana</th><th class="hide-sm">Izoh</th>
+        </tr></thead>
+        <tbody>
+          {% for s in residents %}
+            <tr>
+              <td class="num-col">{{ forloop.counter }}</td>
+              <td><a class="entity-name" href="{% url 'people:student_detail' s.student_id %}">{{ s.student.short_name }}</a><small class="muted block num">{{ s.student.code }}</small></td>
+              <td><span class="badge {% if s.student.gender == 'F' %}badge-danger{% else %}badge-info{% endif %}">{{ s.student.get_gender_display }}</span></td>
+              <td class="hide-sm hide-lg">{{ s.student.branch.name }}</td>
+              <td><b>{{ s.room.name }}</b></td>
+              <td class="hide-sm hide-xl">{{ s.room.branch.name }}</td>
+              <td class="hide-sm num">{{ s.checked_in|date:"d.m.Y" }}</td>
+              <td class="hide-sm muted">{{ s.note|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="load-more">
+      {% if shown < total %}<a class="btn btn-outline" href="?{{ more_query }}#yashovchilar">{% include "partials/icon.html" with name="chevron" class="sm" %} Yana yuklash</a>{% endif %}
+      <span class="muted small">{{ shown }} / {{ total }} ta ko'rsatildi</span>
+    </div>
+  {% else %}
+    <p class="empty-line">Hozir yotoqxonada yashayotgan o'quvchi yo'q (yoki filtrga mos emas).</p>
+  {% endif %}
+</div>
+{% endblock %}

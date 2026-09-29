@@ -16,6 +16,10 @@ urlpatterns = [
     path("robots.txt", robots_txt),
     path(settings.ADMIN_URL, admin.site.urls),
     path("", include("apps.accounts.urls")),
+    path("", include("apps.people.urls")),
+    path("", include("apps.contracts.urls")),
+    path("", include("apps.finance.urls")),
+    path("", include("apps.dorm.urls")),
     path("", include("apps.core.urls")),
 ]
 

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 
 {% block body_attrs %}data-role="{{ active_role.role|default:'teacher' }}"{% endblock %}
 
@@ -14,45 +15,64 @@
     </div>
 
     <nav class="nav">
-      {% for title, items in navigation %}
-        <div class="nav-group">
-          {% if title %}<div class="nav-title">{{ title }}</div>{% endif %}
-          {% for item in items %}
-            {% if item.slug %}
-              <a href="{% url 'core:section' item.slug %}" {% if active_slug == item.slug %}aria-current="page"{% endif %}>
-            {% else %}
-              <a href="{% url 'core:home' %}" {% if request.resolver_match.url_name == "home" %}aria-current="page"{% endif %}>
-            {% endif %}
-              {% include "partials/icon.html" with name=item.icon %}<span>{{ item.label }}</span>
-            </a>
-          {% endfor %}
-        </div>
-      {% empty %}
-        {% if user.is_superuser %}
-          <a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="shield" %}<span>Admin panel</span></a>
+      {% for group in navigation %}
+        {% if group.title %}
+          {# Yig'iladigan guruh: faol sahifa shu guruhda bo'lsa ochiq keladi #}
+          <details class="nav-group nav-collapsible" data-nav-group="{{ group.key }}" {% if group.active %}open data-active{% endif %}>
+            <summary class="nav-toggle{% if group.active %} has-active{% endif %}">
+              {% include "partials/icon.html" with name=group.icon %}<span>{{ group.title }}</span>
+              <svg class="icon sm caret" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </summary>
+            <div class="nav-sub">
+              {% for entry in group.items %}
+                <a href="{{ entry.url }}" {% if entry.active %}aria-current="page"{% endif %}>
+                  {% include "partials/icon.html" with name=entry.item.icon class="sm" %}<span>{{ entry.item.label }}</span>
+                </a>
+              {% endfor %}
+            </div>
+          </details>
+        {% else %}
+          <div class="nav-group">
+            {% for entry in group.items %}
+              <a href="{{ entry.url }}" {% if entry.active %}aria-current="page"{% endif %}>
+                {% include "partials/icon.html" with name=entry.item.icon %}<span>{{ entry.item.label }}</span>
+              </a>
+            {% endfor %}
+          </div>
         {% endif %}
       {% endfor %}
+      {% if is_superadmin %}
+        <details class="nav-group nav-collapsible" data-nav-group="superadmin" {% if request.resolver_match.url_name == "superadmin" or not active_role %}open data-active{% endif %}>
+          <summary class="nav-toggle{% if request.resolver_match.url_name == "superadmin" %} has-active{% endif %}">
+            {% include "partials/icon.html" with name="shield" %}<span>Superadmin</span>
+            <svg class="icon sm caret" aria-hidden="true"><use href="#i-chevron"/></svg>
+          </summary>
+          <div class="nav-sub">
+            <a href="{% url 'accounts:superadmin' %}" {% if request.resolver_match.url_name == "superadmin" %}aria-current="page"{% endif %}>
+              {% include "partials/icon.html" with name="switch" class="sm" %}<span>Panel almashtirish</span></a>
+            <a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="shield" class="sm" %}<span>Admin panel</span></a>
+          </div>
+        </details>
+      {% endif %}
     </nav>
 
-    <div class="sidebar-foot">
-      <div class="user-chip">
-        <span class="avatar">{% if user.avatar %}<img src="{{ user.avatar.url }}" alt="">{% else %}{{ user.initials }}{% endif %}</span>
-        <div class="who">
-          <div class="name" title="{{ user.full_name }}">{{ user.short_name }}</div>
-          <div class="phone">{{ user.phone_display }}</div>
-        </div>
-        <form method="post" action="{% url 'accounts:logout' %}">
-          {% csrf_token %}
-          <button class="btn btn-ghost btn-icon" type="submit" aria-label="Chiqish" title="Chiqish">
-            {% include "partials/icon.html" with name="logout" %}
-          </button>
-        </form>
-      </div>
-    </div>
   </aside>
   <div class="backdrop"></div>
 
   <div class="main">
+    {% if impersonator %}
+      <div class="su-banner danger" role="status">
+        {% include "partials/icon.html" with name="shield" class="sm" %}
+        <span>Siz <b>{{ user.full_name }}</b> qiyofasidasiz{% if active_role %} · {{ active_role.get_role_display }}{% endif %}. Barcha amallar audit jurnaliga <b>{{ impersonator.short_name }}</b> nomidan yoziladi.</span>
+        <form method="post" action="{% url 'accounts:superadmin_stop' %}">{% csrf_token %}<button class="btn btn-sm" type="submit">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Superadminga qaytish</button></form>
+      </div>
+    {% elif is_superadmin and active_role %}
+      <div class="su-banner" role="status">
+        {% include "partials/icon.html" with name="switch" class="sm" %}
+        <span>Superadmin ko'rinishi: <b>{{ active_role.get_role_display }}</b> paneli · {{ active_role.branch.name }}</span>
+        <form method="post" action="{% url 'accounts:superadmin_exit_role' %}">{% csrf_token %}<button class="btn btn-sm" type="submit">Panelni almashtirish</button></form>
+      </div>
+    {% endif %}
     <header class="topbar">
       <button class="btn btn-ghost btn-icon menu-btn" type="button" data-nav-toggle aria-label="Menyu">
         {% include "partials/icon.html" with name="menu" %}
@@ -64,37 +84,54 @@
       </button>
       <div class="spacer"></div>
 
-      {% if user_roles|length > 1 %}
-        <details class="dropdown">
-          <summary class="role-pill" aria-label="Rolni almashtirish">
-            <span class="role-dot"></span>
-            <span class="label-text">{{ active_role.get_role_display }}</span>
-            {% include "partials/icon.html" with name="chevron" class="sm" %}
-          </summary>
-          <div class="dropdown-menu">
-            <div class="head">Panelni almashtirish</div>
-            {% for r in user_roles %}
-              <form method="post" action="{% url 'accounts:switch_role' r.pk %}">
-                {% csrf_token %}
-                <button class="menu-item" type="submit" data-role="{{ r.role }}">
-                  <span class="role-dot"></span>
-                  <span>{{ r.get_role_display }}<small>{{ r.branch.name }}</small></span>
-                  {% if r.pk == active_role.pk %}<svg class="icon sm check-mark" aria-hidden="true"><use href="#i-check"/></svg>{% endif %}
-                </button>
-              </form>
-            {% endfor %}
-          </div>
-        </details>
-      {% elif active_role %}
-        <span class="role-pill"><span class="role-dot"></span><span class="label-text">{{ active_role.get_role_display }}</span></span>
-      {% endif %}
+      {% include "partials/role_switcher.html" %}
 
       <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Mavzuni almashtirish">
         {% include "partials/icon.html" with name="moon" %}
       </button>
+
+      <details class="dropdown user-menu">
+        <summary class="user-trigger" aria-label="Profil menyusi">
+          <span class="avatar t{{ user.pk|tone }}">{% if user.avatar %}<img src="{{ user.avatar.url }}" alt="">{% else %}{{ user.initials }}{% endif %}</span>
+          <span class="user-name">{{ user.full_name }}</span>
+          {% include "partials/icon.html" with name="chevron" class="sm" %}
+        </summary>
+        <div class="dropdown-menu user-dropdown">
+          <div class="user-head">
+            <b>{{ user.full_name }}</b>
+            <small>{% if active_role %}{{ active_role.branch.name }} · {% endif %}<span class="num">{{ user.phone_display }}</span></small>
+          </div>
+          <div class="menu-sep"></div>
+          <a class="menu-item" href="{% url 'accounts:profile' %}">{% include "partials/icon.html" with name="users" class="sm" %} Profil</a>
+          <a class="menu-item" href="{% url 'accounts:settings' %}">{% include "partials/icon.html" with name="lock" class="sm" %} Sozlamalar</a>
+          <div class="menu-sep"></div>
+          {% if impersonator %}
+            <form method="post" action="{% url 'accounts:superadmin_stop' %}">{% csrf_token %}
+              <button class="menu-item text-danger" type="submit">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Superadminga qaytish</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}
+              <button class="menu-item text-danger" type="submit">{% include "partials/icon.html" with name="power" class="sm" %} Chiqish</button>
+            </form>
+          {% endif %}
+        </div>
+      </details>
     </header>
 
     <main class="content">{% block content %}{% endblock %}</main>
   </div>
 </div>
+
+{# Umumiy tasdiqlash oynasi: <form data-confirm="Savol?" data-confirm-ok="Ha"> — app.js ochadi. #}
+<dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+  <form method="dialog">
+    <span class="ico">{% include "partials/icon.html" with name="alert" %}</span>
+    <h3 id="confirm-title">Ishonchingiz komilmi?</h3>
+    <p data-confirm-text></p>
+    <div class="actions">
+      <button class="btn btn-secondary" value="cancel" type="submit">Bekor qilish</button>
+      <button class="btn btn-danger" value="ok" type="submit" data-confirm-ok>Ha</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}

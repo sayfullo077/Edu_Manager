@@ -22,9 +22,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.postgres",
     "apps.common",
     "apps.core",
     "apps.accounts",
+    "apps.academics",
+    "apps.people",
+    "apps.contracts",
+    "apps.finance",
+    "apps.dorm",
 ]
 
 MIDDLEWARE = [
@@ -37,6 +43,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.accounts.middleware.ImpersonationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
@@ -94,6 +101,8 @@ AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "accounts:login"
+# Rolning bosh sahifasi (bo'lmasa umumiy bosh sahifa ko'rsatiladi).
+ROLE_DASHBOARDS = {"reception": "apps.finance.views.dashboard"}
 # SMS provayder ulanguncha asosiy usul — parol. SMS ulangach "code" ga o'zgartirish mumkin.
 LOGIN_DEFAULT_METHOD = env("LOGIN_DEFAULT_METHOD", default="password")
 
@@ -145,6 +154,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 500
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 
+# ---------- Shaxsiy ma'lumotlarni shifrlash (passport, JSHSHIR) ----------
+# Fernet kalitlari (vergul bilan, birinchisi — joriy). Yaratish:
+#   uv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Dev'da bo'sh bo'lsa SECRET_KEY'dan hosil qilinadi. KALITNI YO'QOTSANGIZ, MA'LUMOT QAYTMAYDI.
+FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=[])
+FIELD_INDEX_KEY = env("FIELD_INDEX_KEY", default="")
+
 # ---------- Proksi va IP ----------
 # Oldimizda nechta ishonchli proksi bor: 0 — to'g'ridan-to'g'ri, 1 — nginx, 2 — Cloudflare + nginx.
 TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", default=0)
@@ -158,6 +174,8 @@ RATE_LIMITS = {
     "otp_verify_ip": (30, 60 * 10),    # kod terish: bitta IP 10 daqiqada 30 urinish
     "password_ip": (20, 60 * 15),      # parol: bitta IP 15 daqiqada 20 xato
     "password_phone": (10, 60 * 15),   # bitta akkauntga (turli IP'lardan) 15 daqiqada 10 xato
+    "contract_code_ip": (20, 60 * 60),     # shartnoma SMS'i: bitta xodim IP'sidan soatiga 20 ta
+    "contract_code_phone": (3, 60 * 60),   # bitta ota-onaga soatiga 3 ta shartnoma SMS
 }
 
 # ---------- Admin ----------
@@ -178,6 +196,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Shaxsiy hujjatlar (shartnoma skanerlari): veb-server to'g'ridan-to'g'ri bermaydi.
+PRIVATE_MEDIA_ROOT = env.path("PRIVATE_MEDIA_ROOT", default=BASE_DIR / "private_media")
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
@@ -189,6 +209,15 @@ OTP_TTL_SECONDS = 180
 OTP_RESEND_SECONDS = 60
 OTP_MAX_ATTEMPTS = 5
 SMS_BACKEND = env("SMS_BACKEND", default="apps.accounts.infrastructure.sms.ConsoleSMSBackend")
+
+# ---------- Moliya ----------
+INVOICE_DUE_DAY = 10                 # har oyning shu sanasigacha to'lanadi
+INVOICE_PRORATION_GRACE_DAYS = 5     # oyning 1–5-kunlari kelgan o'quvchi to'liq oy to'laydi
+INVOICE_ROUNDING = 1000              # oy o'rtasidagi summa mingga (pastga) yaxlitlanadi: 933 333 → 933 000
+PAYMENT_BACKDATE_DAYS = 31            # karta/o'tkazma to'lovini necha kun oldingi sana bilan kiritish mumkin
+# "Xarajatlar va byudjet" sahifasi hozircha yopiq (ma'lumot faqat rahbariyat uchun) — Reception'ga ochilganda True
+BUDGET_PAGE_ENABLED = False
+TERMINAL_COMMISSION_PERCENT = env.float("TERMINAL_COMMISSION_PERCENT", default=0.2)
 
 # ---------- Telegram bot (@BotFather). Token bo'lmasa xabarlar terminalga chiqadi ----------
 TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")

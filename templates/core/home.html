@@ -12,16 +12,16 @@
 </div>
 
 <div class="grid grid-4">
-  {% for title, items in navigation %}
-    {% for item in items %}
-      {% if item.slug %}
-        <a class="card stat" href="{% url 'core:section' item.slug %}">
+  {% for group in navigation %}
+    {% for entry in group.items %}
+      {% if entry.item.slug %}
+        <a class="card stat" href="{{ entry.url }}">
           <div class="top">
-            <span class="label">{{ title|default:"Asosiy" }}</span>
-            <span class="ico">{% include "partials/icon.html" with name=item.icon class="sm" %}</span>
+            <span class="label">{{ group.title|default:"Asosiy" }}</span>
+            <span class="ico">{% include "partials/icon.html" with name=entry.item.icon class="sm" %}</span>
           </div>
-          <div class="value value-sm">{{ item.label }}</div>
-          <div class="foot">Tez orada</div>
+          <div class="value value-sm">{{ entry.item.label }}</div>
+          <div class="foot">{% if entry.item.url_name %}Ochish →{% else %}Tez orada{% endif %}</div>
         </a>
       {% endif %}
     {% endfor %}

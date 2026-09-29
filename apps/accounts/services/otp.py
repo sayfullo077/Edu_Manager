@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 SMS_MESSAGES = {
     OneTimeCode.Purpose.LOGIN: "{school}: tizimga kirish kodi {code}. Kodni hech kimga bermang.",
-    OneTimeCode.Purpose.CONTRACT: "{school}: shartnomani tasdiqlash kodi {code}.",
+    OneTimeCode.Purpose.CONTRACT: "{school}: {student} bilan {number} shartnoma (oyiga {fee} so'm). "
+                                  "Rozi bo'lsangiz, tasdiqlash kodi: {code}",
 }
 TELEGRAM_MESSAGES = {
     OneTimeCode.Purpose.LOGIN: "🔐 <b>{school}</b>\nTizimga kirish kodi: <code>{code}</code>\n\n"
@@ -42,12 +43,13 @@ class IssueResult:
     delivered: bool
 
 
-def _hash(phone: str, code: str) -> str:
-    return salted_hmac("otp", f"{phone}:{code}").hexdigest()
+def _hash(phone: str, code: str, subject: str = "") -> str:
+    # subject hash'ga kiradi: bitta shartnoma uchun berilgan kod boshqasini tasdiqlay olmaydi.
+    return salted_hmac("otp", f"{phone}:{subject}:{code}").hexdigest()
 
 
-def seconds_until_resend(phone: str, purpose: str) -> int:
-    last_created = (OneTimeCode.objects.filter(phone=phone, purpose=purpose)
+def seconds_until_resend(phone: str, purpose: str, subject: str = "") -> int:
+    last_created = (OneTimeCode.objects.filter(phone=phone, purpose=purpose, subject=subject)
                     .values_list("created_at", flat=True).first())
     if not last_created:
         return 0
@@ -56,9 +58,13 @@ def seconds_until_resend(phone: str, purpose: str) -> int:
 
 
 def issue_code(phone: str, purpose: str, school_name: str = "Maktab",
-               channel: str = OneTimeCode.Channel.SMS) -> IssueResult | None:
-    """Kod yaratib yuboradi. Telegram tanlangan-u, bot ulanmagan bo'lsa None (kod yaratilmaydi)."""
-    wait = seconds_until_resend(phone, purpose)
+               channel: str = OneTimeCode.Channel.SMS, *, subject: str = "",
+               extra: dict | None = None) -> IssueResult | None:
+    """Kod yaratib yuboradi. Telegram tanlangan-u, bot ulanmagan bo'lsa None (kod yaratilmaydi).
+
+    subject — kod qaysi obyekt uchun (masalan "contract:15"); extra — SMS matni uchun qo'shimcha qiymatlar.
+    """
+    wait = seconds_until_resend(phone, purpose, subject)
     if wait:
         raise OTPError(f"Yangi kodni {wait} soniyadan keyin so'rashingiz mumkin.")
 
@@ -72,19 +78,19 @@ def issue_code(phone: str, purpose: str, school_name: str = "Maktab",
     code = "".join(secrets.choice("0123456789") for _ in range(settings.OTP_LENGTH))
     with transaction.atomic():
         # Oldingi ishlatilmagan kodlar bekor qilinadi — bir vaqtda faqat bitta kod amal qiladi.
-        OneTimeCode.objects.filter(phone=phone, purpose=purpose, used_at__isnull=True).update(
+        OneTimeCode.objects.filter(phone=phone, purpose=purpose, subject=subject, used_at__isnull=True).update(
             expires_at=timezone.now())
         otp = OneTimeCode.objects.create(
-            phone=phone, purpose=purpose, channel=channel,
-            code_hash=_hash(phone, code),
+            phone=phone, purpose=purpose, channel=channel, subject=subject,
+            code_hash=_hash(phone, code, subject),
             expires_at=timezone.now() + timedelta(seconds=settings.OTP_TTL_SECONDS),
         )
 
-    delivered = _deliver(phone, chat_id, purpose, school_name, code)
+    delivered = _deliver(phone, chat_id, purpose, school_name, code, extra or {})
     return IssueResult(otp=otp, delivered=delivered)
 
 
-def _deliver(phone, chat_id, purpose, school_name, code) -> bool:
+def _deliver(phone, chat_id, purpose, school_name, code, extra) -> bool:
     if chat_id:
         text = TELEGRAM_MESSAGES[purpose].format(
             school=escape(school_name), code=code, minutes=settings.OTP_TTL_SECONDS // 60)
@@ -95,11 +101,11 @@ def _deliver(phone, chat_id, purpose, school_name, code) -> bool:
             logger.exception("Telegram orqali kod yuborilmadi (chat_id=%s)", chat_id)
             return False
         return True
-    send_sms(phone, SMS_MESSAGES[purpose].format(school=school_name, code=code))
+    send_sms(phone, SMS_MESSAGES[purpose].format(school=school_name, code=code, **extra))
     return True
 
 
-def verify_code(phone: str, purpose: str, code: str) -> None:
+def verify_code(phone: str, purpose: str, code: str, *, subject: str = "") -> None:
     """Kod to'g'ri bo'lsa hech narsa qaytarmaydi, aks holda OTPError."""
     # Diqqat: xato atomic() blokidan TASHQARIDA ko'tariladi — aks holda urinishlar
     # hisoblagichi rollback bo'lib, limit ishlamay qoladi (buni test ushlagan).
@@ -107,12 +113,12 @@ def verify_code(phone: str, purpose: str, code: str) -> None:
     with transaction.atomic():
         # select_for_update: bir vaqtdagi parallel so'rovlar urinishlar limitini chetlab o'tolmasin.
         otp = (OneTimeCode.objects.select_for_update()
-               .filter(phone=phone, purpose=purpose, used_at__isnull=True).first())
+               .filter(phone=phone, purpose=purpose, subject=subject, used_at__isnull=True).first())
         if otp is None or otp.expires_at < timezone.now():
             error = "Kod muddati tugagan. Yangi kod so'rang."
         elif otp.attempts >= settings.OTP_MAX_ATTEMPTS:
             error = "Urinishlar soni tugadi. Yangi kod so'rang."
-        elif not constant_time_compare(otp.code_hash, _hash(phone, code.strip())):
+        elif not constant_time_compare(otp.code_hash, _hash(phone, code.strip(), subject)):
             otp.attempts += 1
             otp.save(update_fields=["attempts"])
             left = settings.OTP_MAX_ATTEMPTS - otp.attempts

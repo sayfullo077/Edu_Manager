@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block title %}Kvitansiya {{ payment.number }}{% endblock %}
+{% block body_attrs %}class="print-page"{% endblock %}
+
+{% block body %}
+<div class="print-toolbar no-print">
+  <a class="btn btn-secondary" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  <button class="btn btn-primary" type="button" data-print>{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</button>
+</div>
+
+<article class="sheet receipt{% if payment.status == 'reversed' %} is-reversed{% endif %}">
+  <header class="sheet-head">
+    <div>
+      <div class="sheet-school">{{ school.name }}</div>
+      <div class="muted">{{ payment.branch.name }}{% if payment.branch.address %} · {{ payment.branch.address }}{% endif %}</div>
+    </div>
+    <div class="sheet-no">
+      <div class="muted">Kvitansiya</div>
+      <strong>№ {{ payment.number }}</strong>
+      <div class="muted num">{{ payment.paid_at|date:"d.m.Y H:i" }}</div>
+    </div>
+  </header>
+
+  {% if payment.status == "reversed" %}
+    <p class="receipt-stamp">STORNO — {{ payment.reversed_at|date:"d.m.Y H:i" }}{% if payment.reverse_reason %}: {{ payment.reverse_reason }}{% endif %}</p>
+  {% endif %}
+
+  <h1 class="sheet-title">To'lov qabul qilingani haqida kvitansiya</h1>
+
+  <table class="sheet-table">
+    <tr><td>O'quvchi</td><td><b>{{ payment.student.full_name }}</b> <span class="muted num">{{ payment.student.code }}</span>{% if payment.student.school_class %} · {{ payment.student.school_class.name }}{% endif %}</td></tr>
+    {% if payment.payer_name %}<tr><td>To'lovchi</td><td>{{ payment.payer_name }}</td></tr>{% endif %}
+    <tr><td>To'lov turi</td><td>{{ payment.get_category_display }}</td></tr>
+    <tr><td>To'lov usuli</td><td>{{ payment.get_method_display }}{% if payment.card_network %} ({{ payment.get_card_network_display }}){% endif %}</td></tr>
+    <tr><td>Summa</td><td><b class="receipt-sum num">{{ payment.amount|money }} so'm</b></td></tr>
+    {% if trx %}<tr><td>Tranzaksiya</td><td class="num">TRX-{{ trx.pk }}</td></tr>{% endif %}
+  </table>
+
+  {% with allocs=payment.allocations.all %}
+    {% if allocs %}
+      <h2>Qaysi oylar uchun</h2>
+      <table class="sheet-table">
+        {% for a in allocs %}<tr><td class="num">{{ a.invoice.month|date:"Y-m" }} · {{ a.invoice.month|date:"F" }}</td><td class="num text-right">{{ a.amount|money }} so'm</td></tr>{% endfor %}
+      </table>
+    {% endif %}
+  {% endwith %}
+
+  {% if payment.note %}<p><b>Izoh:</b> {{ payment.note }}</p>{% endif %}
+
+  <footer class="sheet-sign">
+    <div>Qabul qildi: <b>{{ payment.received_by.full_name }}</b><div class="sign-line"></div></div>
+    <div>To'lovchi imzosi<div class="sign-line"></div></div>
+  </footer>
+</article>
+{% endblock %}

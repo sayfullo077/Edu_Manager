@@ -1,0 +1,34 @@
+{% load ui %}
+{# Oylar bo'yicha o'zgarish: ko'rib chiqishda Line (invoice, new_amount, new_paid), saqlanganda WithdrawalLine. #}
+<section class="card mt-20">
+  <div class="card-title"><h3>{% include "partials/icon.html" with name="calendar" class="sm" %} Oylar bo'yicha</h3></div>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>Oy</th><th class="hide-sm">Turi</th><th class="text-right">Hisob</th><th class="text-right">Yangi hisob</th>
+          <th class="text-right">To'langan</th><th class="text-right">Yangi to'langan</th><th class="text-right">Holat</th>
+        </tr></thead>
+        <tbody>
+          {% for r in rows %}
+            <tr class="{% if r.new_amount == 0 %}row-muted{% endif %}">
+              <td class="nowrap num">{{ r.invoice.month|date:"Y-m" }} <span class="muted small">{{ r.invoice.month|date:"F" }}</span></td>
+              <td class="hide-sm">{{ r.invoice.get_category_display }}</td>
+              <td class="text-right num">{% if saved %}{{ r.old_amount|money }}{% else %}{{ r.invoice.amount|money }}{% endif %}</td>
+              <td class="text-right num"><b>{{ r.new_amount|money }}</b></td>
+              <td class="text-right num">{% if saved %}{{ r.old_paid|money }}{% else %}{{ r.invoice.paid|money }}{% endif %}</td>
+              <td class="text-right num text-success">{{ r.new_paid|money }}</td>
+              <td class="text-right">
+                {% if r.new_amount == 0 %}<span class="badge badge-muted">Bekor qilinadi</span>
+                {% elif saved and r.new_amount != r.old_amount or not saved and r.new_amount != r.invoice.amount %}<span class="badge badge-info">Kunlar bo'yicha</span>
+                {% else %}<span class="badge badge-success">O'zgarmaydi</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-line">To'lov grafigi yo'q — hisob-kitob qilinadigan summa yo'q.</p>
+  {% endif %}
+</section>

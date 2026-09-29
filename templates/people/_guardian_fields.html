@@ -1,0 +1,16 @@
+<div class="form-grid">
+  {% include "partials/field.html" with field=relation_form.relation class="span-all" %}
+  {% include "partials/field.html" with field=guardian_form.last_name %}
+  {% include "partials/field.html" with field=guardian_form.first_name %}
+  {% include "partials/field.html" with field=guardian_form.middle_name %}
+  {% include "partials/field.html" with field=guardian_form.phone %}
+  {% include "partials/field.html" with field=guardian_form.extra_phone %}
+  {% include "partials/field.html" with field=guardian_form.pinfl %}
+  {% include "partials/field.html" with field=guardian_form.passport %}
+  {% include "partials/field.html" with field=guardian_form.workplace %}
+  {% include "partials/field.html" with field=guardian_form.position %}
+  {% include "partials/field.html" with field=guardian_form.address class="span-2" %}
+</div>
+<p class="note">{% include "partials/icon.html" with name="shield" class="sm" %}
+  Passport va JSHSHIR shifrlangan holda saqlanadi. Ota-ona tizimda bo'lsa (JSHSHIR yoki telefon + familiya bo'yicha),
+  yangi yozuv yaratilmaydi — mavjudiga biriktiriladi.</p>

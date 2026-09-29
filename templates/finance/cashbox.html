@@ -1,0 +1,163 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Kassa{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Kassa</h1>
+    <p class="sub">{{ request.branch.name }} · {% if is_today %}bugungi{% else %}{{ o.day|date:"d.m.Y" }} kungi{% endif %} kirim va chiqim holati</p>
+  </div>
+  <div class="page-actions">
+    <span class="badge {% if o.stable %}badge-success{% else %}badge-danger{% endif %} badge-lg">{% if o.stable %}Kassa barqaror{% else %}Chiqim kirimdan ko'p{% endif %}</span>
+    <form method="get" class="inline-form">
+      <input class="input input-sm" type="date" name="date" value="{{ o.day|date:'Y-m-d' }}" max="{% now 'Y-m-d' %}" data-autosubmit aria-label="Kun">
+    </form>
+  </div>
+</div>
+
+{# ---------- Qoldiqlar ---------- #}
+<div class="grid grid-3 balance-row">
+  <div class="card balance tone-success">
+    <div><span class="label">Naqd kassa qoldig'i</span><b title="{{ o.cash_balance|money }} so'm">{{ o.cash_balance|short_money }}</b><small>{% if is_today %}Barcha vaqt uchun{% else %}{{ o.day|date:"d.m.Y" }} oxiriga{% endif %}</small></div>
+    <span class="ico">{% include "partials/icon.html" with name="wallet" %}</span>
+  </div>
+  <div class="card balance tone-info">
+    <div><span class="label">Bank hisobi qoldig'i</span><b title="{{ o.bank_balance|money }} so'm">{{ o.bank_balance|short_money }}</b><small>Bank + Terminal (net)</small></div>
+    <span class="ico">{% include "partials/icon.html" with name="bank" %}</span>
+  </div>
+  <div class="card balance tone-warning">
+    <div><span class="label">Umumiy mablag'</span><b title="{{ o.total_balance|money }} so'm">{{ o.total_balance|short_money }}</b><small>Naqd + Bank</small></div>
+    <span class="ico">{% include "partials/icon.html" with name="briefcase" %}</span>
+  </div>
+</div>
+
+{# ---------- Kassa sessiyasi ---------- #}
+<section class="card card-pad mt-20 session-card{% if session %} is-open{% endif %}">
+  <div class="split">
+    <div class="session-head">
+      <span class="ico">{% include "partials/icon.html" with name="lock" %}</span>
+      <div><span class="muted small">Kassa sessiyasi</span><h3>{% if session %}Ochiq{% else %}Yopiq{% endif %}</h3></div>
+    </div>
+    <span class="small {% if session %}text-success{% else %}muted{% endif %}">{% if session %}Kirim va chiqim qabul qilinmoqda{% else %}Naqd to'lov va naqd xarajat uchun kassani oching{% endif %}</span>
+  </div>
+  {% if session %}
+    <div class="mini-grid mini-4">
+      <div><span>Ochilish vaqti</span><b class="num">{{ session.opened_at|date:"d.m.Y H:i" }}</b></div>
+      <div><span>Oxirgi harakat</span><b class="num">{{ o.last_move|date:"d.m.Y H:i"|default:"—" }}</b></div>
+      <div><span>Boshlang'ich kassa</span><b class="num">{{ session.opening_balance|short_money }}</b></div>
+      <div><span>Yopishdagi kutilgan naqd</span><b class="num text-success">{{ o.cash_balance|short_money }}</b></div>
+    </div>
+    {% if is_today %}
+      <details class="close-fold mt-12">
+        <summary class="btn btn-secondary btn-sm">{% include "partials/icon.html" with name="lock" class="sm" %} Kassani sanab yopish</summary>
+        <form class="close-form" method="post" novalidate>
+          {% csrf_token %}
+          <div class="form-grid cols-3">
+            {% include "partials/field.html" with field=close_form.counted %}
+            {% include "partials/field.html" with field=close_form.note class="span-2" %}
+          </div>
+          <p class="muted small">Sanalgan summa tizimdagidan farq qilsa, tafovut alohida yozuv sifatida saqlanadi.</p>
+          <button class="btn btn-primary" type="submit">Sanab yopish</button>
+        </form>
+      </details>
+    {% endif %}
+  {% elif is_today %}
+    <form method="post" action="{% url 'finance:cashbox_open' %}" class="mt-12">
+      {% csrf_token %}
+      <p class="muted small">Boshlang'ich qoldiq tizimdan avtomatik olinadi: <b class="strong num">{{ o.cash_balance|money }}</b> so'm.</p>
+      <button class="btn btn-primary mt-12" type="submit">{% include "partials/icon.html" with name="wallet" class="sm" %} Kassani ochish</button>
+    </form>
+  {% endif %}
+</section>
+
+{# ---------- Bugungi kirim / sof balans / chiqim ---------- #}
+<div class="grid grid-3 mt-20 flow-row">
+  <div class="card card-pad flow-card">
+    <div class="split"><div><span class="label">Bugungi kirim</span><b class="flow-value text-success">+{{ o.today.income|short_money }}</b><small>{{ o.today.income_count }} ta tasdiqlangan tranzaksiya</small></div>
+      <span class="ico tone-success">{% include "partials/icon.html" with name="arrow-right" %}</span></div>
+    <dl class="flow-list">
+      <dt>Naqd kirim</dt><dd>{{ o.cash_today.income|short_money }}</dd>
+      <dt>Oylik kirim</dt><dd class="text-success">{{ o.month.income|short_money }}</dd>
+    </dl>
+  </div>
+  <div class="card card-pad flow-card">
+    <div class="split"><div><span class="label">Sof kassa balansi</span><b class="flow-value {% if o.net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ o.net|short_money }}</b><small>Bugungi kirim va chiqim farqi</small></div>
+      <span class="small {% if o.stable %}text-success{% else %}text-danger{% endif %}">{% if o.stable %}Barqaror{% else %}Manfiy{% endif %}</span></div>
+    <div class="ratio-box">
+      <div class="bar-label"><span>Chiqim / kirim nisbati</span><b>{{ o.ratio }}%</b></div>
+      {% bar o.ratio "danger" %}
+    </div>
+    <div class="mini-grid mini-2">
+      <div><span>Naqd qoldiq (bugun)</span><b class="num">{{ o.cash_today.net|short_money }}</b></div>
+      <div><span>Oylik sof</span><b class="num {% if o.month_net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ o.month_net|short_money }}</b></div>
+    </div>
+  </div>
+  <div class="card card-pad flow-card">
+    <div class="split"><div><span class="label">Bugungi chiqim</span><b class="flow-value text-danger">−{{ o.today.outcome|short_money }}</b><small>{{ o.today.outcome_count }} ta tasdiqlangan tranzaksiya</small></div>
+      <span class="ico tone-danger">{% include "partials/icon.html" with name="arrow-left" %}</span></div>
+    <dl class="flow-list">
+      <dt>Naqd chiqim</dt><dd>{{ o.cash_today.outcome|short_money }}</dd>
+      <dt>Oylik chiqim</dt><dd class="text-danger">{{ o.month.outcome|short_money }}</dd>
+    </dl>
+  </div>
+</div>
+
+{# ---------- To'lov turlari kesimida ---------- #}
+<section class="card card-pad mt-20">
+  <div class="split">
+    <div><h3>To'lov turlari kesimida</h3><p class="muted small">{% if is_today %}Bugungi{% else %}{{ o.day|date:"d.m.Y" }} kungi{% endif %} kassa harakati</p></div>
+    <a class="link small" href="#harakatlar">{% include "partials/icon.html" with name="arrows" class="sm" %} Tranzaksiyalar</a>
+  </div>
+  <div class="kind-grid">
+    {% for k in o.by_kind %}
+      <div class="kind-card">
+        <div class="split"><b>{{ k.label }}</b><span class="badge badge-muted">{{ k.code }}</span></div>
+        <dl class="flow-list">
+          <dt>Kirim</dt><dd class="text-success">+{{ k.income|short_money }}</dd>
+          <dt>Chiqim</dt><dd class="text-danger">−{{ k.outcome|short_money }}</dd>
+          <dt class="total">Sof</dt><dd class="total {% if k.net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ k.net|short_money }}</dd>
+        </dl>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ---------- Harakatlar va oxirgi smenalar ---------- #}
+<div class="detail-grid mt-20">
+  <section class="card" id="harakatlar">
+    <div class="card-title"><h3>{% if is_today %}Bugungi{% else %}{{ o.day|date:"d.m.Y" }} kungi{% endif %} harakatlar</h3></div>
+    {% if transactions %}
+      <div class="table-wrap">
+        <table class="table table-dense">
+          <thead><tr><th>Vaqt</th><th>Turi</th><th>Tavsif</th><th class="hide-sm">Hisob</th><th class="text-right">Summa</th></tr></thead>
+          <tbody>
+            {% for t in transactions %}
+              <tr>
+                <td class="num nowrap">{{ t.occurred_at|date:"H:i" }}</td>
+                <td><span class="badge {% if t.direction == 'in' %}badge-success{% elif t.kind == 'storno' %}badge-warning{% else %}badge-danger{% endif %}">{{ t.get_kind_display }}</span></td>
+                <td>{{ t.description|default:"—" }}</td>
+                <td class="hide-sm muted">{{ t.account.name }}</td>
+                <td class="text-right num nowrap {% if t.direction == 'in' %}text-success{% else %}text-danger{% endif %}">{% if t.direction == 'in' %}+{% else %}−{% endif %}{{ t.amount|money }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-line">Bu kunda harakat yo'q.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-title"><h3>Oxirgi yopilgan smenalar</h3></div>
+    <ul class="list-plain">
+      {% for s in last_sessions %}
+        <li><span class="num">{{ s.closed_at|date:"d.m H:i" }} · {{ s.closed_by.short_name }}</span>
+          {% if s.difference %}<b class="num {% if s.difference > 0 %}text-success{% else %}text-danger{% endif %}">{{ s.difference|money }}</b>{% else %}<span class="badge badge-success">Mos</span>{% endif %}</li>
+      {% empty %}<li class="muted">Hali yo'q</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

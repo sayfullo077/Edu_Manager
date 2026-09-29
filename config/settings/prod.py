@@ -1,13 +1,25 @@
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
-from .base import ALLOWED_HOSTS, DATABASES, INSECURE_DEV_KEY, REDIS_URL, SECRET_KEY, STORAGES, env
+from .base import (
+    ALLOWED_HOSTS,
+    DATABASES,
+    FIELD_ENCRYPTION_KEYS,
+    FIELD_INDEX_KEY,
+    INSECURE_DEV_KEY,
+    REDIS_URL,
+    SECRET_KEY,
+    STORAGES,
+    env,
+)
 
 # ---------- Majburiy tekshiruvlar: noto'g'ri sozlangan server ishga tushmasin ----------
 if SECRET_KEY == INSECURE_DEV_KEY or len(SECRET_KEY) < 50:
     raise ImproperlyConfigured("Production uchun kamida 50 belgili SECRET_KEY belgilang.")
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("ALLOWED_HOSTS ni belgilang (masalan: maktab.uz).")
+if not FIELD_ENCRYPTION_KEYS or not FIELD_INDEX_KEY:
+    raise ImproperlyConfigured("FIELD_ENCRYPTION_KEYS va FIELD_INDEX_KEY majburiy (shaxsiy ma'lumotlarni shifrlash).")
 if not REDIS_URL:
     raise ImproperlyConfigured("REDIS_URL majburiy: rate limit barcha workerlar orasida umumiy bo'lishi kerak.")
 

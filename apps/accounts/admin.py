@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import OneTimeCode, TelegramLink, User, UserRole
+from .models import ImpersonationLog, OneTimeCode, TelegramLink, User, UserRole
 
 
 class UserRoleInline(admin.TabularInline):
@@ -43,3 +43,19 @@ class OneTimeCodeAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(ImpersonationLog)
+class ImpersonationLogAdmin(admin.ModelAdmin):
+    list_display = ["started_at", "actor", "mode", "target", "role", "branch", "actions", "ended_at", "ip"]
+    list_filter = ["mode", "actor"]
+    readonly_fields = [f.name for f in ImpersonationLog._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # audit jurnali o'chirilmaydi

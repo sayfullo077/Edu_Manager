@@ -1,0 +1,84 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ room.name }} · Yotoqxona{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'dorm:room_list' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Xonalar</a>
+    <h1 class="mt-12">{{ room.name }}</h1>
+    <p class="sub">{% if room.floor %}{{ room.floor }} · {% endif %}{{ room.get_room_type_display }} · {{ room.get_gender_display }} ·
+      <span class="badge {% if room.status == 'active' %}badge-success{% elif room.status == 'repair' %}badge-warning{% else %}badge-muted{% endif %}">{{ room.get_status_display }}</span></p>
+  </div>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Sig'im</span><span class="ico tone-info">{% include "partials/icon.html" with name="bed" class="sm" %}</span></div><div class="value">{{ room.capacity }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Band</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value text-success">{{ room.occupied }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Bo'sh</span><span class="ico tone-warning">{% include "partials/icon.html" with name="plus" class="sm" %}</span></div><div class="value text-warning">{{ room.free }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Oylik to'lov</span><span class="ico">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value money-sm">{{ room.monthly_fee|money }} <span class="unit">so'm</span></div></div>
+</div>
+
+<div class="detail-grid">
+  <section class="card">
+    <div class="card-title"><h3 class="with-count">{% include "partials/icon.html" with name="users" class="sm" %} Hozir yashayotganlar <span class="badge badge-success">{{ room.occupied }} ta</span></h3></div>
+    {% if residents %}
+      <div class="table-wrap">
+        <table class="table table-dense">
+          <thead><tr><th>O'quvchi</th><th class="hide-sm">Sinf</th><th>Kirgan</th><th class="actions">Chiqarish</th></tr></thead>
+          <tbody>
+            {% for s in residents %}
+              <tr>
+                <td><a class="entity-name" href="{% url 'people:student_detail' s.student_id %}">{{ s.student.short_name }}</a><small class="muted block num">{{ s.student.code }}{% if s.note %} · {{ s.note }}{% endif %}</small></td>
+                <td class="hide-sm">{{ s.student.school_class.name|default:"—" }}</td>
+                <td class="num">{{ s.checked_in|date:"d.m.Y" }}</td>
+                <td class="actions">
+                  <form class="checkout-form" method="post" action="{% url 'dorm:stay_check_out' s.pk %}"
+                        data-confirm="{{ s.student.short_name }} yotoqxonadan chiqarilsinmi? Qayd tarixda saqlanadi." data-confirm-ok="Chiqarish">
+                    {% csrf_token %}
+                    <input class="input input-sm" type="date" name="on" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" aria-label="Chiqish sanasi" required>
+                    <button class="icon-btn tone-danger" type="submit" title="Chiqarish" aria-label="Chiqarish">{% include "partials/icon.html" with name="logout" class="sm" %}</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-line">Xonada hozir hech kim yashamaydi.</p>
+    {% endif %}
+  </section>
+
+  <div class="stack">
+    <form class="card card-pad" method="post" novalidate>
+      {% csrf_token %}
+      <h3 class="block-title">{% include "partials/icon.html" with name="plus" class="sm" %} Joylashtirish</h3>
+      {% if room.status != "active" %}
+        <p class="muted small mt-12">Xona holati «{{ room.get_status_display }}» — joylashtirib bo'lmaydi.</p>
+      {% elif room.occupied >= room.capacity %}
+        <p class="muted small mt-12">Bo'sh o'rin yo'q.</p>
+      {% else %}
+        {% include "partials/form_errors.html" %}
+        <div class="stack mt-12">
+          {% include "partials/field.html" with field=form.student %}
+          {% include "partials/field.html" with field=form.on %}
+          {% include "partials/field.html" with field=form.note %}
+        </div>
+        <p class="muted small mt-12">Ro'yxatda faqat shu filialdagi faol, yotoqxonada yashamaydigan va jinsi xonaga mos o'quvchilar.</p>
+        <button class="btn btn-primary btn-block mt-12" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Joylashtirish</button>
+      {% endif %}
+    </form>
+
+    <section class="card">
+      <div class="card-title"><h3>Chiqqanlar tarixi</h3></div>
+      <ul class="list-plain">
+        {% for s in history %}
+          <li><span>{{ s.student.short_name }}</span><span class="muted small num">{{ s.checked_in|date:"d.m.Y" }} — {{ s.checked_out|date:"d.m.Y" }}</span></li>
+        {% empty %}<li class="muted">Hali yo'q</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

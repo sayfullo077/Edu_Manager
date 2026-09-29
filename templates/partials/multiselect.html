@@ -1,0 +1,15 @@
+{% comment %}
+  Ko'p tanlovli filtr (belgilash katakchalari bilan dropdown). Parametr: field — MultipleChoiceField bound field.
+  Hech narsa tanlanmasa "Barchasi". JS (app.js [data-multiselect]) tanlanganlarni yozuvda yangilaydi.
+{% endcomment %}
+<div class="field">
+  <span class="label">{{ field.label }}</span>
+  <details class="dropdown multiselect" data-multiselect>
+    <summary class="input" data-multiselect-label data-empty="Barchasi">{% for value, label in field.field.choices %}{% if value in field.value %}{{ label }}{% if not forloop.last %}, {% endif %}{% endif %}{% empty %}{% endfor %}</summary>
+    <div class="dropdown-menu">
+      {% for value, label in field.field.choices %}
+        <label class="check-item"><input type="checkbox" name="{{ field.html_name }}" value="{{ value }}" {% if value in field.value %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </div>
+  </details>
+</div>

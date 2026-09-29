@@ -1,0 +1,234 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ student.short_name }} · O'quvchi kartasi{% endblock %}
+
+{% block content %}
+{# ---------- Sarlavha: avatar, asosiy ma'lumot, ko'rinish tanlagichi va amallar ---------- #}
+<div class="card student-hero">
+  <span class="avatar hero-avatar t{{ student.code|tone }}">{{ student.initials }}</span>
+  <div class="hero-info">
+    <h1>{{ student.full_name }}</h1>
+    <div class="meta">
+      <span class="badge {% if student.status == 'active' %}badge-success{% elif student.status == 'graduated' %}badge-info{% elif student.status == 'frozen' %}badge-warning{% elif student.status == 'expelled' %}badge-danger{% else %}badge-muted{% endif %}">{{ student.get_status_display }}</span>
+      <span class="muted small">{% if view == "payment" %}{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov{% else %}{% include "partials/icon.html" with name="book" class="sm" %} Akademik{% endif %}</span>
+    </div>
+    <ul class="hero-facts">
+      <li>{% include "partials/icon.html" with name="file" class="sm" %}<span class="num">{{ student.code }}</span></li>
+      <li>{% include "partials/icon.html" with name="building" class="sm" %}{{ student.branch.name }}</li>
+      {% if student.phone %}<li>{% include "partials/icon.html" with name="phone" class="sm" %}<span class="num">{{ student.phone|phone }}</span></li>{% endif %}
+      <li>{% include "partials/icon.html" with name="calendar" class="sm" %}<span class="num">{{ student.birth_date|date:"d.m.Y" }}</span></li>
+    </ul>
+  </div>
+  <div class="hero-actions">
+    {% if finance_allowed %}
+      <nav class="segmented view-tabs" aria-label="Ko'rinish">
+        <a href="?view=academic" {% if view == "academic" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="book" class="sm" %} Akademik <small>Profil</small></a>
+        <a href="?view=payment" {% if view == "payment" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov <small>Moliya</small></a>
+      </nav>
+    {% endif %}
+    <a class="btn btn-secondary" href="{% url 'people:student_update' student.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>
+    {% if finance_allowed %}
+      {% if withdrawal %}
+        <a class="btn btn-secondary" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="file" class="sm" %} Chiqish hisob-kitobi</a>
+      {% elif student.status == "active" or student.status == "frozen" %}
+        <a class="btn btn-warning-soft" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="logout" class="sm" %} O'qishdan chiqarish</a>
+      {% endif %}
+    {% endif %}
+    <form class="inline-form" method="post" action="{% url 'people:student_delete' student.pk %}"
+          data-confirm="{{ student.full_name }} o'chirilsinmi? To'lov grafigi yoki to'lovlari bo'lsa, o'chirilmaydi — avval o'qishdan chiqarish hisob-kitobi ochiladi."
+          data-confirm-ok="O'chirish">
+      {% csrf_token %}
+      <button class="btn btn-danger-soft" type="submit">{% include "partials/icon.html" with name="trash" class="sm" %} O'chirish</button>
+    </form>
+    <a class="btn btn-ghost btn-icon" href="{% url 'people:student_list' %}" title="O'quvchilar ro'yxatiga" aria-label="O'quvchilar ro'yxatiga">
+      {% include "partials/icon.html" with name="arrow-left" %}
+    </a>
+  </div>
+</div>
+
+{# ---------- Qisqa ko'rsatkichlar ---------- #}
+<div class="grid grid-4 mt-20 info-tiles">
+  <div class="card tile">
+    <span class="ico tone-info">{% include "partials/icon.html" with name="school" class="sm" %}</span>
+    <div><span class="label">Sinf</span><b>{{ student.school_class.name|default:"—" }}</b>
+      <small>{% if student.school_class %}<span class="badge badge-info">{{ student.school_class.academic_year.name }}</span>{% else %}{{ student.grade }}-sinf{% endif %}</small></div>
+  </div>
+  <div class="card tile">
+    <span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span>
+    <div><span class="label">Vasiylar</span><b>{{ guardians|length }} ta</b>
+      <small>{% with g=guardians.0 %}{% if g %}{{ g.guardian.short_name }}{% else %}Biriktirilmagan{% endif %}{% endwith %}</small></div>
+  </div>
+  <div class="card tile">
+    <span class="ico tone-warning">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span>
+    <div><span class="label">Guruhlar</span><b>{{ groups|length }} ta</b><small><span class="badge badge-warning">O'quv faoliyati</span></small></div>
+  </div>
+  <div class="card tile">
+    <span class="ico tone-success">{% include "partials/icon.html" with name="file" class="sm" %}</span>
+    <div><span class="label">Shartnomalar</span><b>{{ contracts|length }} ta</b>
+      <small>{% if contract %}{% include "contracts/_status.html" %}{% else %}<span class="badge badge-muted">Tuzilmagan</span>{% endif %}</small></div>
+  </div>
+</div>
+
+{% if withdrawal %}
+  <div class="alert alert-info mt-20">{% include "partials/icon.html" with name="info" class="sm" %}
+    <div>{{ withdrawal.left_on|date:"d.m.Y" }} da o'qishdan chiqqan ({{ withdrawal.get_reason_display }}).
+      {% if withdrawal.refund %}Qaytarilgan: <b class="num">{{ withdrawal.refund|money }}</b> so'm.{% endif %}
+      {% if withdrawal.debt %}Qolgan qarz: <b class="num">{{ withdrawal.debt|money }}</b> so'm.{% endif %}
+      {% if finance_allowed %}<a class="link" href="{% url 'finance:student_withdraw' student.pk %}">Hisob-kitob hujjati</a>{% endif %}</div>
+  </div>
+{% endif %}
+
+{% if view == "payment" %}
+  <div class="mt-20">{% include "finance/_student_finance.html" %}</div>
+  {% include "people/_student_contracts.html" %}
+{% else %}
+  <div class="section-intro">
+    <div>
+      <h2>{% include "partials/icon.html" with name="book" %} Akademik ma'lumotlar</h2>
+      <p class="muted">O'quvchi profili, hujjatlari, vasiylari va o'quv faoliyati.</p>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    {# ---------- Chap: profil, hujjatlar, manzil ---------- #}
+    <section class="card card-pad profile-card">
+      <h3 class="block-title tone-info">{% include "partials/icon.html" with name="users" class="sm" %} Shaxsiy ma'lumotlar</h3>
+      <dl class="info-grid">
+        <div><dt>Sinf</dt><dd>{% if student.school_class %}{{ student.school_class.name }} <span class="muted">· {{ student.grade }}-sinf</span>{% else %}{{ student.grade }}-sinf{% endif %}</dd></div>
+        <div><dt>Jinsi</dt><dd>{{ student.get_gender_display }}</dd></div>
+        <div><dt>Qabul sanasi</dt><dd class="num">{{ student.joined_at|date:"d.m.Y" }}</dd></div>
+        <div><dt>Tug'ilgan sana</dt><dd class="num">{{ student.birth_date|date:"d.m.Y" }}</dd></div>
+        <div><dt>Telefon</dt><dd class="num">{{ student.phone|phone }}</dd></div>
+        {% if student.left_at %}<div><dt>Ketgan sana</dt><dd class="num">{{ student.left_at|date:"d.m.Y" }}</dd></div>{% endif %}
+        <div class="span-all"><dt>Tizimlarda</dt><dd class="flag-row">
+          {% for field, on in student|flags %}
+            <form class="inline-form" method="post" action="{% url 'people:student_toggle_flag' student.pk field %}">
+              {% csrf_token %}<input type="hidden" name="back" value="detail">
+              <button class="flag{% if on %} on{% endif %}" type="submit" title="Belgini o'zgartirish">
+                {% if on %}{% include "partials/icon.html" with name="check" class="sm" %}{% endif %}
+                {% if field == "in_erp" %}ERP{% else %}E-maktab{% endif %}
+              </button>
+            </form>
+          {% endfor %}
+        </dd></div>
+      </dl>
+
+      <h3 class="block-title tone-danger">{% include "partials/icon.html" with name="shield" class="sm" %} Hujjatlar</h3>
+      <dl class="info-grid">
+        <div><dt>Tug'ilganlik guvohnomasi</dt><dd>{% if student.birth_certificate %}<code class="doc-code">{{ student.birth_certificate|mask }}</code>{% else %}—{% endif %}</dd></div>
+        <div><dt>Pasport (seriya / raqam)</dt><dd>{% if student.passport %}<code class="doc-code">{{ student.passport|mask }}</code>{% else %}—{% endif %}</dd></div>
+        {% if student.pinfl %}<div><dt>JSHSHIR</dt><dd><code class="doc-code">{{ student.pinfl|mask }}</code></dd></div>{% endif %}
+      </dl>
+
+      <h3 class="block-title tone-warning">{% include "partials/icon.html" with name="home" class="sm" %} Yashash manzili</h3>
+      {% if student.has_address %}
+        <dl class="kv-plain">
+          <dt>Viloyat</dt><dd>{{ student.region|default:"—" }}</dd>
+          <dt>Tuman / shahar</dt><dd>{{ student.district|default:"—" }}</dd>
+          <dt>Mahalla / qishloq</dt><dd>{{ student.mahalla|default:"—" }}</dd>
+          <dt>Ko'cha / uy</dt><dd>{{ student.address|default:"—" }}</dd>
+        </dl>
+      {% else %}
+        <p class="muted small">Manzil kiritilmagan. <a class="link" href="{% url 'people:student_update' student.pk %}">Kiritish</a></p>
+      {% endif %}
+
+      {% if student.notes %}
+        <h3 class="block-title">{% include "partials/icon.html" with name="message" class="sm" %} Izoh</h3>
+        <p class="small">{{ student.notes|linebreaksbr }}</p>
+      {% endif %}
+    </section>
+
+    {# ---------- O'ng: vasiylar, aka-ukalar, shartnoma ---------- #}
+    <div class="stack">
+      <section class="card">
+        <div class="card-title">
+          <h3 class="with-count">Vasiylar <span class="badge badge-info">{{ guardians|length }} ta</span></h3>
+          <a class="btn btn-ghost btn-sm" href="{% url 'people:student_add_guardian' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qo'shish</a>
+        </div>
+        <ul class="entity-list">
+          {% for link in guardians %}
+            <li>
+              <span class="avatar t{{ link.guardian.pk|tone }}">{{ link.guardian.initials }}</span>
+              <div class="grow">
+                <a class="entity-name" href="{% url 'people:guardian_detail' link.guardian.pk %}">{{ link.guardian.short_name }}</a>
+                {% if link.is_primary %}<span class="badge badge-success" title="Shartnoma va SMS shu odamga">Asosiy</span>{% endif %}
+                <small>{{ link.get_relation_display }} · <span class="num">{{ link.guardian.phone|phone }}</span></small>
+                {% if link.guardian.pinfl %}<small>JSHSHIR: <code class="doc-code">{{ link.guardian.pinfl|mask }}</code></small>{% endif %}
+              </div>
+              <span class="row-actions">
+                {% if not link.is_primary %}
+                  <form class="inline-form" method="post" action="{% url 'people:student_set_primary_guardian' student.pk link.pk %}">
+                    {% csrf_token %}<button class="flag" type="submit">Asosiy qilish</button>
+                  </form>
+                {% endif %}
+                <a class="icon-btn tone-warning" href="{% url 'people:student_update' student.pk %}#g{{ link.pk }}" title="Tahrirlash" aria-label="Tahrirlash">{% include "partials/icon.html" with name="pencil" class="sm" %}</a>
+              </span>
+            </li>
+          {% empty %}
+            <li class="muted">Hali biriktirilmagan</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="card">
+        <div class="card-title"><h3 class="with-count">Aka-uka / opa-singillar <span class="badge badge-info">{{ siblings|length }} ta</span></h3></div>
+        <ul class="entity-list">
+          {% for sib in siblings %}
+            <li>
+              <span class="avatar t{{ sib.code|tone }}">{{ sib.initials }}</span>
+              <div class="grow">
+                <a class="entity-name" href="{% url 'people:student_detail' sib.pk %}">{{ sib.full_name }}</a>
+                <small><span class="num">{{ sib.code }}</span>{% if sib.school_class %} · {{ sib.school_class.name }}{% endif %} ·
+                  <span class="{% if sib.status == 'active' %}text-success{% else %}muted{% endif %}">{{ sib.get_status_display }}</span></small>
+              </div>
+            </li>
+          {% empty %}
+            <li class="muted small">Shu maktabda umumiy vasiyli boshqa o'quvchi yo'q.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="card card-pad action-card{% if contract.status == 'signed' %} signed{% endif %}" id="shartnoma">
+        <h3>{% include "partials/icon.html" with name="file" class="sm" %} Shartnoma</h3>
+        {% if contract %}
+          <p class="muted"><span class="num">{{ contract.number }}</span> · {% include "contracts/_status.html" %}<br>
+            Oyiga <b class="strong num">{{ contract.monthly_fee|money }}</b> so'm</p>
+          <a class="btn btn-secondary btn-block" href="{% url 'contracts:contract_detail' contract.pk %}?next={{ request.get_full_path|add:'#shartnoma'|urlencode:'' }}">Ochish</a>
+        {% elif student.status == "active" %}
+          <p class="muted">Joriy o'quv yili uchun shartnoma tuzilmagan.</p>
+          <a class="btn btn-primary btn-block" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma tuzish</a>
+        {% else %}
+          <p class="muted">O'quvchi faol emas.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  {# ---------- O'quv faoliyati ---------- #}
+  <section class="card mt-20">
+    <div class="card-title">
+      <h3 class="with-count">{% include "partials/icon.html" with name="briefcase" class="sm" %} O'quv faoliyati</h3>
+      <span class="badge badge-warning">{{ groups|length }} ta guruh</span>
+    </div>
+    {% if groups %}
+      <div class="table-wrap">
+        <table class="table table-dense">
+          <thead><tr><th>Guruh</th><th>Fanlar va o'qituvchilar</th><th class="hide-sm">Turi</th></tr></thead>
+          <tbody>
+            {% for g in groups %}
+              <tr>
+                <td class="nowrap"><b>{{ g.code }}</b>{% if g.level %}<br><small class="muted">{{ g.level }}</small>{% endif %}</td>
+                <td>{% for gs in g.subjects.all %}<div>{{ gs.subject.name }} <span class="muted">· {{ gs.teacher.user.short_name|default:"—" }}</span></div>{% empty %}<span class="muted">—</span>{% endfor %}</td>
+                <td class="hide-sm">{{ g.get_kind_display }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-line">Guruhga biriktirilmagan.</p>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{% comment %}
+  Ro'yxat filtri: qidiruv + "Filtr qo'shish" menyusi + Qidirish/Excel/Tozalash + ochilgan filtr maydonlari.
+  Parametrlar: filter_menu (common.forms.filter_menu), active_filters, has_filters, q, placeholder,
+  reset_url, export_url (ixtiyoriy), menu_title (ixtiyoriy), show_labels (ixtiyoriy). JS: app.js [data-filter-form].
+{% endcomment %}
+<form class="card toolbar filter-bar" method="get" role="search" data-filter-form>
+  <div class="filter-main">
+    <label class="search-input">
+      <span class="sr-only">Qidirish</span>
+      {% include "partials/icon.html" with name="search" class="sm" %}
+      <input class="input" type="search" name="q" value="{{ q|default:'' }}" placeholder="{{ placeholder }}" autocomplete="off">
+    </label>
+    <div class="filter-tools">
+      <details class="dropdown filter-menu">
+        <summary class="btn btn-secondary{% if active_filters %} is-active{% endif %}">
+          {% include "partials/icon.html" with name="filter" class="sm" %} Filtr
+          {% if active_filters %}<span class="count-badge">{{ active_filters|length }}</span>{% endif %}
+        </summary>
+        <div class="dropdown-menu">
+          <div class="head">{{ menu_title|default:"Filtr qo'shish" }}</div>
+          {% for f in filter_menu %}
+            <button class="menu-item" type="button" data-filter-add="{{ f.name }}">
+              {% include "partials/icon.html" with name=f.icon class="sm" %} {{ f.label }}
+              {% if f.on %}<span class="check-mark">{% include "partials/icon.html" with name="check" class="sm" %}</span>{% endif %}
+            </button>
+          {% endfor %}
+        </div>
+      </details>
+      <button class="btn btn-primary" type="submit" data-filter-submit title="Qidirish">{% include "partials/icon.html" with name="search" class="sm" %}<span class="hide-sm">Qidirish</span></button>
+      {% if export_url %}
+        <a class="btn btn-excel" href="{{ export_url }}?{{ querystring }}" title="Excelga yuklab olish" download>
+          {% include "partials/icon.html" with name="sheet" class="sm" %}<span class="hide-sm">Excel</span>
+        </a>
+      {% endif %}
+      {% if has_filters %}
+        <a class="btn btn-secondary btn-icon" href="{{ reset_url }}" title="Filtrni tozalash" aria-label="Filtrni tozalash">{% include "partials/icon.html" with name="rotate" class="sm" %}</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="filter-fields">
+    {% for f in filter_menu %}
+      <div class="filter-field{% if not show_labels %} no-label{% endif %}" data-filter="{{ f.name }}" {% if not f.on %}hidden{% endif %}>
+        {% if show_labels %}<span class="filter-label">{{ f.label }}</span>{% endif %}
+        {% for field in f.fields %}{% if not forloop.first %}<span class="muted">—</span>{% endif %}{{ field }}{% endfor %}
+        <button class="filter-remove" type="button" data-filter-remove aria-label="{{ f.label }} filtrini olib tashlash">{% include "partials/icon.html" with name="x" class="sm" %}</button>
+      </div>
+    {% endfor %}
+  </div>
+</form>

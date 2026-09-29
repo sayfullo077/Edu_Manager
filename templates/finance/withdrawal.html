@@ -1,0 +1,89 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}O'qishdan chiqarish · {{ student.short_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'people:student_detail' student.pk %}?view=payment">{% include "partials/icon.html" with name="arrow-left" class="sm" %} {{ student.short_name }}</a>
+    <h1 class="mt-12">O'qishdan chiqarish</h1>
+    <p class="sub">{{ student.full_name }} · <span class="num">{{ student.code }}</span>{% if student.school_class %} · {{ student.school_class.name }}{% endif %}</p>
+  </div>
+</div>
+
+{% if record %}
+  {# ---------- Rasmiylashtirilgan hisob-kitob (faqat ko'rish) ---------- #}
+  <div class="card card-pad">
+    <div class="split">
+      <div>
+        <h3 class="block-title">{% include "partials/icon.html" with name="file" class="sm" %} Hisob-kitob <span class="num">{{ record.number }}</span></h3>
+        <p class="small muted mt-4">{{ record.created_at|date:"d.m.Y H:i" }} · {{ record.created_by.short_name }} · {{ record.get_reason_display }}{% if record.note %} — {{ record.note }}{% endif %}</p>
+      </div>
+      <span class="badge badge-muted">Yopilgan</span>
+    </div>
+    <div class="sum-grid sum-4">
+      <div><span>Chiqqan sana</span><b class="num">{{ record.left_on|date:"d.m.Y" }}</b>{% if record.dorm_left_on %}<small class="muted">yotoqxona: {{ record.dorm_left_on|date:"d.m.Y" }}</small>{% endif %}</div>
+      <div><span>Hisoblangan</span><b class="num">{{ record.charged|money }}</b></div>
+      <div><span>To'langan</span><b class="num text-success">{{ record.paid|money }}</b></div>
+      {% if record.debt %}
+        <div class="is-debt"><span>Qarz qoldi</span><b class="num">{{ record.debt|money }}</b><a class="small link" href="{% url 'finance:payment_create' student.pk %}">To'lov qabul qilish</a></div>
+      {% else %}
+        <div class="{% if record.refund %}is-refund{% endif %}"><span>Qaytarildi</span><b class="num">{{ record.refund|money }}</b>{% if record.refund %}<small class="muted">{{ record.get_refund_method_display }}</small>{% endif %}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% include "finance/_withdrawal_lines.html" with rows=lines saved=True %}
+{% else %}
+  <div class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %}
+    <div>Chiqish sanasigacha <b>o'qigan kunlar</b> hisoblanadi, keyingi oylar bekor qilinadi. Ortiqcha to'langan pul qaytariladi,
+      kam to'langan bo'lsa qarz grafikda qoladi. Shartnoma yopiladi, o'quvchi «Ketgan» holatiga o'tadi. <b>Bu amalni qaytarib bo'lmaydi.</b></div>
+  </div>
+
+  <form class="card card-pad mt-20 dates-bar" method="get">
+    {% include "partials/form_errors.html" with form=dates %}
+    <div class="form-grid cols-3">
+      {% include "partials/field.html" with field=dates.left_on %}
+      {% if plan.has_dorm or dates.dorm_left_on.value %}{% include "partials/field.html" with field=dates.dorm_left_on %}{% endif %}
+      <div class="field align-end"><button class="btn btn-secondary" type="submit">{% include "partials/icon.html" with name="rotate" class="sm" %} Qayta hisoblash</button></div>
+    </div>
+  </form>
+
+  {% if plan %}
+    <div class="card card-pad mt-20">
+      <h3 class="block-title">{% include "partials/icon.html" with name="wallet" class="sm" %} Hisob-kitob</h3>
+      <div class="sum-grid">
+        <div><span>Hisoblangan (o'qigan davr)</span><b class="num">{{ plan.charged|money }}</b></div>
+        <div><span>To'langan</span><b class="num text-success">{{ plan.paid|money }}</b></div>
+        {% if plan.debt %}
+          <div class="is-debt"><span>Qarz qoladi</span><b class="num">{{ plan.debt|money }}</b><small class="muted">grafikda qoladi, keyin to'lanadi</small></div>
+        {% else %}
+          <div class="{% if plan.refund %}is-refund{% endif %}"><span>Qaytariladi</span><b class="num">{{ plan.refund|money }}</b></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% include "finance/_withdrawal_lines.html" with rows=plan.lines saved=False %}
+
+    <form class="card card-pad mt-20" method="post" novalidate
+          data-confirm="{{ student.full_name }} {{ plan.left_on|date:'d.m.Y' }} sanasi bilan o'qishdan chiqarilsinmi?{% if plan.refund %} {{ plan.refund|money }} so'm qaytariladi.{% elif plan.debt %} {{ plan.debt|money }} so'm qarz qoladi.{% endif %} Amalni qaytarib bo'lmaydi."
+          data-confirm-ok="Rasmiylashtirish">
+      {% csrf_token %}
+      {% include "partials/form_errors.html" %}
+      {{ form.left_on }}{{ form.dorm_left_on }}{{ form.expected_refund }}
+      <div class="form-grid cols-3">
+        {% include "partials/field.html" with field=form.reason %}
+        {% include "partials/field.html" with field=form.note class="span-2" %}
+        {% if plan.refund %}
+          {% include "partials/field.html" with field=form.refund_method class="span-all" %}
+          {% if not cash_open %}<p class="note span-all">{% include "partials/icon.html" with name="alert" class="sm" %} Kassa sessiyasi yopiq — naqd qaytarish uchun avval <a class="link" href="{% url 'finance:cashbox' %}">kassani oching</a>.</p>{% endif %}
+        {% endif %}
+      </div>
+      <div class="form-footer">
+        <a class="btn btn-secondary" href="{% url 'people:student_detail' student.pk %}?view=payment">Bekor qilish</a>
+        <button class="btn btn-danger" type="submit">{% include "partials/icon.html" with name="logout" class="sm" %} O'qishdan chiqarish</button>
+      </div>
+    </form>
+  {% endif %}
+{% endif %}
+{% endblock %}

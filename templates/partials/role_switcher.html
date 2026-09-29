@@ -1,0 +1,32 @@
+{% load ui %}
+{# Rol almashtirgich: tepada joriy rol, ostida barcha rollar (superadmin uchun — virtual rollar). #}
+{% if is_superadmin or user_roles|length > 1 %}
+  <details class="dropdown role-switch">
+    <summary class="role-trigger" aria-label="Rolni almashtirish">
+      {% include "partials/icon.html" with name="shuffle" class="sm" %}
+      <span class="label-text">{% if active_role %}{{ active_role.get_role_display }}{% else %}Superadmin{% endif %}</span>
+      {% include "partials/icon.html" with name="chevron" class="sm" %}
+    </summary>
+    <div class="dropdown-menu role-menu">
+      {% with multi=user_roles|branch_count %}
+      {% for r in user_roles %}
+        <form method="post" action="{% if is_superadmin %}{% url 'accounts:superadmin_view_as' %}{% else %}{% url 'accounts:switch_role' r.pk %}{% endif %}">
+          {% csrf_token %}
+          {% if is_superadmin %}<input type="hidden" name="role" value="{{ r.role }}"><input type="hidden" name="branch" value="{{ r.branch_id }}">{% endif %}
+          <button class="role-item{% if active_role and r.key == active_role.key %} current{% endif %}" type="submit"
+                  {% if active_role and r.key == active_role.key %}aria-current="true"{% endif %}>
+            {% include "partials/icon.html" with name=r.role|role_icon %}
+            <span>{{ r.get_role_display }}{% if multi > 1 %}<small>{{ r.branch.name }}</small>{% endif %}</span>
+          </button>
+        </form>
+      {% endfor %}
+      {% endwith %}
+      {% if is_superadmin %}
+        <div class="menu-sep"></div>
+        <a class="role-item muted-item" href="{% url 'accounts:superadmin' %}">{% include "partials/icon.html" with name="users" %}<span>Xodim qiyofasida kirish…</span></a>
+      {% endif %}
+    </div>
+  </details>
+{% elif active_role %}
+  <span class="role-trigger static">{% include "partials/icon.html" with name=active_role.role|role_icon class="sm" %}<span class="label-text">{{ active_role.get_role_display }}</span></span>
+{% endif %}

@@ -1,0 +1,40 @@
+{% load ui %}
+<header class="drawer-head">
+  <div><h2>{% include "partials/icon.html" with name="book" class="sm" %} O'qish to'lovi</h2><p class="muted small">{{ student.short_name }} · {{ student.code }}</p></div>
+  <button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button>
+</header>
+<form class="drawer-body" method="post" action="{% url 'finance:payment_create' student.pk %}" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="drawer-stats three">
+    <div><span>Qarzdor oylar</span><b class="text-danger">{{ unpaid|length }}</b></div>
+    <div><span>Jami</span><b class="num">{{ total|money }}</b></div>
+    <div class="danger"><span>Qoldiq</span><b class="num">{{ remaining|money }}</b></div>
+  </div>
+
+  <div>
+    <div class="split"><b class="small">{% include "partials/icon.html" with name="calendar" class="sm" %} Qarzlar (eski oydan yangi oygacha)</b><span class="badge badge-info">{{ unpaid|length }} oy</span></div>
+    <ul class="debt-list">
+      {% for i in unpaid %}
+        <li><span class="badge badge-info num">{{ i.month|date:"Y-m" }}</span><span class="muted small grow">{% if i.status == "partial" %}qisman to'langan{% else %}{{ i.get_category_display }}{% endif %}</span><b class="num">{{ i.remaining|money }}</b></li>
+      {% empty %}<li class="muted">Kelgan oylar bo'yicha qarz yo'q.</li>{% endfor %}
+    </ul>
+    <p class="muted small">To'lov eng eski oydan boshlab avtomatik taqsimlanadi.</p>
+  </div>
+
+  {% include "partials/field.html" with field=form.amount %}
+  <p class="small muted">Jami qarz: <b class="text-danger num">{{ remaining|money }}</b></p>
+  {% include "partials/field.html" with field=form.method %}
+  {% include "partials/field.html" with field=form.card_network %}
+  {% include "partials/field.html" with field=form.paid_on %}
+  {% include "partials/field.html" with field=form.note %}
+  {% if not session %}
+    <p class="note">{% include "partials/icon.html" with name="alert" class="sm" %} Kassa yopiq — naqd to'lov uchun avval <a class="link" href="{% url 'finance:cashbox' %}">kassani oching</a>. Karta va o'tkazma qabul qilinaveradi.</p>
+  {% endif %}
+  <label class="check">{% include "partials/icon.html" with name="receipt" class="sm" %}<input type="checkbox" name="print" value="1" checked> Kvitansiya chop etish</label>
+
+  <div class="drawer-actions">
+    <button class="btn btn-success" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} To'lovni tasdiqlash</button>
+    <button class="btn btn-secondary" type="button" data-close-dialog>Bekor qilish</button>
+  </div>
+</form>
