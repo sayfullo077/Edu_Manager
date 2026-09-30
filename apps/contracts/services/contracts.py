@@ -61,12 +61,14 @@ def _validate(contract: Contract, year: AcademicYear) -> None:
         raise ValidationError(errors)
 
 
-def create_contract(*, student: Student, by, **data) -> Contract:
+def create_contract(*, student: Student, by, academic_year: AcademicYear | None = None, **data) -> Contract:
+    """Qoralama shartnoma. O'quv yili berilmasa — joriy; tugash sanasi berilmasa — o'quv yili oxiri."""
     if student.status != Student.Status.ACTIVE:
         raise ValidationError("Faqat faol o'quvchi bilan shartnoma tuziladi.")
-    year = AcademicYear.current()
+    year = academic_year or AcademicYear.current()
     if year is None:
         raise ValidationError("Joriy o'quv yili belgilanmagan (admin panel → O'quv yillari).")
+    data.setdefault("end_date", year.end_date)
     contract = Contract(
         branch=student.branch, academic_year=year, student=student, guardian=_primary_guardian(student),
         class_name=student.school_class.name if student.school_class else "", created_by=by,

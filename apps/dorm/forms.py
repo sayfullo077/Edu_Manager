@@ -1,6 +1,10 @@
+import dataclasses
+
 from django import forms
 
 from apps.common.forms import StyledFormMixin
+from apps.finance.forms import DebtorFilterForm, InvoiceFilterForm
+from apps.finance.models import Invoice
 from apps.people.forms import DateInput
 from apps.people.models import Gender
 
@@ -61,9 +65,12 @@ class RoomFilterForm(forms.Form):
 class CheckInForm(StyledFormMixin, forms.Form):
     student = forms.ModelChoiceField(label="O'quvchi", queryset=None, empty_label="— Tanlang —")
     on = forms.DateField(label="Kirgan sana", widget=DateInput())
+    monthly_fee = forms.DecimalField(label="Oylik to'lov (so'm)", min_value=0, max_digits=12, decimal_places=0,
+                                     help_text="Xona narxidan kam bo'lsa — farq chegirma bo'lib ko'rinadi")
     note = forms.CharField(label="Izoh", max_length=255, required=False)
 
     def __init__(self, *args, room, **kwargs):
+        kwargs.setdefault("initial", {}).setdefault("monthly_fee", int(room.monthly_fee))
         super().__init__(*args, **kwargs)
         self.fields["student"].queryset = selectors.check_in_candidates(room)
         self.fields["student"].label_from_instance = lambda s: (
@@ -72,3 +79,36 @@ class CheckInForm(StyledFormMixin, forms.Form):
 
 class CheckOutForm(forms.Form):
     on = forms.DateField(widget=DateInput())
+
+
+class DormInvoiceFilterForm(InvoiceFilterForm):
+    """Yotoqxona to'lov grafiklari filtri (asl tizimdagidek: o'quv yili, oy, holat)."""
+
+    FILTERS = [("academic_year", "O'quv yili", "calendar"), ("month", "Oy", "calendar"), ("state", "Holat", "check")]
+    STATES = [("", "Holat"), ("pending", "Kutilmoqda"), ("partial", "Qisman"), ("paid", "To'langan"),
+              ("overdue", "Muddati o'tgan")]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["state"].choices = self.STATES
+        self.fields["academic_year"].empty_label = "O'quv yili"
+        for name in ("school_class", "student_status"):
+            del self.fields[name]
+
+    def to_filters(self):
+        return dataclasses.replace(super().to_filters(), category=Invoice.Category.DORM)
+
+
+class DormDebtorFilterForm(DebtorFilterForm):
+    """Yotoqxona qarzdorlari filtri (asl tizimdagidek: o'quv yili, oy, holat)."""
+
+    FILTERS = [("academic_year", "O'quv yili", "calendar"), ("month", "Oy", "calendar"), ("state", "Holat", "check")]
+    STATES = [("", "Holat"), ("pending", "Kutilmoqda"), ("partial", "Qisman"), ("overdue", "Muddati o'tgan")]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["academic_year"].empty_label = "O'quv yili"
+        del self.fields["school_class"]
+
+    def to_filters(self):
+        return dataclasses.replace(super().to_filters(), category=Invoice.Category.DORM)

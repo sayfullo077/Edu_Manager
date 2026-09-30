@@ -131,14 +131,17 @@ def test_detail_academic_shows_siblings_and_masks_documents(staff_client, branch
     assert "Farg&#x27;ona viloyati" in html
 
 
-def test_detail_payment_view_only_for_reception(client, staff_client, branch, students):
+def test_detail_payment_view_read_only_for_head_teacher(client, staff_client, branch, students):
     a = students["a"]
     resp = staff_client.get(reverse("people:student_detail", args=[a.pk]), {"view": "payment"})
-    assert resp.context["view"] == "payment" and "charged" in resp.context
+    assert resp.context["view"] == "payment" and "charged" in resp.context and resp.context["finance_edit"]
     head = make_staff(branch, Role.HEAD_TEACHER, "998900000109")
     client.force_login(head)
     resp = client.get(reverse("people:student_detail", args=[a.pk]), {"view": "payment"})
-    assert resp.context["view"] == "academic" and "charged" not in resp.context
+    assert resp.context["view"] == "payment" and "charged" in resp.context and not resp.context["finance_edit"]
+    assert client.get(reverse("finance:student_invoices_export", args=[a.pk])).status_code == 200
+    teacher = make_staff(branch, Role.TEACHER, "998900000110")
+    client.force_login(teacher)
     assert client.get(reverse("finance:student_invoices_export", args=[a.pk])).status_code in (302, 403)
 
 
@@ -250,7 +253,7 @@ def test_guardian_detail_tabs_and_finance_visibility(client, staff_client, branc
     assert len(resp.context["links"]) == 2 and resp.context["is_primary"]
     client.force_login(make_staff(branch, Role.HEAD_TEACHER, "998900000112"))
     resp = client.get(url, {"tab": "payments"})
-    assert resp.context["tab"] == "children" and "total_debt" not in resp.context  # moliya faqat Reception
+    assert resp.context["tab"] == "payments" and "total_debt" in resp.context  # Zavuch — faqat ko'rish
 
 
 def test_guardian_export_hides_documents(staff_client, family):

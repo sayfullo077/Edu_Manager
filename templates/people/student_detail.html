@@ -28,7 +28,7 @@
       </nav>
     {% endif %}
     <a class="btn btn-secondary" href="{% url 'people:student_update' student.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>
-    {% if finance_allowed %}
+    {% if finance_edit %}
       {% if withdrawal %}
         <a class="btn btn-secondary" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="file" class="sm" %} Chiqish hisob-kitobi</a>
       {% elif student.status == "active" or student.status == "frozen" %}
@@ -75,7 +75,7 @@
     <div>{{ withdrawal.left_on|date:"d.m.Y" }} da o'qishdan chiqqan ({{ withdrawal.get_reason_display }}).
       {% if withdrawal.refund %}Qaytarilgan: <b class="num">{{ withdrawal.refund|money }}</b> so'm.{% endif %}
       {% if withdrawal.debt %}Qolgan qarz: <b class="num">{{ withdrawal.debt|money }}</b> so'm.{% endif %}
-      {% if finance_allowed %}<a class="link" href="{% url 'finance:student_withdraw' student.pk %}">Hisob-kitob hujjati</a>{% endif %}</div>
+      {% if finance_edit %}<a class="link" href="{% url 'finance:student_withdraw' student.pk %}">Hisob-kitob hujjati</a>{% endif %}</div>
   </div>
 {% endif %}
 

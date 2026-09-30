@@ -27,7 +27,7 @@
       {% endif %}{% endwith %}
     </div>
     <div class="page-actions">
-      {% if debt %}<a class="btn btn-primary btn-sm" href="{% url 'finance:payment_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} To'lov</a>{% endif %}
+      {% if debt and finance_edit %}<a class="btn btn-primary btn-sm" href="{% url 'finance:payment_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} To'lov</a>{% endif %}
       {% if schedule_form %}<button class="btn btn-outline btn-sm" type="button" data-open-dialog="schedule-dialog">{% include "partials/icon.html" with name="calendar" class="sm" %} Grafik</button>{% endif %}
       {% if invoices %}<a class="btn btn-excel btn-sm" href="{% url 'finance:student_invoices_export' student.pk %}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>{% endif %}
     </div>
@@ -71,7 +71,7 @@
             {% if p.status == "reversed" %}<span class="badge badge-warning" title="{{ p.reverse_reason }}">Storno</span>{% endif %}</span>
           <span class="row-actions">
           <a class="icon-btn tone-info" href="{% url 'finance:payment_receipt' p.pk %}?next={{ request.get_full_path|urlencode:'' }}" title="Kvitansiya" aria-label="Kvitansiya">{% include "partials/icon.html" with name="receipt" class="sm" %}</a>
-          {% if p.status == "ok" %}
+          {% if p.status == "ok" and finance_edit %}
             <details class="dropdown">
               <summary class="flag">Storno</summary>
               <form class="dropdown-menu storno-menu" method="post" action="{% url 'finance:payment_reverse' p.pk %}">

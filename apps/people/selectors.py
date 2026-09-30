@@ -14,7 +14,7 @@ from apps.contracts.models import Contract
 from apps.core.models import AcademicYear
 from apps.finance.models import Withdrawal
 
-from .models import Guardian, Student, StudentGuardian
+from .models import District, Guardian, Mahalla, Student, StudentGuardian, Teacher
 
 
 @dataclass(frozen=True)
@@ -105,12 +105,17 @@ def class_choices(branch, *, all_years: bool = False) -> QuerySet[SchoolClass]:
     return qs.order_by("-academic_year__start_date", "kind", "grade", "name")
 
 
-def address_suggestions(branch) -> dict[str, list[str]]:
-    """Tuman va mahalla uchun takliflar — shu filialda avval kiritilgan qiymatlar."""
-    students = Student.objects.filter(branch=branch)
-    return {field: list(students.exclude(**{field: ""}).order_by(field).values_list(field, flat=True)
-                        .distinct()[:300])
-            for field in ("district", "mahalla")}
+def district_map() -> dict[str, list[str]]:
+    """{viloyat: [tumanlar]} — manzil formasidagi bog'liq tanlagich uchun (sahifaga JSON sifatida)."""
+    result: dict[str, list[str]] = {}
+    for region, name in District.objects.filter(is_active=True).values_list("region", "name"):
+        result.setdefault(region, []).append(name)
+    return result
+
+
+def mahalla_names(region: str, district: str) -> list[str]:
+    return list(Mahalla.objects.filter(district__region=region, district__name__iexact=district)
+                .order_by("name").values_list("name", flat=True)[:1000])
 
 
 def student_edit(branch, pk: int) -> Student:
@@ -207,5 +212,45 @@ def find_existing_guardian(*, pinfl: str = "", phone: str = "", last_name: str =
         if found:
             return found
     if phone and last_name:
-        return Guardian.objects.filter(phone=phone, last_name__iexact=last_name).first()
+        found = Guardian.objects.filter(phone=phone, last_name__iexact=last_name).first()
+        # JSHSHIRi boshqa — telefon va familiya mos bo'lsa ham boshqa odam (masalan aka-uka bir raqamda)
+        if found and not (pinfl and found.pinfl and found.pinfl != pinfl):
+            return found
     return None
+
+
+# ---------- Zavuch bosh sahifasi (faqat ta'lim — moliya ma'lumoti yo'q) ----------
+
+def head_teacher_dashboard(branch) -> dict:
+    today = date.today()
+    month_start = today.replace(day=1)
+    year = AcademicYear.current()
+    active = Q(status=Student.Status.ACTIVE)
+    students = Student.objects.filter(branch=branch)
+    stats = students.aggregate(
+        active=Count("id", filter=active),
+        new=Count("id", filter=active & Q(joined_at__gte=month_start)),
+        male=Count("id", filter=active & Q(gender="M")),
+        female=Count("id", filter=active & Q(gender="F")),
+        no_class=Count("id", filter=active & Q(school_class__isnull=True)),
+        not_erp=Count("id", filter=active & Q(in_erp=False)),
+        not_emaktab=Count("id", filter=active & Q(in_emaktab=False)),
+    )
+    teachers = Teacher.objects.filter(branch=branch).exclude(status=Teacher.Status.DISMISSED).aggregate(
+        total=Count("id"), vacation=Count("id", filter=Q(status=Teacher.Status.VACATION)))
+    classes = list(SchoolClass.objects.filter(branch=branch, is_active=True, academic_year=year)
+                   .annotate(n=Count("students", filter=Q(students__status=Student.Status.ACTIVE)))
+                   .order_by("kind", "grade", "name")) if year else []
+    contracts = Contract.objects.filter(branch=branch, academic_year=year).aggregate(
+        draft=Count("id", filter=Q(status=Contract.Status.DRAFT)),
+        sent=Count("id", filter=Q(status=Contract.Status.SENT)),
+        signed=Count("id", filter=Q(status=Contract.Status.SIGNED)),
+    ) if year else {"draft": 0, "sent": 0, "signed": 0}
+    has_contract = Contract.objects.filter(student=OuterRef("pk"), academic_year=year).exclude(
+        status=Contract.Status.CANCELLED)
+    stats["no_contract"] = students.filter(active).exclude(Exists(has_contract)).count() if year else 0
+    return {
+        "stats": stats, "teachers": teachers, "classes": classes, "contracts": contracts, "year": year,
+        "recent": list(students.select_related("school_class").order_by("-joined_at", "-pk")[:8]),
+        "today": today,
+    }

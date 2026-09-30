@@ -10,6 +10,7 @@ from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subq
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
+from apps.core.models import AcademicYear
 from apps.people.models import Student, Teacher
 
 from .models import Account, BudgetLimit, CashSession, Expense, ExpenseCategory, Invoice, Payment, Transaction
@@ -493,6 +494,17 @@ class InvoiceFilters:
     month: date | None = None
     state: str = ""  # pending | partial | paid | overdue | waived | cancelled
     student_status: str = ""
+    category: str = Invoice.Category.TUITION
+
+
+def _academic_year_q(f: InvoiceFilters, prefix: str = "") -> Q:
+    """O'qish — shartnomaning o'quv yili; yotoqxonada shartnoma yo'q — o'quv yili oylari oralig'i."""
+    if f.category == Invoice.Category.TUITION:
+        return Q(**{f"{prefix}contract__academic_year_id": f.academic_year})
+    year = AcademicYear.objects.filter(pk=f.academic_year).first()
+    if not year:
+        return Q()
+    return Q(**{f"{prefix}month__gte": year.start_date.replace(day=1), f"{prefix}month__lte": year.end_date})
 
 
 def invoices_list(branch, f: InvoiceFilters):
@@ -501,8 +513,8 @@ def invoices_list(branch, f: InvoiceFilters):
     Bekor qilingan oylar faqat "Bekor qilingan" holati tanlanganda ko'rinadi (statistikaga aralashmasin).
     """
     today = timezone.localdate()
-    qs = (Invoice.objects.filter(branch=branch, category=Invoice.Category.TUITION)
-          .select_related("student__school_class", "contract"))
+    qs = (Invoice.objects.filter(branch=branch, category=f.category)
+          .select_related("student__school_class", "contract", "dorm_stay__room"))
     if f.state == "cancelled":
         qs = qs.filter(status=Invoice.Status.CANCELLED)
     else:
@@ -510,7 +522,7 @@ def invoices_list(branch, f: InvoiceFilters):
     if f.school_class:
         qs = qs.filter(student__school_class_id=f.school_class)
     if f.academic_year:
-        qs = qs.filter(contract__academic_year_id=f.academic_year)
+        qs = qs.filter(_academic_year_q(f))
     if f.month:
         qs = qs.filter(month=f.month.replace(day=1))
     if f.student_status:
@@ -541,17 +553,19 @@ def invoices_stats(qs) -> dict:
 # ---------- Qarzdorlar ----------
 
 def debtors(branch, f: InvoiceFilters):
-    """Qarzdor o'quvchilar (har biri bitta qator). Faqat kelgan oylar (joriy oygacha) — oldindan yaratilgan
-    kelajak oylar qarz emas. Tartib: qoldiq kamayishi bo'yicha."""
+    """Qarzdor o'quvchilar (har biri bitta qator) — `f.category` bo'yicha (o'qish yoki yotoqxona).
+    Faqat kelgan oylar (joriy oygacha) — oldindan yaratilgan kelajak oylar qarz emas.
+    Tartib: qoldiq kamayishi bo'yicha."""
     today = timezone.localdate()
-    inv = (Q(invoices__category=Invoice.Category.TUITION) & ~Q(invoices__status=Invoice.Status.CANCELLED)
+    inv = (Q(invoices__category=f.category) & ~Q(invoices__status=Invoice.Status.CANCELLED)
            & Q(invoices__month__lte=today.replace(day=1)))
     if f.academic_year:
-        inv &= Q(invoices__contract__academic_year_id=f.academic_year)
+        inv &= _academic_year_q(f, "invoices__")
     if f.month:
         inv &= Q(invoices__month=f.month.replace(day=1))
     unpaid = inv & Q(invoices__paid__lt=F("invoices__amount"))
-    last_payment = Payment.objects.filter(student=OuterRef("pk"), status=Payment.Status.OK).order_by("-paid_at")
+    last_payment = (Payment.objects.filter(student=OuterRef("pk"), category=f.category, status=Payment.Status.OK)
+                    .order_by("-paid_at"))
     qs = (Student.objects.filter(branch=branch).select_related("school_class")
           .annotate(total=Coalesce(Sum("invoices__amount", filter=inv), ZERO, output_field=DecimalField()),
                     paid_sum=Coalesce(Sum("invoices__paid", filter=inv), ZERO, output_field=DecimalField()),
@@ -582,20 +596,24 @@ def debtors_stats(branch, f: InvoiceFilters, debtors_qs) -> dict:
     """Kartalar: shu filtr bo'yicha kelgan oylar grafiklari yig'indisi + qarzdor o'quvchilar soni."""
     today = timezone.localdate()
     qs = invoices_list(branch, InvoiceFilters(school_class=f.school_class, academic_year=f.academic_year,
-                                              month=f.month, student_status=f.student_status, q=f.q))
+                                              month=f.month, student_status=f.student_status, q=f.q,
+                                              category=f.category))
     s = invoices_stats(qs.filter(month__lte=today.replace(day=1)))
     s["students"] = debtors_qs.count()
     return s
 
 
-def student_debt_card(student) -> dict:
+def student_debt_card(student, category=Invoice.Category.TUITION) -> dict:
     """Qarzdorlar yon paneli (ma'lumot / to'lov): kelgan oylar bo'yicha qisqa xulosa."""
     current = timezone.localdate().replace(day=1)
-    invoices = list(student.invoices.filter(category=Invoice.Category.TUITION, month__lte=current)
-                    .exclude(status=Invoice.Status.CANCELLED).select_related("contract").order_by("month"))
+    invoices = list(student.invoices.filter(category=category, month__lte=current)
+                    .exclude(status=Invoice.Status.CANCELLED).select_related("contract", "dorm_stay__room")
+                    .order_by("month"))
     unpaid = [i for i in invoices if i.remaining > 0]
+    last_payment = (student.payments.filter(category=category, status=Payment.Status.OK)
+                    .order_by("-paid_at").first())
     return {
-        "invoices": invoices, "unpaid": unpaid,
+        "invoices": invoices, "unpaid": unpaid, "last_payment": last_payment,
         "total": sum((i.amount for i in invoices), ZERO), "discount": sum((i.discount for i in invoices), ZERO),
         "paid": sum((i.paid for i in invoices), ZERO), "remaining": sum((i.remaining for i in invoices), ZERO),
     }

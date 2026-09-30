@@ -3,28 +3,46 @@ from datetime import date
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.domain.phone import format_phone
 from apps.accounts.models import Role
 from apps.accounts.permissions import role_required
 from apps.common import excel
+from apps.common.charts import donut, dual_line_chart
 from apps.common.forms import apply_errors, filter_menu
 from apps.contracts import selectors as contract_selectors
+from apps.contracts.forms import AdmissionContractForm
+from apps.core.models import AcademicYear
 from apps.finance import selectors as finance_selectors
 from apps.finance.forms import ScheduleForm
 
 from . import selectors
-from .forms import GuardianFilterForm, GuardianForm, RelationForm, StudentFilterForm, StudentForm
+from .forms import (
+    AdmissionForm,
+    AdmissionGuardianForm,
+    GuardianFilterForm,
+    GuardianForm,
+    RelationForm,
+    StudentFilterForm,
+    StudentForm,
+)
 from .models import Guardian, Student, StudentGuardian
 from .services import admission
 from .services import students as student_service
 
 STAFF_ROLES = (Role.HEAD_TEACHER, Role.RECEPTION)
 PAGE_SIZE = 25
+
+
+def _address_ctx(form) -> dict:
+    """Manzil tanlagichlari uchun: {viloyat: [tumanlar]} va tanlangan tumandagi mahallalar."""
+    region = form["region"].value() or ""
+    district = form["district"].value() or ""
+    return {"district_map": selectors.district_map(), "mahallas": selectors.mahalla_names(region, district)}
 
 
 def _student_filter(request):
@@ -49,7 +67,7 @@ def student_list(request):
         "stats": selectors.student_stats(request.branch),
         "querystring": params.urlencode(),
         "has_filters": bool(params.get("q") or active - {"status"} or params["status"] != Student.Status.ACTIVE),
-        "show_finance": request.active_role.role == Role.RECEPTION,
+        "show_finance": True,  # to'lovlarni ko'rish — Reception va Zavuch (o'zgartirish faqat Reception)
     })
 
 
@@ -59,6 +77,42 @@ def student_export(request):
     _, _, qs = _student_filter(request)
     content = excel.build_workbook("O'quvchilar", student_service.EXPORT_HEADERS, student_service.export_rows(qs))
     return excel.xlsx_response(f"oquvchilar-{date.today():%Y-%m-%d}.xlsx", content)
+
+
+@role_required(Role.HEAD_TEACHER)
+def head_dashboard(request):
+    """Zavuch bosh sahifasi — Reception dashboardi uslubida, lekin faqat ta'lim ko'rsatkichlari (moliya yo'q)."""
+    ctx = selectors.head_teacher_dashboard(request.branch)
+    s = ctx["stats"]
+    ctx["gender_donut"] = donut([("O'g'il bolalar", s["male"], "var(--c-blue)"),
+                                 ("Qizlar", s["female"], "var(--c-pink)")])
+    ctx["trend"] = finance_selectors.student_trend(request.branch)
+    ctx["trend_chart"] = dual_line_chart(ctx["trend"], "total", "left")
+    top = max((c.n for c in ctx["classes"]), default=0) or 1
+    ctx["class_rows"] = [{"c": c, "percent": round(c.n * 100 / top)} for c in ctx["classes"]]
+    ctx["avg_class"] = round(sum(c.n for c in ctx["classes"]) / len(ctx["classes"])) if ctx["classes"] else 0
+    return render(request, "people/dashboard.html", ctx)
+
+
+PRINT_LIMIT = 2000
+
+
+@role_required(*STAFF_ROLES)
+def student_print(request):
+    """"Ro'yxat": joriy filtr bo'yicha o'quvchilar — chop etish uchun (A4, sinf bo'yicha guruhlangan)."""
+    filter_form, _, qs = _student_filter(request)
+    rows = list(qs.order_by("school_class__name", "last_name", "first_name")[:PRINT_LIMIT])
+    groups: dict[str, list[Student]] = {}
+    for s in rows:
+        groups.setdefault(s.school_class.name if s.school_class else "Sinfsiz", []).append(s)
+    f = filter_form.cleaned_data if filter_form.is_valid() else {}
+    labels = [str(v) for v in (f.get("school_class"), f.get("academic_year")) if v]
+    if f.get("status"):
+        labels.append(Student.Status(f["status"]).label)
+    return render(request, "people/student_print.html", {
+        "groups": groups, "total": len(rows), "truncated": len(rows) == PRINT_LIMIT,
+        "filter_labels": labels, "today": date.today(), "back_url": f"{reverse('people:student_list')}?"
+                                                                    f"{request.GET.urlencode()}"})
 
 
 @role_required(*STAFF_ROLES)
@@ -88,47 +142,82 @@ def student_detail(request, pk):
         student = selectors.student_detail(request.branch, pk)
     except Student.DoesNotExist as e:
         raise Http404 from e
-    finance_allowed = request.active_role.role == Role.RECEPTION  # moliya faqat Reception'ga
+    # To'lov bo'limini Reception va Zavuch ko'radi; to'lov, storno, grafik, o'qishdan chiqarish — faqat Reception
+    finance_allowed = request.active_role.role in STAFF_ROLES
+    finance_edit = request.active_role.role == Role.RECEPTION
     view = "payment" if finance_allowed and request.GET.get("view") == "payment" else "academic"
     contracts = list(selectors.student_contracts(student))
     ctx = {
-        "student": student, "view": view, "finance_allowed": finance_allowed,
+        "student": student, "view": view, "finance_allowed": finance_allowed, "finance_edit": finance_edit,
         "withdrawal": getattr(student, "withdrawal", None),
         "contract": contract_selectors.active_contract_for(student), "contracts": contracts,
         "guardians": list(student.guardian_links.all()), "groups": list(student.groups.all()),
     }
     if view == "payment":
         ctx.update(finance_selectors.student_finance(student))
-        ctx["schedule_form"] = ScheduleForm.for_contract(ctx["schedule_contract"], ctx["missing_months"])
+        if finance_edit:
+            ctx["schedule_form"] = ScheduleForm.for_contract(ctx["schedule_contract"], ctx["missing_months"])
     else:
         ctx["siblings"] = list(selectors.student_siblings(student))
     return render(request, "people/student_detail.html", ctx)
 
 
+GUARDIAN_SLOTS = [("father", "Ota", StudentGuardian.Relation.FATHER),
+                  ("mother", "Ona", StudentGuardian.Relation.MOTHER),
+                  ("carrier", "Olib keluvchi (asosiy vasiy)", None)]
+
+
 @role_required(*STAFF_ROLES)
 def student_create(request):
-    """Qabul: o'quvchi va ota-ona bitta formada, bitta tranzaksiyada."""
-    is_post = request.method == "POST"
-    student_form = StudentForm(request.POST if is_post else None, branch=request.branch, prefix="s",
-                               initial={"joined_at": date.today(), "status": Student.Status.ACTIVE})
-    guardian_form = GuardianForm(request.POST if is_post else None, prefix="g")
-    relation_form = RelationForm(request.POST if is_post else None, prefix="r")
-    forms_ok = is_post and all(f.is_valid() for f in (student_form, guardian_form, relation_form))
-    if forms_ok:
-        try:
-            result = admission.admit_student(
-                branch=request.branch, by=request.user, student_data=student_form.cleaned_data,
-                guardian_data=guardian_form.cleaned_data, relation=relation_form.cleaned_data["relation"])
-        except ValidationError as e:
-            apply_errors([student_form, guardian_form], e)
-        else:
-            note = " Ota-ona tizimda bor edi — mavjud yozuvga biriktirildi." if result.guardian_existed else ""
-            messages.success(request, f"{result.student.short_name} qabul qilindi ({result.student.code}).{note} "
-                                      "Endi shartnoma tuzing.")
-            return redirect("contracts:contract_create", student_pk=result.student.pk)
+    """Qabul — bitta forma (asl tizimdagidek): o'quvchi, hujjat, vasiylar (Ota / Ona / Olib keluvchi),
+    tarif va chegirma, shartnoma vasiysi. Saqlanganda o'quvchi + vasiylar + shartnoma qoralamasi bitta
+    tranzaksiyada yaratiladi va SMS tasdiqlash uchun shartnoma sahifasiga o'tiladi."""
+    data = request.POST if request.method == "POST" else None
+    today = date.today()
+    year = AcademicYear.current()
+    form = StudentForm(data, branch=request.branch, prefix="s",
+                       initial={"joined_at": today, "status": Student.Status.ACTIVE})
+    form.fields["status"].required = False  # yangi o'quvchi doim faol — maydon ko'rsatilmaydi
+    contract_form = AdmissionContractForm(data, prefix="c", initial={
+        "start_date": max(today, year.start_date) if year else today, "discount_percent": 0})
+    meta_form = AdmissionForm(data, prefix="a", initial={"signer": "father"})
+    slots = []
+    for key, label, relation in GUARDIAN_SLOTS:
+        enabled = (data.get(f"{key}-enabled") == "1") if data is not None else key != "carrier"
+        # O'chirilgan vasiy formasi bog'lanmaydi — uning maydonlari tekshirilmaydi va saqlanmaydi
+        slots.append({"key": key, "label": label, "relation": relation, "enabled": enabled,
+                      "form": AdmissionGuardianForm(data if enabled else None, prefix=key)})
+
+    if data is not None:
+        enabled = [slot for slot in slots if slot["enabled"]]
+        valid = all([form.is_valid(), contract_form.is_valid(), meta_form.is_valid(),
+                     *(slot["form"].is_valid() for slot in enabled)])
+        if valid:
+            student_data = {**form.cleaned_data, "status": Student.Status.ACTIVE}
+            chosen_year = form.cleaned_data.get("academic_year") or year
+            carrier_relation = meta_form.cleaned_data["carrier_relation"] or StudentGuardian.Relation.OTHER
+            entries = [admission.GuardianEntry(key=slot["key"], data=slot["form"].cleaned_data,
+                                               relation=slot["relation"] or carrier_relation) for slot in enabled]
+            try:
+                result = admission.admit_with_contract(
+                    branch=request.branch, by=request.user, student_data=student_data, guardians=entries,
+                    signer=meta_form.cleaned_data["signer"], contract_data=contract_form.cleaned_data,
+                    academic_year=chosen_year)
+            except admission.ProfileError as e:
+                targets = {"student": form, "contract": contract_form, "signer": meta_form, "guardians": meta_form,
+                           **{slot["key"]: slot["form"] for slot in slots}}
+                apply_errors(targets[e.target], e.error)
+            else:
+                note = f" {result.reused_guardians} ta vasiy tizimda bor edi — mavjud yozuvga biriktirildi." \
+                    if result.reused_guardians else ""
+                messages.success(request, f"{result.student.short_name} qabul qilindi ({result.student.code}), "
+                                          f"{result.contract.number} shartnoma qoralamasi tuzildi.{note} "
+                                          "Endi ota-onaga SMS kod yuborib tasdiqlating.")
+                return redirect("contracts:contract_detail", pk=result.contract.pk)
+
     return render(request, "people/admission_form.html", {
-        "form": student_form, "guardian_form": guardian_form, "relation_form": relation_form,
-        "suggestions": selectors.address_suggestions(request.branch)})
+        "form": form, "contract_form": contract_form, "meta_form": meta_form, "slots": slots,
+        "admission": True, **_address_ctx(form)})
 
 
 @role_required(*STAFF_ROLES)
@@ -172,7 +261,7 @@ def student_update(request, pk):
         "missing_relations": [(r, StudentGuardian.Relation(r).label) for r in missing],
         "contracts": list(selectors.student_contracts(student)),
         "contract": contract_selectors.active_contract_for(student),
-        "suggestions": selectors.address_suggestions(request.branch),
+        **_address_ctx(form),
     })
 
 
@@ -281,7 +370,7 @@ def guardian_detail(request, pk):
     except Guardian.DoesNotExist as e:
         raise Http404 from e
     links = list(guardian.child_links.all())
-    finance_allowed = request.active_role.role == Role.RECEPTION
+    finance_allowed = request.active_role.role in STAFF_ROLES  # qarzdorlik va to'lovlarni faqat ko'rish
     tab = request.GET.get("tab", "children")
     if tab not in ("children", "debts", "payments") or (tab != "children" and not finance_allowed):
         tab = "children"
@@ -296,3 +385,11 @@ def guardian_detail(request, pk):
             link.finance = fin["per_student"][link.student_id]
         ctx.update(fin)
     return render(request, "people/guardian_detail.html", ctx)
+
+
+@role_required(*STAFF_ROLES)
+@require_GET
+def address_mahallas(request):
+    """Manzil formasi: tanlangan tumandagi mahallalar (ma'lumotnomadan) — JSON."""
+    region, district = request.GET.get("region", "")[:80], request.GET.get("district", "")[:80]
+    return JsonResponse({"mahallas": selectors.mahalla_names(region, district)})

@@ -21,6 +21,23 @@ class ContractForm(StyledFormMixin, forms.ModelForm):
         }
 
 
+class AdmissionContractForm(StyledFormMixin, forms.ModelForm):
+    """Qabul formasidagi "Moliya (tarif)" bo'limi — shartnoma qoralamasi shu ma'lumot bilan tuziladi."""
+
+    class Meta:
+        model = Contract
+        fields = ["full_tariff", "start_date", "discount_percent", "discount_reason"]
+        widgets = {
+            "full_tariff": forms.NumberInput(attrs={"step": "1000", "min": "0", "data-tariff-input": ""}),
+            "discount_percent": forms.NumberInput(attrs={"step": "0.5", "min": "0", "max": "100"}),
+            "start_date": DateInput(),
+        }
+        labels = {"full_tariff": "Tarif (oyiga, chegirmasiz)", "discount_percent": "Chegirma %",
+                  "start_date": "Boshlanish sanasi"}
+        help_texts = {"full_tariff": "Sinf tanlanganda sinf tarifi avtomatik qo'yiladi.",
+                      "start_date": "Birinchi oy to'lovi shu sanadan hisoblanadi."}
+
+
 class CodeForm(StyledFormMixin, forms.Form):
     code = forms.CharField(label="Ota-onaga kelgan kod", min_length=6, max_length=6,
                            widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off",

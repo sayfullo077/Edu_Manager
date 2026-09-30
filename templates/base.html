@@ -2,14 +2,17 @@
 <html lang="uz">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>{% block title %}{{ school.short_name }}{% endblock %} · {{ school.name }}</title>
   {# Mavzuni sahifa chizilishidan oldin qo'llaymiz (oq "miltillash" bo'lmasin). CSP nonce bilan ruxsat etilgan. #}
   <script nonce="{{ csp_nonce }}">try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Raleway:wght@600;700;800&display=swap">
+  {# Apple qurilmalarida tizim shrifti (SF Pro) ishlatiladi va bu fayl umuman yuklanmaydi; boshqalarida — Inter. #}
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
   <link rel="stylesheet" href="{% static_v 'css/app.css' %}">
   <style nonce="{{ csp_nonce }}">:root{--brand: {{ school.brand_color|default:"#08915E" }};}</style>
   {% block head %}{% endblock %}

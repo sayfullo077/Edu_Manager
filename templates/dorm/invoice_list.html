@@ -1,0 +1,68 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Yotoqxona to'lov grafiklari{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Yotoqxona to'lov grafiklari</h1>
+    <p class="sub">Yotoqxonada yashovchilarning oylik hisoblari · {{ page.paginator.count }} ta</p>
+  </div>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'dorm:invoice_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-6 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami hisoblangan</span><span class="ico tone-info">{% include "partials/icon.html" with name="calendar" class="sm" %}</span></div><div class="value money-sm">{{ stats.total|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Chegirma</span><span class="ico tone-danger">{% include "partials/icon.html" with name="sparkles" class="sm" %}</span></div><div class="value money-sm">{{ stats.discount|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Kechilgan</span><span class="ico tone-info">{% include "partials/icon.html" with name="info" class="sm" %}</span></div><div class="value money-sm">{{ stats.waived|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">To'langan</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value money-sm text-success">{{ stats.paid|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Qoldiq</span><span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value money-sm text-warning">{{ stats.remaining|money }} <span class="unit">so'm</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Jami grafik</span><span class="ico">{% include "partials/icon.html" with name="receipt" class="sm" %}</span></div><div class="value">{{ stats.count }}</div></div>
+</div>
+
+{% url 'dorm:invoice_list' as reset_url %}{% url 'dorm:invoice_export' as export_url %}
+{% include "partials/filter_bar.html" with placeholder="Ism yoki familiya…" %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th>O'quvchi</th><th class="hide-sm">Kategoriya</th><th>Oy</th><th class="text-right hide-xs">Jami</th>
+          <th class="text-right">To'langan</th><th class="text-right">Qoldiq</th><th class="hide-xs">Holat</th>
+        </tr></thead>
+        <tbody>
+          {% for i in page.object_list %}
+            {% with s=i.student %}
+            <tr class="{% if i.remaining and i.paid %}row-partial{% endif %}">
+              <td><a class="person" href="{% url 'people:student_detail' s.pk %}?view=payment">
+                <span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span><span><b>{{ s.short_name }}</b></span></a></td>
+              <td class="hide-sm">{{ i.get_category_display }}{% if i.dorm_stay %}<small class="muted block">{{ i.dorm_stay.room.name }}</small>{% endif %}</td>
+              <td><span class="badge badge-info num">{{ i.month|date:"Y-m" }}</span></td>
+              <td class="text-right num hide-xs">{{ i.gross|money }}{% if i.discount %}<small class="muted block" title="Chegirma">−{{ i.discount|money }}</small>{% endif %}</td>
+              <td class="text-right num text-success">{{ i.paid|money }}</td>
+              <td class="text-right num {% if i.remaining %}text-danger{% else %}text-success{% endif %}"><b>{{ i.remaining|money }}</b></td>
+              <td class="hide-xs">{% include "finance/_invoice_status.html" with invoice=i %}</td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="calendar" class="lg" %}</span>
+      <h3>Grafik topilmadi</h3>
+      <p>Yotoqxonaga joylashtirilgan o'quvchilar uchun grafik oyma-oy avtomatik yaratiladi.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

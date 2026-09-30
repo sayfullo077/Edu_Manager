@@ -39,6 +39,8 @@ from .models import Account, ExpenseCategory, Invoice, Payment, Transaction, Wit
 from .services import cash, expenses, invoices, ledger, payments, withdrawal
 
 FINANCE_ROLES = (Role.RECEPTION,)
+# Faqat ko'rish (o'quvchi kartasidagi "To'lov" bo'limi, kvitansiya, grafik Excel'i) — Zavuch ham
+FINANCE_VIEW_ROLES = (Role.RECEPTION, Role.HEAD_TEACHER)
 PAGE_SIZE = 25
 INVOICE_EXPORT_HEADERS = ["Oy", "Hisob (to'liq tarif)", "Chegirma", "Kechilgan", "To'lanishi kerak",
                           "To'langan", "Qoldiq", "Holati"]
@@ -77,15 +79,19 @@ def dashboard(request):
 @role_required(*FINANCE_ROLES)
 def payment_create(request, student_pk):
     student = get_object_or_404(Student, branch=request.branch, pk=student_pk)
-    debt = payments.outstanding(student)
-    unpaid = student.invoices.filter(category=Invoice.Category.TUITION,
+    # O'qish yoki yotoqxona to'lovi (?category=dorm) — FIFO faqat shu turdagi oylarga taqsimlanadi
+    category = request.POST.get("category") or request.GET.get("category")
+    category = category if category in Invoice.Category.values else Invoice.Category.TUITION
+    debt = payments.outstanding(student, category)
+    unpaid = student.invoices.filter(category=category,
                                      status__in=[Invoice.Status.PENDING, Invoice.Status.PARTIAL]).order_by("month")
     form = PaymentForm(request.POST or None, initial={"amount": int(unpaid[0].remaining) if unpaid else None})
     back = safe_next(request, request.POST.get("next") or request.GET.get("next"),
                      f"{reverse('people:student_detail', args=[student.pk])}?view=payment")
     if request.method == "POST" and form.is_valid():
         try:
-            payment = payments.accept_payment(student=student, by=request.user, **form.payment_kwargs())
+            payment = payments.accept_payment(student=student, by=request.user, category=category,
+                                              **form.payment_kwargs())
         except ValidationError as e:
             apply_errors(form, e)
         else:
@@ -95,6 +101,7 @@ def payment_create(request, student_pk):
             return redirect(back)
     return render(request, "finance/payment_form.html", {
         "form": form, "student": student, "debt": debt, "unpaid": unpaid[:12], "back_url": back,
+        "category": category, "category_label": Invoice.Category(category).label,
         "session": cash.current_session(request.branch)})
 
 
@@ -202,7 +209,7 @@ def budget_edit(request):
         "month_label": f"{selectors.MONTHS_UZ_FULL[month.month]} {month.year}"})
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_VIEW_ROLES)
 def student_invoices_export(request, student_pk):
     """O'quvchining to'lov grafigi — Excel (O'quvchi kartasi → To'lov → Excel)."""
     student = get_object_or_404(Student, branch=request.branch, pk=student_pk)
@@ -284,7 +291,7 @@ def schedule_create(request, student_pk):
     return redirect(back)
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_VIEW_ROLES)
 def payment_receipt(request, pk):
     """To'lov kvitansiyasi (chop etish uchun). Storno qilingan bo'lsa ham ko'rinadi — belgisi bilan."""
     payment = get_object_or_404(
@@ -429,6 +436,13 @@ def invoice_export(request):
 def debtor_list(request):
     """Kirim → Qarzdorlar: kelgan oylar bo'yicha qarzi bor o'quvchilar (qoldiq kamayishi bo'yicha)."""
     form = DebtorFilterForm(request.GET or None, branch=request.branch)
+    return render(request, "finance/debtor_list.html", {
+        **debtor_list_context(request, form), "title": "Qarzdorlar",
+        "list_url_name": "finance:debtor_list", "export_url_name": "finance:debtor_export"})
+
+
+def debtor_list_context(request, form) -> dict:
+    """Qarzdorlar sahifasi konteksti — o'qish (Kirim) va yotoqxona uchun umumiy."""
     filters = form.to_filters()
     qs = selectors.debtors(request.branch, filters)
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
@@ -436,26 +450,29 @@ def debtor_list(request):
     query.pop("page", None)
     active = form.active_filters()
     q = form.data.get("q", "")
-    return render(request, "finance/debtor_list.html", {
-        "form": form, "page": page, "querystring": query.urlencode(), "q": q,
+    return {
+        "form": form, "page": page, "querystring": query.urlencode(), "q": q, "category": filters.category,
         "page_range": page.paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1),
         "stats": selectors.debtors_stats(request.branch, filters, qs),
         "filter_menu": filter_menu(form, active), "active_filters": active, "has_filters": bool(active or q),
-    })
+    }
 
 
 DEBTOR_EXPORT_HEADERS = ["#", "O'quvchi", "Kodi", "Sinf", "Qarzdor oylar", "Jami", "To'langan", "Qoldiq",
                          "Oxirgi to'lov", "Oxirgi to'lov sanasi"]
 
 
+def debtor_export_rows(qs):
+    return ([n, s.full_name, s.code, getattr(s.school_class, "name", ""), s.debt_months, s.total, s.paid_sum,
+             s.remaining, s.last_amount, timezone.localtime(s.last_paid_at).replace(tzinfo=None) if s.last_paid_at
+             else None] for n, s in enumerate(qs, start=1))
+
+
 @role_required(*FINANCE_ROLES)
 def debtor_export(request):
     form = DebtorFilterForm(request.GET or None, branch=request.branch)
     qs = selectors.debtors(request.branch, form.to_filters())[:20_000]
-    rows = ([n, s.full_name, s.code, getattr(s.school_class, "name", ""), s.debt_months, s.total, s.paid_sum,
-             s.remaining, s.last_amount, timezone.localtime(s.last_paid_at).replace(tzinfo=None) if s.last_paid_at
-             else None] for n, s in enumerate(qs, start=1))
-    content = excel.build_workbook("Qarzdorlar", DEBTOR_EXPORT_HEADERS, rows)
+    content = excel.build_workbook("Qarzdorlar", DEBTOR_EXPORT_HEADERS, debtor_export_rows(qs))
     return excel.xlsx_response(f"qarzdorlar-{timezone.localdate():%Y-%m-%d}.xlsx", content)
 
 
@@ -463,9 +480,12 @@ def debtor_export(request):
 def debtor_panel(request, student_pk, kind):
     """Qarzdorlar yon paneli (fragment): kind = "info" (ma'lumot) yoki "pay" (to'lov qabul qilish)."""
     student = get_object_or_404(Student.objects.select_related("school_class"), branch=request.branch, pk=student_pk)
-    card = selectors.student_debt_card(student)
-    ctx = {"student": student, **card, "next": safe_next(request, request.GET.get("next"),
-                                                          reverse("finance:debtor_list"))}
+    category = request.GET.get("category")
+    category = category if category in Invoice.Category.values else Invoice.Category.TUITION
+    card = selectors.student_debt_card(student, category)
+    fallback = reverse("dorm:debtor_list" if category == Invoice.Category.DORM else "finance:debtor_list")
+    ctx = {"student": student, **card, "category": category,
+           "next": safe_next(request, request.GET.get("next"), fallback)}
     if kind == "pay":
         ctx["form"] = PaymentForm(initial={"amount": int(card["remaining"]) or None,
                                            "paid_on": timezone.localdate()})

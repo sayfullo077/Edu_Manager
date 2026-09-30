@@ -10,6 +10,7 @@ from apps.accounts.domain.phone import format_phone
 
 from .. import selectors
 from ..models import Student
+from . import address
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ def create_student(*, branch, by, **data) -> Student:
     student = Student(branch=branch, **{k: v for k, v in data.items() if k in EDITABLE_FIELDS})
     _validate(student)
     student.save()  # kod (STD-YYYY-NNN) shu yerda beriladi
+    address.remember_mahalla(region=student.region, district=student.district, mahalla=student.mahalla)
     logger.info("O'quvchi qo'shildi: %s (user=%s)", student.code, by.pk)
     return student
 
@@ -53,6 +55,7 @@ def update_student(student: Student, *, by, **data) -> Student:
             setattr(student, field, value)
     _validate(student)
     student.save()
+    address.remember_mahalla(region=student.region, district=student.district, mahalla=student.mahalla)
     logger.info("O'quvchi tahrirlandi: %s (user=%s)", student.code, by.pk)
     return student
 

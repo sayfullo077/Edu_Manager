@@ -77,6 +77,7 @@
       <button class="btn btn-ghost btn-icon menu-btn" type="button" data-nav-toggle aria-label="Menyu">
         {% include "partials/icon.html" with name="menu" %}
       </button>
+      <a class="topbar-brand" href="{% url 'core:home' %}">{% include "partials/brand_mark.html" %}<span>{{ school.short_name }}</span></a>
       <button class="search" type="button" aria-label="Qidirish">
         {% include "partials/icon.html" with name="search" class="sm" %}
         <span>O'quvchi, o'qituvchi yoki shartnoma…</span>
@@ -120,6 +121,18 @@
 
     <main class="content">{% block content %}{% endblock %}</main>
   </div>
+
+  {# Telefon: pastki tab bar (≤768px). Qolgan bo'limlar — "Menyu" orqali sidebar'da. #}
+  <nav class="tabbar" aria-label="Asosiy bo'limlar">
+    {% for tab in tabbar %}
+      <a href="{{ tab.url }}" {% if tab.active %}aria-current="page"{% endif %}>
+        {% include "partials/icon.html" with name=tab.item.icon %}<span>{{ tab.short }}</span>
+      </a>
+    {% endfor %}
+    <button type="button" data-nav-toggle aria-label="Barcha bo'limlar">
+      {% include "partials/icon.html" with name="menu" %}<span>Menyu</span>
+    </button>
+  </nav>
 </div>
 
 {# Umumiy tasdiqlash oynasi: <form data-confirm="Savol?" data-confirm-ok="Ha"> — app.js ochadi. #}

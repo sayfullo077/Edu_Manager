@@ -127,17 +127,63 @@
 
   // --- Shartnoma: oylik to'lovni jonli hisoblash (server bilan bir xil: so'mgacha yaxlitlash) ---
   document.querySelectorAll("[data-fee-calc]").forEach((form) => {
-    const tariff = form.querySelector("[name=full_tariff]");
-    const discount = form.querySelector("[name=discount_percent]");
+    const tariff = form.querySelector("[name$=full_tariff]");
+    const discount = form.querySelector("[name$=discount_percent]");
     const out = form.querySelector("[data-fee-output]");
+    const discountOut = form.querySelector("[data-discount-output]");
     const fmt = (n) => Math.round(n).toLocaleString("ru-RU").replace(/,/g, " ");
     const calc = () => {
       const t = parseFloat(tariff.value) || 0;
       const d = Math.min(100, Math.max(0, parseFloat(discount.value) || 0));
-      out.textContent = fmt((t * (100 - d)) / 100);
+      const fee = Math.round((t * (100 - d)) / 100);
+      out.textContent = fmt(fee);
+      if (discountOut) discountOut.textContent = fmt(t - fee);
     };
     [tariff, discount].forEach((el) => el.addEventListener("input", calc));
+    form.addEventListener("fee:recalc", calc);
     calc();
+  });
+
+  // --- Qabul formasi: vasiylarni yoqish/o'chirish, shartnoma vasiysi, sinf → grade va tarif ---
+  document.querySelectorAll("[data-admission]").forEach((form) => {
+    const slots = [...form.querySelectorAll("[data-slot]")];
+    const signerLabels = [...form.querySelectorAll("[data-signer]")];
+    const signerEmpty = form.querySelector("[data-signer-empty]");
+    const syncSlots = () => {
+      const enabled = new Set();
+      slots.forEach((slot) => {
+        const on = slot.querySelector("[data-slot-toggle]").checked;
+        slot.querySelector("[data-slot-body]").hidden = !on;
+        if (on) enabled.add(slot.dataset.slot);
+      });
+      signerLabels.forEach((label) => { label.hidden = !enabled.has(label.dataset.signer); });
+      const checked = form.querySelector("[data-signer] input:checked");
+      if (!checked || !enabled.has(checked.value)) {
+        // Sukut: olib keluvchi (asosiy vasiy) → ota → ona
+        const pick = ["carrier", "father", "mother"].find((k) => enabled.has(k));
+        form.querySelectorAll("[data-signer] input").forEach((i) => { i.checked = i.value === pick; });
+      }
+      if (signerEmpty) signerEmpty.hidden = enabled.size > 0;
+    };
+    form.addEventListener("change", (e) => {
+      if (e.target.matches("[data-slot-toggle]")) {
+        syncSlots();
+        if (e.target.checked) e.target.closest("[data-slot]").querySelector("[data-slot-body] input")?.focus();
+      }
+    });
+    syncSlots();
+
+    const classSel = form.querySelector("[data-class-select]");
+    const grade = form.querySelector("[name$=grade]");
+    const tariff = form.querySelector("[data-tariff-input]");
+    classSel?.addEventListener("change", () => {
+      const o = classSel.selectedOptions[0];
+      if (o?.dataset.grade && grade) grade.value = o.dataset.grade;
+      if (o?.dataset.tariff && tariff) {
+        tariff.value = o.dataset.tariff;
+        tariff.closest("[data-fee-calc]")?.dispatchEvent(new Event("fee:recalc"));
+      }
+    });
   });
 
   // --- Passport: avtomatik katta harf ---
@@ -193,6 +239,37 @@
     };
     wrap.addEventListener("change", (e) => { if (e.target.name?.endsWith("doc_type")) sync(); });
     sync();
+  });
+
+  // --- Manzil: viloyat → tuman (sahifadagi JSON'dan), tuman → mahallalar (serverdan, <datalist>) ---
+  document.querySelectorAll("[data-address]").forEach((wrap) => {
+    const region = wrap.querySelector("[data-region]");
+    const district = wrap.querySelector("[data-district]");
+    const mahalla = wrap.querySelector("[data-mahalla]");
+    const list = document.getElementById(mahalla?.getAttribute("list"));
+    const mapEl = document.getElementById("district-map");
+    if (!region || !district || !mapEl) return;
+    const map = JSON.parse(mapEl.textContent);
+    const option = (value, text) => { const o = document.createElement("option"); o.value = value; o.textContent = text; return o; };
+    const fillDistricts = () => {
+      const names = map[region.value] || [];
+      const keep = district.value;
+      district.replaceChildren(option("", region.value ? "— Tanlang —" : "— Avval viloyatni tanlang —"),
+        ...names.map((n) => option(n, n)));
+      district.value = names.includes(keep) ? keep : "";
+    };
+    const loadMahallas = async () => {
+      if (!list) return;
+      list.replaceChildren();
+      if (!district.value) return;
+      const url = `${wrap.dataset.mahallaUrl}?${new URLSearchParams({ region: region.value, district: district.value })}`;
+      try {
+        const resp = await fetch(url, { headers: { "X-Requested-With": "fetch" } });
+        if (resp.ok) list.replaceChildren(...(await resp.json()).mahallas.map((n) => option(n, "")));
+      } catch { /* taklifsiz ham yozish mumkin */ }
+    };
+    region.addEventListener("change", () => { fillDistricts(); if (mahalla) mahalla.value = ""; loadMahallas(); });
+    district.addEventListener("change", () => { if (mahalla) mahalla.value = ""; loadMahallas(); });
   });
 
   // --- O'quv yili tanlanganda sinflar ro'yxati shu yilga saralanadi ---

@@ -21,13 +21,17 @@ class DateInput(forms.DateInput):
 
 
 class SchoolClassSelect(forms.Select):
-    """Har bir sinf variantida o'quv yili (data-year) — "O'quv yili" tanlanganda JS sinflarni saralaydi."""
+    """Har bir sinf variantida o'quv yili (data-year) — "O'quv yili" tanlanganda JS sinflarni saralaydi;
+    grade va tarif (data-grade, data-tariff) — sinf tanlanganda qabul formasida avtomatik to'ldiriladi."""
 
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex, attrs)
         instance = getattr(value, "instance", None)
         if instance is not None:
             option["attrs"]["data-year"] = instance.academic_year_id
+            option["attrs"]["data-tariff"] = int(instance.monthly_tariff)
+            if instance.grade:
+                option["attrs"]["data-grade"] = instance.grade
         return option
 
 
@@ -68,9 +72,7 @@ class StudentForm(StyledFormMixin, forms.ModelForm):
         self.initial.setdefault("academic_year", year.pk if year else None)
         self.fields["region"].choices = region_choices(instance.region if instance.pk else "")
         self.initial.setdefault("doc_type", "passport" if instance.pk and instance.passport else "birth_certificate")
-        # Tuman va mahalla — erkin matn, avval kiritilganlardan taklif (<datalist>).
-        self.fields["district"].widget.attrs["list"] = "district-options"
-        self.fields["mahalla"].widget.attrs["list"] = "mahalla-options"
+        self._setup_address(instance)
         self.fields["gender"].choices = Gender.choices  # radio'da bo'sh "-----" varianti chiqmasin
         for name in ("last_name", "first_name"):
             self.fields[name].widget.attrs["autocomplete"] = "off"
@@ -82,6 +84,25 @@ class StudentForm(StyledFormMixin, forms.ModelForm):
             field.widget.attrs.update({"data-upper": "", "autocomplete": "off", "maxlength": limit})
         self.fields["pinfl"].widget.attrs.update({"inputmode": "numeric", "autocomplete": "off"})
         self.fields["passport"].help_text = "16 yoshdan katta bo'lsa"
+
+    def _setup_address(self, instance):
+        """Viloyat → tuman — bog'liq tanlagich (JS viloyat o'zgarganda tumanlarni almashtiradi);
+        mahalla — ma'lumotnomadan taklif qilinadigan matn (yangisi saqlanganda bazaga tushadi)."""
+        region = self.data.get(self.add_prefix("region")) if self.is_bound else (instance.region or "")
+        current = self.data.get(self.add_prefix("district")) if self.is_bound else (instance.district or "")
+        names = selectors.district_map().get(region or "", [])
+        choices = [("", "— Avval viloyatni tanlang —" if not region else "— Tanlang —"), *((n, n) for n in names)]
+        if current and current not in names:
+            choices.append((current, current))  # ro'yxatda yo'q eski qiymat yo'qolmasin
+        self.fields["district"].widget = forms.Select(choices=choices, attrs={"data-district": ""})
+        self.fields["region"].widget.attrs["data-region"] = ""
+        self.fields["mahalla"].widget.attrs.update({"list": "mahalla-options", "data-mahalla": "",
+                                                    "placeholder": "Tanlang yoki yangi nom yozing",
+                                                    "autocomplete": "off"})
+        self.fields["mahalla"].label = "Mahalla / qishloq (MFY)"
+        for name in ("region", "district", "mahalla", "address"):
+            self.fields[name].widget.attrs["class"] = self.fields[name].widget.attrs.get("class", "input")
+        self.fields["address"].widget.attrs.setdefault("placeholder", "Ko'cha nomi, uy/xonadon raqami")
 
     def clean_passport(self):
         return (self.cleaned_data.get("passport") or "").replace(" ", "").upper()
@@ -186,6 +207,39 @@ class GuardianForm(StyledFormMixin, forms.ModelForm):
 
     def clean_pinfl(self):
         return "".join((self.cleaned_data.get("pinfl") or "").split())
+
+
+class AdmissionGuardianForm(GuardianForm):
+    """Qabul formasidagi vasiy (Ota / Ona / Olib keluvchi) — asl tizimdagidek hujjatlar bilan majburiy."""
+
+    extra_phone = None
+
+    class Meta(GuardianForm.Meta):
+        fields = ["pinfl", "last_name", "first_name", "middle_name", "phone", "passport"]
+        labels = {"pinfl": "JSHSHIR (14 xonali)", "passport": "Passport (seriya va raqam)"}
+        help_texts = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("pinfl", "middle_name", "passport"):
+            self.fields[name].required = True
+
+
+class AdmissionForm(forms.Form):
+    """Qabul formasining umumiy qismi: olib keluvchining kimligi va shartnoma kim nomiga tuziladi."""
+
+    SLOTS = [("father", "Ota"), ("mother", "Ona"), ("carrier", "Olib keluvchi")]
+    CARRIER_RELATIONS = [c for c in StudentGuardian.Relation.choices
+                         if c[0] not in (StudentGuardian.Relation.FATHER, StudentGuardian.Relation.MOTHER)]
+
+    carrier_relation = forms.ChoiceField(label="Kim bo'ladi?", choices=CARRIER_RELATIONS, required=False,
+                                         initial=StudentGuardian.Relation.OTHER)
+    signer = forms.ChoiceField(label="Shartnoma vasiysi", choices=SLOTS, widget=forms.RadioSelect,
+                               error_messages={"required": "Shartnoma kim nomiga tuzilishini tanlang."})
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["carrier_relation"].widget.attrs["class"] = "input"
 
 
 class RelationForm(forms.Form):

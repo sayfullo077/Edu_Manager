@@ -72,6 +72,8 @@ class DormStay(TimeStampedModel):
     room = models.ForeignKey(DormRoom, on_delete=models.PROTECT, related_name="stays", verbose_name="xona")
     checked_in = models.DateField("kirgan sana")
     checked_out = models.DateField("chiqqan sana", null=True, blank=True)
+    monthly_fee = models.DecimalField("oylik to'lov", max_digits=12, decimal_places=2,
+                                      help_text="Shu o'quvchi uchun (xona narxidan kam bo'lsa — farq chegirma)")
     note = models.CharField("izoh", max_length=255, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
 

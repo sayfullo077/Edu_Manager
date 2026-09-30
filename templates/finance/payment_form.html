@@ -7,7 +7,7 @@
 <div class="page-head">
   <div>
     <a class="back-link" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} {{ student.short_name }}</a>
-    <h1 class="mt-12">To'lov qabul qilish</h1>
+    <h1 class="mt-12">To'lov qabul qilish <span class="badge {% if category == 'dorm' %}badge-warning{% else %}badge-info{% endif %}">{{ category_label }}</span></h1>
     <p class="sub">{{ student.full_name }} · {{ student.code }}</p>
   </div>
 </div>
@@ -16,6 +16,7 @@
   <form class="card form-card" method="post" novalidate data-payment-form>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ back_url }}">
+    <input type="hidden" name="category" value="{{ category }}">
     {% include "partials/form_errors.html" %}
     {% if not session %}
       <div class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %}

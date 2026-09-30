@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block title %}O'quvchilar ro'yxati — chop etish{% endblock %}
+{% block body_attrs %}class="print-page"{% endblock %}
+
+{% block body %}
+<div class="print-toolbar no-print">
+  <a class="btn btn-secondary" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  <button class="btn btn-primary" type="button" data-print>{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</button>
+</div>
+
+<article class="sheet">
+  <header class="sheet-head">
+    <div>
+      <div class="sheet-school">{{ school.name }}</div>
+      <div class="muted">{{ request.branch.name }}</div>
+    </div>
+    <div class="sheet-no">
+      <div class="muted">Sana</div>
+      <strong class="num">{{ today|date:"d.m.Y" }}</strong>
+    </div>
+  </header>
+
+  <h1 class="sheet-title">O'quvchilar ro'yxati</h1>
+  <p class="muted">{% if filter_labels %}{{ filter_labels|join:" · " }} · {% endif %}jami {{ total }} nafar{% if truncated %} (birinchi {{ total }} tasi){% endif %}</p>
+
+  {% for class_name, students in groups.items %}
+    <h2>{{ class_name }} <span class="muted">— {{ students|length }} nafar</span></h2>
+    <table class="sheet-table print-list">
+      <thead><tr><th>#</th><th>F.I.O.</th><th>Kodi</th><th>Tug'ilgan sana</th><th>Jinsi</th><th>Telefon</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+          <tr>
+            <td class="num">{{ forloop.counter }}</td>
+            <td>{{ s.full_name }}</td>
+            <td class="num">{{ s.code }}</td>
+            <td class="num">{{ s.birth_date|date:"d.m.Y" }}</td>
+            <td>{{ s.get_gender_display }}</td>
+            <td class="num">{{ s.phone|phone }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% empty %}
+    <p>Tanlangan filtr bo'yicha o'quvchi topilmadi.</p>
+  {% endfor %}
+</article>
+{% endblock %}

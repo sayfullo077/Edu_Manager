@@ -25,6 +25,7 @@ from django.utils import timezone
 
 from apps.common.templatetags.ui import money
 from apps.contracts.models import Contract
+from apps.dorm.models import DormStay
 from apps.people.models import Student
 
 from ..models import Account, Invoice, Transaction, Withdrawal, WithdrawalLine
@@ -190,6 +191,10 @@ def withdraw(student, *, left_on: date, reason: str, by, dorm_left_on: date | No
     student.status = Student.Status.EXPELLED if reason == Withdrawal.Reason.EXPELLED else Student.Status.LEFT
     student.left_at = left_on
     student.save(update_fields=["status", "left_at", "updated_at"])
+    # Yotoqxonada yashayotgan bo'lsa — qayd yopiladi (grafik yuqorida allaqachon qayta hisoblangan)
+    for stay in DormStay.objects.select_for_update().filter(student=student, checked_out__isnull=True):
+        stay.checked_out = max(dorm_left_on or left_on, stay.checked_in)
+        stay.save(update_fields=["checked_out", "updated_at"])
 
     security_log.warning("O'qishdan chiqish: %s %s qaytarildi=%s qarz=%s (user=%s)",
                          record.number, student.code, plan.refund, plan.debt, by.pk)

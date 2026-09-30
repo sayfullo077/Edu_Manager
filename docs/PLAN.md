@@ -32,7 +32,7 @@ ishlatilmaydi. Maktab nomi/logo/rang `SchoolSettings` modelida admin tomonidan k
 | Qabul oqimi | Qabul formasi (o'quvchi + asosiy ota-ona) → avtomatik shartnoma formasiga o'tadi → SMS tasdiqlash |
 | Ota-ona | Alohida yaratilmaydi — faqat o'quvchiga biriktirilganda. Takrorlanishga qarshi: avval JSHSHIR (blind index), keyin telefon + familiya; topilsa mavjud yozuvga bog'lanadi, bo'sh maydonlari to'ldiriladi, mavjudlari ustiga yozilmaydi |
 | Shaxsiy ma'lumot | Passport/JSHSHIR — Fernet shifrlash (`FIELD_ENCRYPTION_KEYS`), qidirish blind index (`FIELD_INDEX_KEY`). Ekranda niqoblangan (`\|mask`). Shartnoma skanerlari `PRIVATE_MEDIA_ROOT` da (URL yo'q, faqat ruxsatli view orqali) |
-| Moliya | Qoldiq hech qayerda saqlanmaydi — `Transaction` jurnalidan hisoblanadi (`ledger.balance`). Yozuvlar o'chirilmaydi: xato to'lov → storno (teskari tranzaksiya), kassa farqi → "Kassa tafovuti" yozuvi. To'lov eng eski oydan FIFO taqsimlanadi, qarzdan ortiq qabul qilinmaydi. Naqd pul (to'lov/xarajat/storno) faqat ochiq kassa sessiyasida. Terminal komissiyasi 0.2% (`TERMINAL_COMMISSION_PERCENT`). Moliya sahifalari faqat Reception'ga |
+| Moliya | Qoldiq hech qayerda saqlanmaydi — `Transaction` jurnalidan hisoblanadi (`ledger.balance`). Yozuvlar o'chirilmaydi: xato to'lov → storno (teskari tranzaksiya), kassa farqi → "Kassa tafovuti" yozuvi. To'lov eng eski oydan FIFO taqsimlanadi, qarzdan ortiq qabul qilinmaydi. Naqd pul (to'lov/xarajat/storno) faqat ochiq kassa sessiyasida. Terminal komissiyasi 0.2% (`TERMINAL_COMMISSION_PERCENT`). Moliya sahifalari faqat Reception'ga. **2026-09-29:** Zavuch o'quvchi va ota-ona kartasidagi to'lov ma'lumotini (grafik, to'lovlar tarixi, qarz, kvitansiya, grafik Excel'i) **faqat ko'radi** — to'lov qabul qilish, storno, grafik yaratish, o'qishdan chiqarish va Kirim/Yotoqxona bo'limlari faqat Reception'da (`FINANCE_VIEW_ROLES` / `finance_edit`) |
 | O'qishdan chiqish (2026-09-27) | Shartnomasi/to'lovi bor o'quvchi **to'g'ridan-to'g'ri o'chirilmaydi** → "O'qishdan chiqarish" hisob-kitobi (`finance.services.withdrawal`, faqat Reception): chiqish oyida o'qigan kunlar `oylik × kunlar / oy_kunlari` (chiqish kuni ham kiradi, mingga pastga), keyingi oylar bekor, yotoqxona o'z sanasi bilan; to'langan pul FIFO qayta taqsimlanadi — ortig'i qaytariladi (`Transaction` REFUND, naqd — ochiq kassa va yetarli qoldiq), kami qarz bo'lib qoladi. Shartnoma yopiladi, o'quvchi «Ketgan». `Withdrawal` + `WithdrawalLine` — audit, o'chirilmaydi; keyin storno yo'q. Hech tarixi yo'q o'quvchigina butunlay o'chiriladi |
 | To'lov grafigi (2026-09-28) | **Aralash usul:** imzolanganda faqat joriy oygacha yaratiladi; har kuni cron `manage.py generate_monthly_invoices` (idempotent) oy boshida yangi oyni qo'shadi; oldindan to'lov uchun Reception "Grafik" oynasida keyingi oylarni yaratadi (boshlanish oyi, nechta oy, muddat kuni; bo'shliq va shartnoma muddatidan tashqari oy yo'q). To'lov faqat yaratilgan oylar qarzigacha. Birinchi oyning muddati kelgan kundan kamida +10 kun |
 | Xarajatlar va byudjet (2026-09-29) | Hozircha **yopiq** — ma'lumot faqat rahbariyat uchun. Menyu bandi "Bu bo'lim tayyorlanmoqda" sahifasini ochadi, `/budget/` ham o'sha yerga yo'naltiradi, dashboard'dagi "Limitlar" tugmasi yashirin. Ochish: `settings.BUDGET_PAGE_ENABLED = True` |
@@ -41,6 +41,7 @@ ishlatilmaydi. Maktab nomi/logo/rang `SchoolSettings` modelida admin tomonidan k
 | SMS matni | Faqat GSM-7 belgilar (NBSP va h.k. yo'q) — aks holda Unicode'ga o'tib narx 2–3 baravar oshadi |
 | SMS provayder | Dev: `ConsoleSMSBackend` (terminalga chiqaradi). Prod: Eskiz.uz (4-bosqichda) |
 | Pul | Faqat `DecimalField`. Tranzaksiyalar o'chirilmaydi — faqat storno |
+| Dizayn (2026-09-29) | **Apple HIG uslubi** — tizim shrifti (SF Pro / Inter), Apple tizim ranglari, systemBlue urg'u + rol belgisi, suzuvchi shaffof sidebar, telefonda pastki tab bar va sheet panellar. Batafsil — 6-bo'lim |
 | Til | UI o'zbekcha (lotin). Ruscha tarjima keyinroq (`LANGUAGES` tayyor) |
 | Muhit (2026-09-27) | Hozircha faqat lokal test. Keyin foydalanuvchining bo'sh **Contabo** serveriga deploy |
 | Asosiy kirish usuli | SMS provayder ulanguncha **parol** (`LOGIN_DEFAULT_METHOD=password`). SMS/Telegram kod ixtiyoriy |
@@ -150,9 +151,11 @@ Qoidalar:
 | 2R.2j | **Kirim → Bank hisobi**: davr filtri (sukut: oy boshi — bugun), umumiy bank qoldig'i (davr + barcha vaqt), bank o'tkazmalari, terminal (net, komissiya), ichki o'tkazmalar, tafsilot jadvali (30 tadan), 153 test | ✅ tugadi (2026-09-29) |
 | 2R.2k | **Kirim → To'lov grafiklari**: 6 statistika (jami hisoblangan, chegirma, kechilgan, to'langan, qoldiq = jami − kechilgan − to'langan, soni), "Filtr qo'shish" (sinf, o'quv yili, oy, holati — muddati o'tgan ham, o'quvchi holati), qidiruv, Excel, qisman to'langan qatorlar ajratilgan, 20 tadan. Holati: kutilmoqda / qisman / to'langan / muddati o'tgan / kechirilgan / bekor qilingan; o'quvchi holatlari asl tizimdagidek 6 ta (faol, nofaol, bitirgan, o'qishdan chiqarilgan, ta'tilda, ketgan), 161 test | ✅ tugadi (2026-09-29) |
 | 2R.2l | **Kirim → Qarzdorlar**: faqat kelgan oylar (joriy oygacha) bo'yicha qarz, o'quvchi bir qatorda (qarzdor oylar, jami, to'langan, qoldiq, oxirgi to'lov), filtr (sinf, o'quv yili, oy, holat), Excel; yon panel `<dialog class="side-panel">`: ℹ️ ma'lumot (grafik) va 💳 to'lov (qarzlar ro'yxati, summa, usul, sana, izoh, kvitansiya chop etish → to'g'ridan-to'g'ri kvitansiyaga, keyin ro'yxatga qaytadi). To'lov sanasi: kelajak yo'q, naqd faqat bugun, karta/o'tkazma ≤ `PAYMENT_BACKDATE_DAYS` (31) kun oldin, 163 test | ✅ tugadi (2026-09-29) |
+| 3Z.1 | **Zavuch: bosh sahifa va o'quvchilar** — Zavuch dashboardi (faqat ta'lim: faol o'quvchilar, o'qituvchilar, sinflar, tasdiqlanmagan shartnomalar, ERP/E-maktab'ga kiritilmaganlar, o'sish trendi, jinsi, sinflar bo'yicha, oxirgi qabul qilinganlar; `ROLE_DASHBOARDS`). **Qabul — bitta forma** (asl tizimdagidek): shaxsiy, hujjat, vasiylar Ota / Ona / Olib keluvchi (yoqib-o'chiriladi, JSHSHIR va passport majburiy), moliya (o'quv yili, sinf → grade va tarif, boshlanish, chegirma % + sabab, jonli hisob), shartnoma vasiysi → o'quvchi + vasiylar + shartnoma qoralamasi bitta tranzaksiyada (`admission.admit_with_contract`), keyin SMS uchun shartnoma sahifasi. **Manzil ma'lumotnomasi**: `District` (206 ta tuman, migration), `Mahalla` (admin yoki forma orqali birinchi kiritilganda), viloyat → tuman bog'liq tanlagich, mahalla — taklifli matn. Ro'yxatga "Jins" ustuni va "Ro'yxat" (chop etish, sinf bo'yicha). Vasiy takrorlanishi: JSHSHIRi boshqa bo'lsa telefon+familiya mos kelsa ham yangi odam. Asl tizimdagi "Chegirma turi" va "Shablon" qo'shilmadi (tur/shablon ro'yxati kelishilmagan), 182 test | ✅ tugadi (2026-09-29) |
 | — | **Ochiq savol:** imzolangan shartnomada tarif/chegirmani o'zgartirish (asl tizimda: "yangi tarif biriktiriladi, eski yopiladi"). Oyma-oy grafik tufayli osonlashdi: yaratilmagan oylar yangi tarif bilan chiqadi; yaratilgan, lekin to'lanmagan oylar bilan nima qilish kelishilmagan | |
 | 2R.2b | Moliya ro'yxat sahifalari: ~~To'lovlar~~ ✅, ~~Tranzaksiyalar~~ ✅, ~~Bank hisobi~~ ✅, ~~To'lov grafiklari~~ ✅, ~~Qarzdorlar~~ ✅ — **2R.2b to'liq tugadi**. Kvitansiya — ✅ tayyor | ✅ tugadi (2026-09-29) |
-| 2R.3 | Reception: yotoqxona — **`apps.dorm`**: `DormRoom` (o'g'il/qiz/aralash, o'rinlar, oylik to'lov), `DormStay` (bitta faol qayd, tarix o'chirilmaydi), joylashtirish qoidalari (faol, shu filial, jins mos, bo'sh o'rin — `select_for_update`); menyu: Boshqaruv paneli ✅ (bandlik, filiallar bo'yicha, hozir yashayotganlar: filtr, Excel, "Yana yuklash"), **Xonalar** ✅ (xona turi 2/4/6/8 o'rinli, qavat, holat faol/nofaol/ta'mirda — `is_active` ma'lumot ko'chirish bilan almashtirildi; statistika, "Filtr qo'shish": holat/jinsi/xona turi, band/sig'im, Excel; xona sahifasi: yashayotganlar, joylashtirish — faqat mos o'quvchilar, chiqarish, tarix). To'lov grafiklari / Qarzdorlar / Mulkdor to'lovlari — ⏳; xona qo'shish/tahrirlash hozircha admin orqali; 171 test | ⏳ davom etmoqda |
+| UI | **Apple uslubidagi redizayn** — `app.css` to'liq qayta yozildi (barcha klasslar saqlangan), tab bar, sheet panellar, 174 test | ✅ tugadi (2026-09-29) |
+| 2R.3 | Reception: yotoqxona — **`apps.dorm`**: `DormRoom` (o'g'il/qiz/aralash, o'rinlar, oylik to'lov), `DormStay` (bitta faol qayd, tarix o'chirilmaydi), joylashtirish qoidalari (faol, shu filial, jins mos, bo'sh o'rin — `select_for_update`); menyu: Boshqaruv paneli ✅ (bandlik, filiallar bo'yicha, hozir yashayotganlar: filtr, Excel, "Yana yuklash"), **Xonalar** ✅ (xona turi 2/4/6/8 o'rinli, qavat, holat faol/nofaol/ta'mirda — `is_active` ma'lumot ko'chirish bilan almashtirildi; statistika, "Filtr qo'shish": holat/jinsi/xona turi, band/sig'im, Excel; xona sahifasi: yashayotganlar, joylashtirish — faqat mos o'quvchilar, chiqarish, tarix). **To'lov grafiklari** ✅: `Invoice(category=dorm, dorm_stay)`, `DormStay.monthly_fee` (xona narxidan kami — chegirma); joylashtirilganda joriy oygacha yaratiladi (kirgan oy proratsiya), cron `generate_monthly_invoices` yotoqxonani ham qo'shadi, chiqqanda chiqqan oy kunlar bo'yicha + keyingi to'lanmagan oylar bekor (oldindan to'langan saqlanadi), o'qishdan chiqqanda qayd avtomatik yopiladi; sahifa: 6 statistika, filtr (o'quv yili — oylar oralig'i, oy, holat), Excel; to'lov qabul qilish `?category=dorm`. **Qarzdorlar** ✅: Kirim → Qarzdorlar bilan umumiy selector/shablon/yon panel (`InvoiceFilters.category`, `?category=dorm`), faqat yotoqxona oylari (o'qish qarzi aralashmaydi), oxirgi to'lov — shu turdagi, filtr (o'quv yili, oy, holat: kutilmoqda/qisman/muddati o'tgan), Excel; ℹ️ panelda "Oxirgi to'lov" satri. **Ochiq savol:** asl tizimdagi "To'lov rejalari" (6–11 oylik oldindan to'lovga chegirma) — narxlar kelishilmagan, qilinmadi. Mulkdor to'lovlari — ⏳; xona qo'shish/tahrirlash hozircha admin orqali; 170 test | ⏳ davom etmoqda |
 | 3Z | **Zavuch** — sinflar va guruhlar boshqaruvi, o'qituvchilar (HR), dars jadvali (ziddiyat tekshiruvi, chop etish), yotoqxona davomati, oylik hisob-kitob jadvali | |
 | 4T | **O'qituvchi** — bosh sahifa, mening jadvalim, guruhlarim, sinf rahbarlik, oylik dvigateli (Excel qabul testi), olingan oyliklar, "oylik qanday hisoblanadi" | |
 | 9 | Sayqal: Excel eksport, ⌘K qidiruv, ruscha tarjima, Direktor/Superadmin | |
@@ -161,21 +164,36 @@ Qoidalar:
 
 ## 6. Dizayn tizimi
 
-- **Bitta dizayn tili** barcha rollar uchun (asl tizimdagi "daftar" va "admin shablon" aralashmasi takrorlanmaydi).
-- **Uslub manbai:** BootstrapMade "NiceSchool" shablonining rang va shriftlari (2026-09-27 da tanlangan, 1-usul).
-  Faqat palitra va uslub olingan — Bootstrap va shablon kodi ishlatilmaydi (litsenziya: bepul versiyada kredit havolasi shart).
-- Palitra: urg'u `#08915e` (yashil), sarlavha `#2d465e`, fon `#f1f5f4`. Login chap paneli: `#1d3346` → `#08915e` gradient.
-- Shriftlar: sarlavhalar **Raleway** (`lining-nums` bilan, aks holda raqamlar "eski uslub"), matn **Onest**. Poppins ishlatilmaydi (kirill yo'q). Raqamlar `tabular-nums`.
-- Tokenlar: `static/css/app.css` boshida (`--bg`, `--surface`, `--heading`, `--text`, `--accent`…). Yangi rang to'g'ridan-to'g'ri yozilmaydi — faqat token.
-- **Rol urg'u rangi:** `body[data-role]` → o'qituvchi = `--success`, zavuch = `--info`, reception = `--warning` (kunduzi `#08915e` / `#2d6a9f` / `#b86a14`; tungi rejimda yumshoqroq `#3cc48f` / `#7aaee0` / `#e2a65a`). Foydalanuvchi qaysi panelda ekanini rangdan biladi.
-- **Ranglar uyg'unligi (2026-09-27):** semantik tokenlar (`--success/--warning/--danger/--info` + `-soft`) ikkala rejimda alohida. To'yingan rangli fon ustidagi matn — `--on-color` / `--accent-contrast` (tungi rejimda to'q matn). Qattiq `#fff` yoki hex rang komponentlarda yozilmaydi.
-- Statistika kartalari: **yumshoq (tint) ikon bloki** — `.tone-*` klasslari faqat `--tone` beradi. To'liq rangli bloklar ishlatilmaydi (bir sahifada sariq/ko'k/yashil/qizil yonma-yon ko'zni charchatadi). Faol menyu bandida chap chiziq.
-- Jadval amallari: dumaloq konturli ikon tugmalar `.icon-btn.tone-*` (ko'rish — info, to'lov — success, tahrir — warning, o'chirish — danger). Xavfli amallar — `<form data-confirm="…">` → umumiy `#confirm-dialog`.
-- Dark mode: tizim sozlamasi + qo'lda almashtirish (`localStorage.theme`).
+**2026-09-29 dan: Apple Human Interface Guidelines uslubi** (foydalanuvchi qarori; oldingi NiceSchool palitrasi
+va Onest/Raleway shriftlari bekor qilindi). **To'liq qo'llanma — `docs/DESIGN.md`** (tokenlar, komponentlar,
+qilinmaydiganlar, yangi sahifa tekshiruv ro'yxati). Barcha yangi UI shu qo'llanma bo'yicha quriladi.
+
+- **Bitta dizayn tili** barcha rollar uchun. Tamoyillar: aniqlik (kontent birinchi), bo'ysunish (navigatsiya shaffof
+  "material"da, kontent qattiq sirtda), chuqurlik (qatlamlar soya/blur bilan, chegara chiziqlari deyarli yo'q).
+- **Shrift:** tizim shrifti — Apple qurilmalarida SF Pro / katta raqamlar uchun SF Pro Rounded (`ui-rounded`),
+  qolganlarida **Inter** (Google Fonts, kirill bor). SF Pro va SF Symbols litsenziyasi veb-saytga joylashtirishga
+  ruxsat bermaydi — fayl sifatida yuklanmaydi. Ikonlar o'zimizniki (SF Symbols'ga o'xshash ingichka chiziq).
+- **Ranglar:** Apple tizim ranglari (`--c-blue/green/orange/red/purple/indigo/teal/pink`). Kunduzi — matn sifatida
+  o'qiladigan to'yinganlik, tunda — Apple'ning tungi variantlari. Fon `#F2F2F7`, sirt `#FFF`; tungi rejim `#000` /
+  `#1C1C1E` / `#2C2C2E` (neytral kulrang). Kulrang to'ldirish — `--fill`, `--fill-2`, `--fill-strong`.
+- **Urg'u:** hamma rolda systemBlue (`--accent`). **Rol belgisi** `--role`: o'qituvchi — yashil, zavuch — indigo,
+  reception — to'q sariq; faqat kichik nuqta (sidebar, rol tugmasi) sifatida.
+- **Komponentlar:** kapsula tugmalar (filled / tinted `.btn-outline` / gray `.btn-secondary` / plain `.btn-ghost`),
+  Segmented Control (`.segmented`, `.radio-row`, `.tabs`), iOS switch (`.check input[type=checkbox]`), dumaloq ✓
+  (`.check-item`), select'da ↕ belgisi, Apple Alert uslubidagi tasdiqlash oynasi, macOS menyu materiali (dropdown).
+- **Qobiq:** suzuvchi shaffof sidebar (tanlangan band — to'liq ko'k, matn oq), shaffof yuqori panel, katta sarlavha
+  (Large Title). **Telefonda (≤768px) pastki suzuvchi tab bar** — rolga qarab 4 ta bo'lim + "Menyu"
+  (`navigation.TAB_BAR`, `build_tabbar`). Yon panellar: kompyuterda chetdan ajralgan suzuvchi varaq, telefonda
+  **pastdan chiquvchi sheet** (tutqich bilan). Xabarlar — o'ng yuqorida bildirishnoma, 6 soniyada yo'qoladi.
+- **Burchaklar konsentrik:** 6 / 10 / 14 / 20 / 26 px (`--radius-xs … --radius-xl`). Harakat: `--ease` (spring'ga yaqin).
+- Statistika kartalari: yumshoq (tint) dumaloq ikon + SF Rounded raqam. To'liq rangli bloklar ishlatilmaydi.
+- Jadval amallari: dumaloq ikon tugmalar `.icon-btn.tone-*`. Xavfli amallar — `<form data-confirm="…">`.
+- Tokenlar: `static/css/app.css` boshida. Yangi rang to'g'ridan-to'g'ri yozilmaydi — faqat token.
+- Maktab logotipi rangi (`SchoolSettings.brand_color` → `--brand`) faqat brend belgisida (ilova ikonkasi kabi gradient).
+- Dark mode: tizim sozlamasi + qo'lda almashtirish (`localStorage.theme`). `prefers-reduced-motion` hurmat qilinadi.
 - Ikonlar: `templates/partials/icons.html` SVG sprite, `{% include "partials/icon.html" with name="…" %}`.
-- Komponentlar: `.btn-*`, `.input`, `.input-group`, `.segmented`, `.otp`, `.card`, `.stat`, `.empty`, `.badge`, `.dropdown`, `.toast`.
-- Mobil birinchi: o'qituvchilar asosan telefondan kiradi. Sidebar ≤1024px da drawer.
-- Keyin qo'shiladi: ⌘K global qidiruv, jadval komponenti (sticky header, zichlik, saqlangan filtrlar), skeleton loaderlar, ApexCharts.
+- Chop etish sahifalari (shartnoma, kvitansiya) dizayn tokenlaridan mustaqil — oq qog'oz, qora matn.
+- Keyin qo'shiladi: ⌘K global qidiruv, skeleton loaderlar.
 
 ## 7. Ishga tushirish
 

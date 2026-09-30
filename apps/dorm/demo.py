@@ -3,6 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
+from apps.finance.services import payments
 from apps.people.models import Student
 
 from .models import DormRoom, DormStay
@@ -27,6 +28,11 @@ def seed(branch, reception_user) -> dict:
     active = Student.objects.filter(branch=branch, status=Student.Status.ACTIVE).order_by("code")
     boys, girls = [s for s in active if s.gender == "M"][:14], [s for s in active if s.gender == "F"][:8]
     for student, room in [(s, rooms[0]) for s in boys] + [(s, rooms[1 + i % 2]) for i, s in enumerate(girls)]:
-        stays.check_in(student=student, room=room, on=date(2026, 9, 16), by=reception_user)
+        stay = stays.check_in(student=student, room=room, on=date(2026, 9, 16), by=reception_user)
         created += 1
+        if created % 3:  # har uchinchidan boshqasi qisman yoki to'liq to'lagan
+            inv = stay.invoices.first()
+            if inv:
+                payments.accept_payment(student=student, amount=inv.amount if created % 2 else inv.amount / 2,
+                                        method="transfer", category="dorm", by=reception_user)
     return {"rooms": len(rooms), "stays": created}

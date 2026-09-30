@@ -37,6 +37,8 @@ class Invoice(TimeStampedModel):
                                 verbose_name="o'quvchi")
     contract = models.ForeignKey("contracts.Contract", on_delete=models.PROTECT, null=True, blank=True,
                                  related_name="invoices", verbose_name="shartnoma")
+    dorm_stay = models.ForeignKey("dorm.DormStay", on_delete=models.PROTECT, null=True, blank=True,
+                                  related_name="invoices", verbose_name="yotoqxona qaydi")
     category = models.CharField("turi", max_length=10, choices=Category.choices, default=Category.TUITION)
     month = models.DateField("oy", help_text="Oyning 1-sanasi")
     full_amount = models.DecimalField("to'liq tarif", **MONEY, help_text="Chegirmasiz, to'liq oy uchun")

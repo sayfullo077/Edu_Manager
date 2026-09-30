@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Guardian, Student, StudentGuardian, Teacher
+from .models import District, Guardian, Mahalla, Student, StudentGuardian, Teacher
 
 
 class StudentGuardianInline(admin.TabularInline):
@@ -37,3 +37,25 @@ class TeacherAdmin(admin.ModelAdmin):
     readonly_fields = ["code"]
     filter_horizontal = ["subjects"]
     autocomplete_fields = ["user"]
+
+
+class MahallaInline(admin.TabularInline):
+    model = Mahalla
+    extra = 1
+    fields = ["name"]
+
+
+@admin.register(District)
+class DistrictAdmin(admin.ModelAdmin):
+    list_display = ["name", "region", "is_active"]
+    list_filter = ["region", "is_active"]
+    search_fields = ["name", "region"]
+    inlines = [MahallaInline]
+
+
+@admin.register(Mahalla)
+class MahallaAdmin(admin.ModelAdmin):
+    list_display = ["name", "district"]
+    list_filter = ["district__region"]
+    search_fields = ["name", "district__name"]
+    autocomplete_fields = ["district"]

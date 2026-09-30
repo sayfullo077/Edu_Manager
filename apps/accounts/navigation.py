@@ -82,8 +82,8 @@ NAVIGATION: dict[str, list[tuple[str | None, list[NavItem]]]] = {
         ("Yotoqxona", [
             NavItem("Boshqaruv paneli", "chart", "dorm", "dorm:dashboard"),
             NavItem("Xonalar", "bed", "dorm-rooms", "dorm:room_list"),
-            NavItem("To'lov grafiklari", "calendar", "dorm-invoices"),
-            NavItem("Qarzdorlar", "alert", "dorm-debtors"),
+            NavItem("To'lov grafiklari", "calendar", "dorm-invoices", "dorm:invoice_list"),
+            NavItem("Qarzdorlar", "alert", "dorm-debtors", "dorm:debtor_list"),
             NavItem("Mulkdor to'lovlari", "wallet", "dorm-landlord"),
         ]),
     ],
@@ -128,3 +128,20 @@ def build_menu(role: str | None, path: str) -> list[dict]:
             "key": slugify(title or "main"), "active": any(e["active"] for e in entries),
         })
     return menu
+
+
+# Telefondagi pastki tab bar: har bir rol uchun eng ko'p ishlatiladigan 4 ta bo'lim (5-chisi — "Menyu").
+# Kalit — NavItem.slug ("home" — bosh sahifa); qiymat — tab bar uchun qisqa nom.
+TAB_BAR: dict[str, list[tuple[str, str]]] = {
+    Role.TEACHER: [("home", "Asosiy"), ("my-schedule", "Jadval"), ("my-groups", "Guruhlar"), ("my-salary", "Oylik")],
+    Role.HEAD_TEACHER: [("home", "Asosiy"), ("students", "O'quvchilar"), ("timetable", "Jadval"),
+                        ("teachers", "O'qituvchilar")],
+    Role.RECEPTION: [("home", "Asosiy"), ("students", "O'quvchilar"), ("cashbox", "Kassa"),
+                     ("debtors", "Qarzdorlar")],
+}
+
+
+def build_tabbar(role: str | None, menu: list[dict]) -> list[dict]:
+    """Tab bar bandlari menyudan olinadi — URL va faollik sidebar bilan bir xil bo'ladi."""
+    entries = {(e["item"].slug or "home"): e for group in menu for e in group["items"]}
+    return [{**entries[slug], "short": short} for slug, short in TAB_BAR.get(role, []) if slug in entries]

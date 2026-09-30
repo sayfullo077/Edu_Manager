@@ -146,24 +146,7 @@
       <div><h3>O'quvchilar o'sish trendi</h3><p class="muted small">Oxirgi 6 oy · oylar kesimida</p></div>
       <ul class="legend inline"><li><i class="seg-info"></i>Jami o'quvchilar</li><li><i class="seg-danger"></i>Ketganlar</li></ul>
     </div>
-    {% localize off %}{% with c=trend_chart %}
-    <div class="chart-wrap" data-line-chart data-series="{{ trend|tojson }}">
-    <svg class="chart" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img" aria-label="O'quvchilar soni oylar bo'yicha">
-      <defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="stop-a"/><stop offset="1" class="stop-b"/></linearGradient></defs>
-      {% for t in c.y_ticks %}<line class="grid-line" x1="{{ c.left }}" x2="{{ c.x_end }}" y1="{{ t.y }}" y2="{{ t.y }}"/><text class="axis" x="{{ c.left|add:-10 }}" y="{{ t.y }}" text-anchor="end" dominant-baseline="middle">{{ t.value }}</text>{% endfor %}
-      {% for t in c.y2_ticks %}{% if forloop.first or forloop.last %}<text class="axis axis-danger" x="{{ c.x_end|add:10 }}" y="{{ t.y }}" dominant-baseline="middle">{{ t.value }}</text>{% endif %}{% endfor %}
-      <line class="guide" x1="0" x2="0" y1="{{ c.top }}" y2="{{ c.y_base }}"/>
-      <path class="area" d="{{ c.primary.area }}"/>
-      <path class="line line-primary" d="{{ c.primary.path }}"/>
-      <path class="line line-danger" d="{{ c.secondary.path }}"/>
-      {% for p in c.primary.points %}<circle class="dot dot-primary" data-i="{{ forloop.counter0 }}" cx="{{ p.x }}" cy="{{ p.y }}" r="4"/>{% endfor %}
-      {% for p in c.secondary.points %}<circle class="dot dot-danger" data-i="{{ forloop.counter0 }}" cx="{{ p.x }}" cy="{{ p.y }}" r="3.5"/>{% endfor %}
-      {% for l in c.labels %}<text class="axis" data-i="{{ forloop.counter0 }}" x="{{ l.x }}" y="{{ c.height|add:-8 }}" text-anchor="middle">{{ l.text }}</text>{% endfor %}
-      {% for col in c.columns %}<rect class="hover-col" data-i="{{ col.i }}" data-x="{{ col.x }}" data-y="{{ col.y }}" x="{{ col.x0 }}" y="0" width="{{ col.w }}" height="{{ c.height }}" tabindex="0" aria-label="{{ col.label }}"/>{% endfor %}
-    </svg>
-    <div class="chart-tip" role="tooltip"></div>
-    </div>
-    {% endwith %}{% endlocalize %}
+    {% include "partials/trend_chart.html" %}
   </section>
 
   <section class="card card-pad">

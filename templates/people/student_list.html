@@ -42,7 +42,7 @@
   </div>
 </div>
 
-{% url 'people:student_list' as reset_url %}{% url 'people:student_export' as export_url %}
+{% url 'people:student_list' as reset_url %}{% url 'people:student_export' as export_url %}{% url 'people:student_print' as print_url %}
 {% with q=filter_form.q.value %}{% include "partials/filter_bar.html" with placeholder="F.I.O, kod yoki telefon…" show_labels=True %}{% endwith %}
 
 <div class="card">
@@ -56,10 +56,11 @@
             <th>Sinf</th>
             <th class="hide-sm hide-xl">Tug'ilgan</th>
             <th class="hide-sm hide-lg">Telefon</th>
+            <th class="hide-sm">Jins</th>
             <th>Holati</th>
             <th class="hide-sm">ERP</th>
             <th class="hide-sm">E-maktab</th>
-            <th class="actions"><span class="sr-only">Amallar</span></th>
+            <th class="actions">Amallar</th>
           </tr>
         </thead>
         <tbody>
@@ -78,6 +79,7 @@
               </td>
               <td class="hide-sm hide-xl num nowrap">{{ s.birth_date|date:"d.m.Y" }}</td>
               <td class="hide-sm hide-lg num nowrap">{{ s.phone|phone }}</td>
+              <td class="hide-sm"><span class="badge {% if s.gender == 'F' %}badge-pink{% else %}badge-info{% endif %}">{{ s.get_gender_display }}</span></td>
               <td>
                 <span class="badge {% if s.status == 'active' %}badge-success{% elif s.status == 'graduated' %}badge-info{% elif s.status == 'frozen' %}badge-warning{% elif s.status == 'expelled' %}badge-danger{% else %}badge-muted{% endif %}">
                   {{ s.get_status_display }}

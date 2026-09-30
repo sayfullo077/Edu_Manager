@@ -1,12 +1,14 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.dorm import selectors
 from apps.dorm.models import DormRoom, DormStay
-from apps.dorm.services import stays
+from apps.dorm.services import billing, stays
 from apps.people.models import Student
 
 
@@ -95,7 +97,7 @@ def test_room_detail_check_in_and_out(staff_client, branch, rooms, reception):
     url = reverse("dorm:room_detail", args=[boys.pk])
     candidates = list(staff_client.get(url).context["form"].fields["student"].queryset)
     assert ali in candidates and qiz not in candidates  # jinsi mos emas
-    resp = staff_client.post(url, {"student": ali.pk, "on": "2026-09-20", "note": "1-karavot"})
+    resp = staff_client.post(url, {"student": ali.pk, "on": "2026-09-20", "note": "1-karavot", "monthly_fee": "0"})
     assert resp.status_code == 302 and DormStay.objects.get(student=ali).note == "1-karavot"
     assert ali not in staff_client.get(url).context["form"].fields["student"].queryset  # endi yashayapti
     stay = DormStay.objects.get(student=ali)
@@ -123,3 +125,82 @@ def test_only_most_specific_nav_item_is_active():
     assert active(reverse("dorm:room_detail", args=[1])) == ["Xonalar"]
     assert active(reverse("dorm:dashboard")) == ["Boshqaruv paneli"]
     assert active(reverse("people:student_list")) == ["O'quvchilar"]
+
+
+
+# ---------- Yotoqxona to'lov grafigi ----------
+
+@pytest.fixture
+def paid_room(branch):
+    return DormRoom.objects.create(branch=branch, name="29-xona", gender="female", capacity=10,
+                                   monthly_fee=Decimal("600000"))
+
+
+def test_check_in_generates_prorated_invoices_with_discount(branch, paid_room, reception, monkeypatch):
+    monkeypatch.setattr(timezone, "localdate", lambda *a: date(2026, 10, 15))
+    s = make_student(branch, "Malika", "F")
+    stay = stays.check_in(student=s, room=paid_room, on=date(2026, 9, 16), by=reception,
+                          monthly_fee=Decimal("300000"))
+    inv = list(s.invoices.filter(category="dorm").order_by("month"))
+    assert [i.month.month for i in inv] == [9, 10]  # joriy oygacha
+    assert inv[0].amount == Decimal("150000") and inv[0].waived == Decimal("150000")  # 300 000 × 15/30
+    assert inv[1].amount == Decimal("300000") and inv[1].discount == Decimal("300000")  # 600 000 − 300 000
+    assert inv[0].dorm_stay == stay and billing.generate_due_months(date(2026, 10, 20)) == 0  # idempotent
+
+
+def test_check_out_prorates_and_cancels_future(branch, paid_room, reception, monkeypatch):
+    monkeypatch.setattr(timezone, "localdate", lambda *a: date(2026, 10, 1))
+    s = make_student(branch, "Malika", "F")
+    stay = stays.check_in(student=s, room=paid_room, on=date(2026, 9, 1), by=reception)
+    billing.generate_for_stay(stay, through=date(2026, 12, 1))  # oldindan yaratilgan nov-dek
+    stays.check_out(stay, on=date(2026, 10, 10), by=reception)
+    by_month = {i.month.month: i for i in s.invoices.filter(category="dorm")}
+    assert by_month[10].amount == Decimal("193000")  # 600 000 × 10/31 = 193 548 → 193 000
+    assert by_month[11].status == by_month[12].status == "cancelled"
+
+
+def test_dorm_invoice_list_and_dorm_payment(staff_client, branch, paid_room, reception):
+    s = make_student(branch, "Malika", "F")
+    stays.check_in(student=s, room=paid_room, on=date(2026, 9, 1), by=reception)
+    url = reverse("dorm:invoice_list")
+    resp = staff_client.get(url)
+    assert resp.context["stats"]["count"] >= 1 and resp.context["page"].object_list[0].category == "dorm"
+    labels = [f["label"] for f in resp.context["filter_menu"]]
+    assert labels == ["O'quv yili", "Oy", "Holat"]
+    staff_client.post(reverse("finance:payment_create", args=[s.pk]),
+                      {"amount": "100000", "method": "transfer", "category": "dorm"})
+    p = s.payments.get()
+    assert p.category == "dorm" and s.invoices.get(category="dorm", month=date(2026, 9, 1)).paid == Decimal("100000")
+    assert staff_client.get(url, {"state": "overdue"}).context["page"].paginator.count == 1  # qisman, muddati o'tgan
+    assert staff_client.get(reverse("dorm:invoice_export")).status_code == 200
+
+
+# ---------- Yotoqxona qarzdorlari ----------
+
+def test_dorm_debtors_only_dorm_invoices(staff_client, branch, paid_room, reception):
+    from apps.finance.models import Invoice
+    month = timezone.localdate().replace(day=1)
+    malika, olim = make_student(branch, "Malika", "F"), make_student(branch, "Olim")
+    stays.check_in(student=malika, room=paid_room, on=month, by=reception)
+    Invoice.objects.create(branch=branch, student=olim, category=Invoice.Category.TUITION, month=month,
+                           full_amount=Decimal("1750000"), amount=Decimal("1750000"), due_date=month)
+    resp = staff_client.get(reverse("dorm:debtor_list"))
+    rows = list(resp.context["page"].object_list)
+    assert [s.pk for s in rows] == [malika.pk] and rows[0].remaining == Decimal("600000")  # o'qish qarzi yo'q
+    assert resp.context["stats"]["students"] == 1 and resp.context["stats"]["remaining"] == Decimal("600000")
+    assert [f["label"] for f in resp.context["filter_menu"]] == ["O'quv yili", "Oy", "Holat"]
+    kirim = staff_client.get(reverse("finance:debtor_list")).context["page"].object_list
+    assert [s.pk for s in kirim] == [olim.pk]  # Kirim → Qarzdorlar yotoqxonani aralashtirmaydi
+
+    panel = reverse("finance:debtor_panel", args=[malika.pk, "pay"])
+    resp = staff_client.get(panel, {"category": "dorm"})
+    assert resp.context["remaining"] == Decimal("600000") and b"Yotoqxona to" in resp.content
+    back = reverse("dorm:debtor_list")
+    resp = staff_client.post(reverse("finance:payment_create", args=[malika.pk]),
+                             {"amount": "250000", "method": "transfer", "category": "dorm", "next": back})
+    assert resp.status_code == 302 and resp.url == back
+    info = staff_client.get(reverse("finance:debtor_panel", args=[malika.pk, "info"]), {"category": "dorm"})
+    assert info.context["last_payment"].amount == Decimal("250000") and info.context["paid"] == Decimal("250000")
+    row = staff_client.get(back).context["page"].object_list[0]
+    assert row.remaining == Decimal("350000") and row.last_amount == Decimal("250000")
+    assert staff_client.get(reverse("dorm:debtor_export")).status_code == 200

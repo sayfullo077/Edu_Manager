@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -9,9 +10,18 @@ from apps.accounts.models import Role
 from apps.accounts.permissions import role_required
 from apps.common import excel
 from apps.common.forms import apply_errors, filter_menu
+from apps.finance import selectors as finance_selectors
+from apps.finance.views import DEBTOR_EXPORT_HEADERS, debtor_export_rows, debtor_list_context
 
 from . import selectors
-from .forms import CheckInForm, CheckOutForm, ResidentFilterForm, RoomFilterForm
+from .forms import (
+    CheckInForm,
+    CheckOutForm,
+    DormDebtorFilterForm,
+    DormInvoiceFilterForm,
+    ResidentFilterForm,
+    RoomFilterForm,
+)
 from .models import DormRoom, DormStay
 from .services import stays
 
@@ -91,7 +101,8 @@ def room_detail(request, pk):
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:
-            stay = stays.check_in(student=d["student"], room=room, on=d["on"], note=d["note"], by=request.user)
+            stay = stays.check_in(student=d["student"], room=room, on=d["on"], note=d["note"],
+                                  monthly_fee=d["monthly_fee"], by=request.user)
         except ValidationError as e:
             apply_errors(form, e)
         else:
@@ -119,3 +130,57 @@ def stay_check_out(request, pk):
         else:
             messages.success(request, f"{stay.student.short_name} yotoqxonadan chiqarildi.")
     return redirect("dorm:room_detail", pk=stay.room_id)
+
+
+
+# ---------- Yotoqxona to'lov grafiklari ----------
+
+@role_required(*DORM_ROLES)
+def invoice_list(request):
+    form = DormInvoiceFilterForm(request.GET or None, branch=request.branch)
+    qs = finance_selectors.invoices_list(request.branch, form.to_filters())
+    page = Paginator(qs, 20).get_page(request.GET.get("page"))
+    query = request.GET.copy()
+    query.pop("page", None)
+    active = form.active_filters()
+    q = form.data.get("q", "")
+    return render(request, "dorm/invoice_list.html", {
+        "form": form, "page": page, "querystring": query.urlencode(), "q": q,
+        "page_range": page.paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1),
+        "stats": finance_selectors.invoices_stats(qs),
+        "filter_menu": filter_menu(form, active), "active_filters": active, "has_filters": bool(active or q),
+    })
+
+
+DORM_INVOICE_EXPORT_HEADERS = ["#", "O'quvchi", "Kodi", "Xona", "Oy", "Jami", "Chegirma", "Kechilgan",
+                               "To'lanishi kerak", "To'langan", "Qoldiq", "Muddat", "Holati"]
+
+
+@role_required(*DORM_ROLES)
+def invoice_export(request):
+    form = DormInvoiceFilterForm(request.GET or None, branch=request.branch)
+    qs = finance_selectors.invoices_list(request.branch, form.to_filters())[:20_000]
+    rows = ([n, i.student.full_name, i.student.code, i.dorm_stay.room.name if i.dorm_stay else "",
+             f"{i.month:%Y-%m}", i.full_amount, i.discount, i.waived, i.amount, i.paid, i.remaining, i.due_date,
+             i.get_status_display()] for n, i in enumerate(qs, start=1))
+    content = excel.build_workbook("Yotoqxona grafiklari", DORM_INVOICE_EXPORT_HEADERS, rows)
+    return excel.xlsx_response(f"yotoqxona-grafiklari-{timezone.localdate():%Y-%m-%d}.xlsx", content)
+
+
+# ---------- Yotoqxona qarzdorlari ----------
+
+@role_required(*DORM_ROLES)
+def debtor_list(request):
+    """Kelgan oylar bo'yicha yotoqxona qarzi bor o'quvchilar. Sahifa va yon panel — Kirim → Qarzdorlar bilan umumiy."""
+    form = DormDebtorFilterForm(request.GET or None, branch=request.branch)
+    return render(request, "finance/debtor_list.html", {
+        **debtor_list_context(request, form), "title": "Yotoqxona qarzdorlari",
+        "list_url_name": "dorm:debtor_list", "export_url_name": "dorm:debtor_export"})
+
+
+@role_required(*DORM_ROLES)
+def debtor_export(request):
+    form = DormDebtorFilterForm(request.GET or None, branch=request.branch)
+    qs = finance_selectors.debtors(request.branch, form.to_filters())[:20_000]
+    content = excel.build_workbook("Yotoqxona qarzdorlari", DEBTOR_EXPORT_HEADERS, debtor_export_rows(qs))
+    return excel.xlsx_response(f"yotoqxona-qarzdorlar-{timezone.localdate():%Y-%m-%d}.xlsx", content)

@@ -21,6 +21,41 @@ class Gender(models.TextChoices):
     FEMALE = "F", "Qiz"
 
 
+class District(models.Model):
+    """Tuman / shahar (viloyat — `domain.regions.REGIONS` dagi nom). Boshlang'ich ro'yxat migration'da."""
+
+    region = models.CharField("viloyat", max_length=80, db_index=True)
+    name = models.CharField("tuman / shahar", max_length=80)
+    is_active = models.BooleanField("faol", default=True)
+
+    class Meta:
+        verbose_name = "tuman / shahar"
+        verbose_name_plural = "tumanlar / shaharlar"
+        ordering = ["region", "name"]
+        constraints = [models.UniqueConstraint(fields=["region", "name"], name="unique_district_per_region")]
+
+    def __str__(self):
+        return f"{self.name} ({self.region})"
+
+
+class Mahalla(models.Model):
+    """Mahalla / qishloq (MFY, SHFY, QFY). Admin qo'shadi yoki forma orqali birinchi kiritilganda yaratiladi."""
+
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="mahallas",
+                                 verbose_name="tuman / shahar")
+    name = models.CharField("mahalla / qishloq", max_length=120)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "mahalla"
+        verbose_name_plural = "mahallalar"
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(Upper("name"), "district", name="unique_mahalla_per_district")]
+
+    def __str__(self):
+        return self.name
+
+
 class PersonNameMixin(models.Model):
     last_name = models.CharField("familiya", max_length=60)
     first_name = models.CharField("ism", max_length=60)

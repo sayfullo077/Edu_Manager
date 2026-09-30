@@ -1,4 +1,5 @@
 {% extends "layouts/app.html" %}
+{% load ui %}
 
 {% block title %}Yangi o'quvchi qabul qilish{% endblock %}
 
@@ -7,30 +8,89 @@
   <div>
     <a class="back-link" href="{% url 'people:student_list' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} O'quvchilar</a>
     <h1 class="mt-12">Yangi o'quvchi qabul qilish</h1>
+    <p class="sub">Ma'lumotlarni to'ldiring va saqlang — o'quvchi, vasiylar va shartnoma birga yaratiladi.</p>
   </div>
 </div>
 
 <ol class="steps" aria-label="Qabul bosqichlari">
-  <li class="current"><span>1</span> O'quvchi va ota-ona</li>
-  <li><span>2</span> Shartnoma</li>
-  <li><span>3</span> Tasdiqlash (SMS kod)</li>
+  <li class="current"><span>1</span> O'quvchi, vasiylar va shartnoma</li>
+  <li><span>2</span> Tasdiqlash (SMS kod)</li>
 </ol>
 
-<form class="edit-form" method="post" novalidate>
+<form class="edit-form" method="post" novalidate data-admission>
   {% csrf_token %}
   {% include "partials/form_errors.html" %}
-  {% with form=guardian_form %}{% include "partials/form_errors.html" %}{% endwith %}
+  {% with form=contract_form %}{% include "partials/form_errors.html" %}{% endwith %}
+  {% with form=meta_form %}{% include "partials/form_errors.html" %}{% endwith %}
+  {% for slot in slots %}{% with form=slot.form %}{% include "partials/form_errors.html" %}{% endwith %}{% endfor %}
 
   {% include "people/_student_fields.html" %}
 
+  {# ---------- Vasiylar: Ota / Ona / Olib keluvchi — har biri yoqib-o'chiriladi ---------- #}
+  <details class="card form-fold" open id="guardians">
+    <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Vasiylar (ota-ona) <span class="badge badge-muted">kamida bittasi</span></h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    {% for slot in slots %}
+      <div class="guardian-box slot" data-slot="{{ slot.key }}">
+        <label class="check slot-head">
+          <input type="checkbox" name="{{ slot.key }}-enabled" value="1" data-slot-toggle {% if slot.enabled %}checked{% endif %}>
+          <b>{{ slot.label }}</b>
+        </label>
+        <div class="form-grid cols-3 mt-12" data-slot-body {% if not slot.enabled %}hidden{% endif %}>
+          {% with g=slot.form %}
+            {% if slot.key == "carrier" %}{% include "partials/field.html" with field=meta_form.carrier_relation %}{% endif %}
+            {% include "partials/field.html" with field=g.pinfl %}
+            {% include "partials/field.html" with field=g.last_name %}
+            {% include "partials/field.html" with field=g.first_name %}
+            {% include "partials/field.html" with field=g.middle_name %}
+            {% include "partials/field.html" with field=g.phone %}
+            {% include "partials/field.html" with field=g.passport %}
+          {% endwith %}
+        </div>
+      </div>
+    {% endfor %}
+    <p class="note">{% include "partials/icon.html" with name="shield" class="sm" %}
+      Passport va JSHSHIR shifrlangan holda saqlanadi. Vasiy tizimda bo'lsa (JSHSHIR yoki telefon + familiya bo'yicha),
+      yangi yozuv yaratilmaydi — mavjudiga biriktiriladi.</p>
+  </details>
+
+  {# ---------- Moliya: o'quv yili, sinf, tarif, chegirma ---------- #}
+  <details class="card form-fold" open data-fee-calc>
+    <summary><h3>{% include "partials/icon.html" with name="wallet" class="sm" %} Moliya (tarif) <span class="badge badge-muted">majburiy</span></h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <p class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %} O'quv yili, sinf va tarif shu yerda belgilanadi — shu asosda shartnoma va oylik to'lov grafigi tuziladi.</p>
+    <div class="form-grid cols-3 mt-12">
+      {% include "partials/field.html" with field=form.academic_year %}
+      {% include "partials/field.html" with field=form.school_class %}
+      {% include "partials/field.html" with field=form.grade %}
+      {% include "partials/field.html" with field=contract_form.full_tariff %}
+      {% include "partials/field.html" with field=contract_form.start_date %}
+      {% include "partials/field.html" with field=contract_form.discount_percent %}
+      {% include "partials/field.html" with field=contract_form.discount_reason class="span-3" %}
+    </div>
+    <div class="fee-summary">
+      <span>Chegirma: <b class="num"><span data-discount-output>0</span> so'm</b></span>
+      <span>Oylik to'lov <strong class="num"><span data-fee-output>—</span> so'm</strong></span>
+    </div>
+  </details>
+
+  {# ---------- Shartnoma ---------- #}
   <details class="card form-fold" open>
-    <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Ota-ona / vasiy <span class="badge badge-accent">asosiy aloqa</span></h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
-    {% include "people/_guardian_fields.html" %}
+    <summary><h3>{% include "partials/icon.html" with name="file" class="sm" %} Shartnoma <span class="badge badge-muted">majburiy</span></h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="field" data-signer-field>
+      <span class="label">Shartnoma vasiysi *</span>
+      <div class="radio-row">
+        {% for choice in meta_form.signer %}<label data-signer="{{ choice.data.value }}">{{ choice.tag }} {{ choice.choice_label }}</label>{% endfor %}
+      </div>
+      <p class="hint" data-signer-empty hidden>Avval vasiylarni kiriting.</p>
+      {% for e in meta_form.signer.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %}
+      Shartnoma qoralamasi shu vasiy nomiga tuziladi, u asosiy aloqa bo'ladi. Saqlagach shartnoma sahifasiga o'tasiz —
+      u yerdan vasiy telefoniga SMS kod yuborib tasdiqlaysiz.</p>
   </details>
 
   <div class="form-footer">
     <a class="btn btn-secondary" href="{% url 'people:student_list' %}">Bekor qilish</a>
-    <button class="btn btn-primary" type="submit">Qabul qilish {% include "partials/icon.html" with name="arrow-right" class="sm" %}</button>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Qabul qilish</button>
   </div>
 </form>
 {% endblock %}

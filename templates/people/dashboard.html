@@ -1,0 +1,122 @@
+{% extends "layouts/app.html" %}
+{% load ui l10n %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="sub">{{ request.branch.name }} · {{ today|date:"j-F Y, l" }}{% if year %} · {{ year.name }} o'quv yili{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish</a>
+  </div>
+</div>
+
+{# ---------- Yuqori kartalar (faqat ta'lim) ---------- #}
+<div class="grid grid-5 stats-row">
+  <a class="card stat" href="{% url 'people:student_list' %}">
+    <div class="top"><span class="label">O'quvchilar</span><span class="ico">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div>
+    <div class="value">{{ stats.active }}</div>
+    <div class="foot trend-up">↑ +{{ stats.new }} bu oy</div>
+  </a>
+  <div class="card stat">
+    <div class="top"><span class="label">O'qituvchilar</span><span class="ico tone-info">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div>
+    <div class="value">{{ teachers.total }}</div>
+    <div class="foot">{{ teachers.vacation }} ta ta'tilda</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Sinflar</span><span class="ico tone-success">{% include "partials/icon.html" with name="school" class="sm" %}</span></div>
+    <div class="value">{{ classes|length }}</div>
+    <div class="foot">o'rtacha {{ avg_class }} nafardan{% if stats.no_class %} · {{ stats.no_class }} ta sinfsiz{% endif %}</div>
+  </div>
+  <a class="card stat" href="{% url 'contracts:contract_list' %}?status=draft">
+    <div class="top"><span class="label">Tasdiqlanmagan shartnoma</span><span class="ico tone-warning">{% include "partials/icon.html" with name="file" class="sm" %}</span></div>
+    <div class="value">{{ contracts.draft|add:contracts.sent }}</div>
+    <div class="foot">{% if stats.no_contract %}{{ stats.no_contract }} ta o'quvchida shartnoma yo'q{% else %}{{ contracts.signed }} ta imzolangan{% endif %}</div>
+  </a>
+  <a class="card stat" href="{% url 'people:student_list' %}?in_erp=0">
+    <div class="top"><span class="label">ERP'ga kiritilmagan</span><span class="ico tone-danger">{% include "partials/icon.html" with name="switch" class="sm" %}</span></div>
+    <div class="value">{{ stats.not_erp }}</div>
+    <div class="foot">E-maktab'ga kiritilmagan: {{ stats.not_emaktab }}</div>
+  </a>
+</div>
+
+{# ---------- Grafiklar ---------- #}
+<div class="grid grid-charts stats-row">
+  <section class="card card-pad">
+    <div class="split">
+      <div><h3>O'quvchilar o'sish trendi</h3><p class="muted small">Oxirgi 6 oy · oylar kesimida</p></div>
+      <ul class="legend inline"><li><i class="seg-info"></i>Jami o'quvchilar</li><li><i class="seg-danger"></i>Ketganlar</li></ul>
+    </div>
+    {% include "partials/trend_chart.html" %}
+  </section>
+
+  <section class="card card-pad">
+    <h3>Jinsi bo'yicha</h3>
+    <p class="muted small">Faol o'quvchilar</p>
+    <div class="donut-wrap chart-wrap" data-donut>
+      {% with d=gender_donut %}
+      {% localize off %}<svg class="donut" viewBox="0 0 {{ d.size }} {{ d.size }}" role="img" aria-label="O'g'il bolalar {{ stats.male }}, qizlar {{ stats.female }}">
+        <circle class="donut-track" cx="{{ d.center }}" cy="{{ d.center }}" r="{{ d.radius }}" stroke-width="{{ d.stroke }}"/>
+        {% for a in d.arcs %}{% if a.value %}<circle class="donut-arc {% if forloop.first %}seg-info{% else %}seg-pink{% endif %}" cx="{{ d.center }}" cy="{{ d.center }}" r="{{ d.radius }}" stroke-width="{{ d.stroke }}" stroke-dasharray="{{ a.dash }}" stroke-dashoffset="{{ a.offset }}" transform="rotate(-90 {{ d.center }} {{ d.center }})" tabindex="0" data-label="{{ a.label }}" data-value="{{ a.value }}" data-percent="{{ a.percent }}" data-cls="{% if forloop.first %}seg-info{% else %}seg-pink{% endif %}" aria-label="{{ a.label }}: {{ a.value }} ({{ a.percent }}%)"/>{% endif %}{% endfor %}
+        <text class="donut-label" x="50%" y="46%" text-anchor="middle">Jami</text>
+        <text class="donut-value" x="50%" y="60%" text-anchor="middle">{{ stats.active }}</text>
+      </svg>{% endlocalize %}
+      <div class="chart-tip" role="tooltip"></div>
+    </div>
+    <ul class="legend stacked">
+      {% for a in d.arcs %}<li><span><i class="{% if forloop.first %}seg-info{% else %}seg-pink{% endif %}"></i>{{ a.label }}</span><span><b>{{ a.value }}</b> <small class="muted">({{ a.percent }}%)</small></span></li>{% endfor %}
+    </ul>
+    {% endwith %}
+  </section>
+</div>
+
+<div class="grid grid-2">
+  {# ---------- Sinflar bo'yicha ---------- #}
+  <section class="card card-pad">
+    <div class="split">
+      <div><h3>Sinflar bo'yicha</h3><p class="muted small">Faol o'quvchilar soni</p></div>
+      <a class="link small" href="{% url 'people:student_list' %}">Hammasi</a>
+    </div>
+    {% if class_rows %}
+      <ul class="class-bars">
+        {% for row in class_rows %}
+          <li>
+            <a href="{% url 'people:student_list' %}?school_class={{ row.c.pk }}"><b>{{ row.c.name }}</b></a>
+            {% bar row.percent "success" %}
+            <b>{{ row.c.n }}</b>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-line">Joriy o'quv yili uchun sinflar yaratilmagan.</p>
+    {% endif %}
+  </section>
+
+  {# ---------- Oxirgi qabul qilinganlar ---------- #}
+  <section class="card">
+    <div class="card-title">
+      <h3>Oxirgi qabul qilinganlar</h3>
+      <a class="link small" href="{% url 'people:student_list' %}">Ro'yxat</a>
+    </div>
+    {% if recent %}
+      <ul class="entity-list">
+        {% for s in recent %}
+          <li>
+            <span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span>
+            <div class="grow">
+              <a class="entity-name" href="{% url 'people:student_detail' s.pk %}">{{ s.short_name }}</a>
+              <small class="num">{{ s.code }}{% if s.school_class %} · {{ s.school_class.name }}{% endif %} · {{ s.joined_at|date:"d.m.Y" }}</small>
+            </div>
+            <span class="badge {% if s.status == 'active' %}badge-success{% else %}badge-muted{% endif %}">{{ s.get_status_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-line">Hali o'quvchi qabul qilinmagan.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

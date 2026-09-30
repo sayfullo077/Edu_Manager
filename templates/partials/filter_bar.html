@@ -1,7 +1,7 @@
 {% comment %}
   Ro'yxat filtri: qidiruv + "Filtr qo'shish" menyusi + Qidirish/Excel/Tozalash + ochilgan filtr maydonlari.
   Parametrlar: filter_menu (common.forms.filter_menu), active_filters, has_filters, q, placeholder,
-  reset_url, export_url (ixtiyoriy), menu_title (ixtiyoriy), show_labels (ixtiyoriy). JS: app.js [data-filter-form].
+  reset_url, export_url (ixtiyoriy), print_url (ixtiyoriy — chop etish ro'yxati), menu_title (ixtiyoriy), show_labels (ixtiyoriy). JS: app.js [data-filter-form].
 {% endcomment %}
 <form class="card toolbar filter-bar" method="get" role="search" data-filter-form>
   <div class="filter-main">
@@ -30,6 +30,11 @@
       {% if export_url %}
         <a class="btn btn-excel" href="{{ export_url }}?{{ querystring }}" title="Excelga yuklab olish" download>
           {% include "partials/icon.html" with name="sheet" class="sm" %}<span class="hide-sm">Excel</span>
+        </a>
+      {% endif %}
+      {% if print_url %}
+        <a class="btn btn-outline" href="{{ print_url }}?{{ querystring }}" title="Chop etish uchun ro'yxat" target="_blank" rel="noopener">
+          {% include "partials/icon.html" with name="list" class="sm" %}<span class="hide-sm">Ro'yxat</span>
         </a>
       {% endif %}
       {% if has_filters %}

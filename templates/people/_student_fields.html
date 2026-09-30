@@ -1,7 +1,10 @@
-{# O'quvchi formasi bo'limlari — qabul (student=None) va tahrirlash sahifalarida umumiy. #}
+{% comment %}
+  O'quvchi formasi bo'limlari — qabul (admission=True) va tahrirlash sahifalarida umumiy.
+  Qabulda holat ko'rsatilmaydi (yangi o'quvchi doim faol), o'quv yili va sinf — "Moliya (tarif)" bo'limida.
+{% endcomment %}
 <details class="card form-fold" open>
   <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Shaxsiy ma'lumotlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
-  <div class="form-grid cols-3">
+  <div class="form-grid cols-3" data-address data-mahalla-url="{% url 'people:address_mahallas' %}">
     {% include "partials/field.html" with field=form.last_name %}
     {% include "partials/field.html" with field=form.first_name %}
     {% include "partials/field.html" with field=form.middle_name %}
@@ -13,12 +16,12 @@
     {% include "partials/field.html" with field=form.mahalla %}
     {% include "partials/field.html" with field=form.address class="span-all" %}
   </div>
-  <datalist id="district-options">{% for v in suggestions.district %}<option value="{{ v }}">{% endfor %}</datalist>
-  <datalist id="mahalla-options">{% for v in suggestions.mahalla %}<option value="{{ v }}">{% endfor %}</datalist>
+  <datalist id="mahalla-options">{% for v in mahallas %}<option value="{{ v }}">{% endfor %}</datalist>
+  {{ district_map|json_script:"district-map" }}
 </details>
 
 <details class="card form-fold" open>
-  <summary><h3>{% include "partials/icon.html" with name="shield" class="sm" %} Hujjatlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+  <summary><h3>{% include "partials/icon.html" with name="shield" class="sm" %} Hujjatlar{% if admission %} <span class="badge badge-muted">majburiy</span>{% endif %}</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
   <div class="form-grid cols-3" data-doc-switch>
     {% include "partials/field.html" with field=form.doc_type class="span-all" %}
     <div data-doc="birth_certificate">{% include "partials/field.html" with field=form.birth_certificate %}</div>
@@ -36,8 +39,12 @@
       <span class="label">Filial</span>
       <div class="input input-static">{{ request.branch.name }}</div>
     </div>
-    {% include "partials/field.html" with field=form.joined_at %}
-    {% include "partials/field.html" with field=form.status %}
+    {% if admission %}
+      <div>{% include "partials/field.html" with field=form.joined_at %}<p class="hint mt-4">Yangi o'quvchi avtomatik <b>faol</b> holatda qo'shiladi.</p></div>
+    {% else %}
+      {% include "partials/field.html" with field=form.joined_at %}
+      {% include "partials/field.html" with field=form.status %}
+    {% endif %}
     {% if student %}{% include "partials/field.html" with field=form.left_at %}{% endif %}
     <div class="field span-all flag-fields">
       <span class="label">Tizimlarda</span>
@@ -49,6 +56,7 @@
   </div>
 </details>
 
+{% if not admission %}
 <details class="card form-fold" open>
   <summary><h3>{% include "partials/icon.html" with name="calendar" class="sm" %} O'quv yili va sinf</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
   <div class="form-grid cols-3">
@@ -57,3 +65,4 @@
     {% include "partials/field.html" with field=form.school_class %}
   </div>
 </details>
+{% endif %}

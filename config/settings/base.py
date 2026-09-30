@@ -102,7 +102,7 @@ LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "accounts:login"
 # Rolning bosh sahifasi (bo'lmasa umumiy bosh sahifa ko'rsatiladi).
-ROLE_DASHBOARDS = {"reception": "apps.finance.views.dashboard"}
+ROLE_DASHBOARDS = {"reception": "apps.finance.views.dashboard", "head_teacher": "apps.people.views.head_dashboard"}
 # SMS provayder ulanguncha asosiy usul — parol. SMS ulangach "code" ga o'zgartirish mumkin.
 LOGIN_DEFAULT_METHOD = env("LOGIN_DEFAULT_METHOD", default="password")
 
