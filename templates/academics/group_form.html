@@ -1,0 +1,64 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}{% if g %}{{ g.code }} · tahrirlash{% else %}Yangi guruh{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% if g %}{% url 'academics:group_detail' g.pk %}{% else %}{% url 'academics:class_list' %}?view=groups{% endif %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+    <h1 class="mt-12">{% if g %}{{ g.code }} — tahrirlash{% else %}Yangi guruh{% endif %}</h1>
+    <p class="sub">Guruh — o'qitish birligi: sinf, fan(lar), o'qituvchi va o'quvchilar. O'qituvchi oyligi shu bo'yicha hisoblanadi.</p>
+  </div>
+</div>
+
+<form class="edit-form narrow" method="post" novalidate data-group-form>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Asosiy</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.school_class %}
+      {% include "partials/field.html" with field=form.code %}
+      {% include "partials/field.html" with field=form.kind class="span-all" %}
+      {% include "partials/field.html" with field=form.level %}
+      {% include "partials/field.html" with field=form.capacity %}
+      {% include "partials/field.html" with field=form.room %}
+      <div class="field align-end">{% include "partials/field.html" with field=form.is_active %}</div>
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} <span><b>Butun sinf</b> — o'quvchilar sinfdan avtomatik olinadi. <b>Tanlov guruhi</b> — o'quvchilar guruh sahifasida alohida qo'shiladi.</span></p>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="book" class="sm" %} Fanlar va o'qituvchilar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="subject-rows">
+      {% for row in rows %}
+        <div class="form-grid subject-row">
+          {% if row.non_field_errors %}<p class="field-error span-all">{{ row.non_field_errors|join:" " }}</p>{% endif %}
+          {% include "partials/field.html" with field=row.subject %}
+          {% include "partials/field.html" with field=row.teacher %}
+          {% include "partials/field.html" with field=row.hours %}
+        </div>
+      {% endfor %}
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Bir nechta fan tanlansa — <b>Birlashma</b> guruhi (masalan, IT + Fizika). Bo'sh qatorlar hisobga olinmaydi. <b>Haftalik soat</b> — Dars jadvalidagi limit (karta shuncha marta qo'yiladi).</p>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="wallet" class="sm" %} O'qituvchi oyligi</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.pay_scheme class="span-all" %}
+      {% include "partials/field.html" with field=form.rate %}
+      {% include "partials/field.html" with field=form.deduction_percent %}
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %}
+      <span><b>Darsbay:</b> dars soni × stavka (odatda 2 400 so'm). <b>Belgilangan summa:</b> o'quvchi boshiga stavka (odatda 120 000 so'm), keyin ushlanma %.
+      Har ikkisida o'quvchining to'lagan ulushiga proporsional hisoblanadi.</span></p>
+  </details>
+
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% if g %}{% url 'academics:group_detail' g.pk %}{% else %}{% url 'academics:class_list' %}?view=groups{% endif %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+{% endblock %}

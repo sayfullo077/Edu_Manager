@@ -91,3 +91,29 @@ class DormStay(TimeStampedModel):
 
     def __str__(self):
         return f"{self.student} → {self.room}"
+
+
+class DormAttendance(models.Model):
+    """Yotoqxona davomati: bir o'quvchi — bir kun — bitta belgi. Belgi yo'q — «belgilanmagan»."""
+
+    class Status(models.TextChoices):
+        PRESENT = "B", "Bor"
+        ABSENT = "Y", "Yo'q"
+        LATE = "K", "Kechikdi"
+        EXCUSED = "S", "Sababli"
+
+    stay = models.ForeignKey(DormStay, on_delete=models.PROTECT, related_name="attendance")
+    student = models.ForeignKey("people.Student", on_delete=models.PROTECT, related_name="dorm_attendance")
+    date = models.DateField("sana")
+    status = models.CharField("belgi", max_length=1, choices=Status.choices)
+    marked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    updated_at = models.DateTimeField("belgilangan", auto_now=True)
+
+    class Meta:
+        verbose_name = "yotoqxona davomati"
+        verbose_name_plural = "yotoqxona davomati"
+        constraints = [models.UniqueConstraint(fields=["student", "date"], name="one_dorm_mark_per_day")]
+        indexes = [models.Index(fields=["date"])]
+
+    def __str__(self):
+        return f"{self.student} · {self.date} · {self.status}"

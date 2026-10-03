@@ -186,3 +186,77 @@ def test_export_respects_filters(staff_client, contract, year):
     assert [r[1] for r in rows] == [contract.number] and rows[0][8] == 1750000
     resp = staff_client.get(reverse("contracts:contract_export"), {"status": "cancelled"})
     assert load_workbook(BytesIO(resp.content)).active.max_row == 1  # faqat sarlavha
+
+
+# ---------- Shartnoma matni: shablon, rekvizitlar, muhr ----------
+
+def test_document_renders_template_with_data_and_escapes(staff_client, contract, branch):
+    from apps.contracts.domain.document import BLANK, render_blocks
+    branch.director_name, branch.bank_account = "Direktor Test", "20208000000000000001"
+    branch.save()
+    resp = staff_client.get(reverse("contracts:contract_detail", args=[contract.pk]))
+    html = resp.content.decode()
+    assert contract.template.name == "Ota-ona shartnomasi" and not resp.context["doc"]["sealed"]
+    assert f"№ {contract.number}" in html and "Direktor Test" in html and "20208000000000000001" in html
+    assert "<b>Aliyev Vali</b>" in html and "<b>4-sinf</b>" in html  # o'quvchi va sinf darajasi
+    blocks = render_blocks("## <script>x</script> {{ direktor }} {{ nomalum }}\n**{{ vasiy }}**", {"vasiy": "<i>A</i>"})
+    assert blocks[0]["kind"] == "heading" and "<script>" not in blocks[0]["html"] and BLANK in blocks[0]["html"]
+    assert "{{ nomalum }}" in blocks[0]["html"] and blocks[1]["html"] == "<b>&lt;i&gt;A&lt;/i&gt;</b>"
+    assert staff_client.get(reverse("contracts:contract_print", args=[contract.pk])).status_code == 200
+
+
+def test_signed_contract_text_is_sealed(staff_client, contract, branch):
+    staff_client.post(reverse("contracts:contract_send_code", args=[contract.pk]))
+    staff_client.post(reverse("contracts:contract_confirm", args=[contract.pk]), {"code": sent_code()})
+    contract.refresh_from_db()
+    assert contract.signed_body and contract.signed_data["oquvchi"] == "Aliyev Vali"
+    # Shablon va rekvizit keyin o'zgardi — imzolangan matn o'zgarmaydi
+    t = contract.template
+    t.body = "# BUTUNLAY BOSHQA MATN"
+    t.save()
+    branch.director_name = "Yangi Direktor"
+    branch.save()
+    resp = staff_client.get(reverse("contracts:contract_detail", args=[contract.pk]))
+    html = resp.content.decode()
+    assert resp.context["doc"]["sealed"] and "BUTUNLAY BOSHQA" not in html and "Yangi Direktor" not in html
+
+
+def test_template_management(staff_client, contract):
+    from apps.contracts.models import ContractTemplate
+    url = reverse("contracts:template_create")
+    resp = staff_client.post(url, {"name": "Yotoqxona", "body": "# {{ noto_gri }}", "is_active": "on"})
+    assert resp.status_code == 200 and "noto_gri" in str(resp.context["form"].errors["body"])
+    staff_client.post(url, {"name": "Yotoqxona", "body": "# {{ raqam }}", "is_active": "on", "is_default": "on"})
+    new = ContractTemplate.objects.get(name="Yotoqxona")
+    assert new.is_default and ContractTemplate.objects.filter(is_default=True).count() == 1
+    assert staff_client.get(reverse("contracts:template_list")).context["templates"][0] == new
+    student2 = make_student(contract.branch, contract.student.school_class, contract.guardian, "Ikkinchi")
+    create(staff_client, student2)
+    assert Contract.objects.get(student=student2).template == new  # yangi shartnoma — sukut shablon
+
+
+# ---------- "Yangi shartnoma" sahifasi ----------
+
+def test_new_contract_page_with_guardian_choice(staff_client, branch, school_class, guardian, contract):
+    url = reverse("contracts:contract_new")
+    free = make_student(branch, school_class, guardian, "Bo'sh")
+    mother = Guardian.objects.create(last_name="Aliyeva", first_name="Ona", phone="998909998877")
+    StudentGuardian.objects.create(student=free, guardian=mother, relation="mother")
+    resp = staff_client.get(url)
+    candidates = list(resp.context["form"].fields["student"].queryset)
+    assert free in candidates and contract.student not in candidates  # shartnomasi borlar chiqmaydi
+    info = resp.context["candidate_map"][free.pk]
+    assert info["tariff"] == 1750000 and info["guardians"][0][2] is True  # asosiy vasiy birinchi
+    stranger = Guardian.objects.create(last_name="Begona", first_name="X", phone="998901110000")
+    data = {"student": free.pk, "guardian": stranger.pk, "full_tariff": "1750000", "discount_percent": "0"}
+    assert staff_client.post(url, data).status_code == 200 and Contract.objects.count() == 1
+    resp = staff_client.post(url, {**data, "guardian": mother.pk})
+    c = Contract.objects.get(student=free)
+    assert resp.url == reverse("contracts:contract_detail", args=[c.pk])
+    assert c.guardian == mother and c.start_date == date(2026, 9, 2) and c.end_date == date(2027, 6, 30)
+    assert c.template.is_default  # sukut shablon
+
+
+def test_new_contract_from_student_card_redirects_if_exists(staff_client, contract):
+    resp = staff_client.get(reverse("contracts:contract_new"), {"student": contract.student.pk})
+    assert resp.url == reverse("contracts:contract_detail", args=[contract.pk])

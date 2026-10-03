@@ -31,10 +31,34 @@ def contract_stats(branch) -> dict:
 
 
 def contract_detail(branch, pk: int) -> Contract:
-    return (Contract.objects.select_related("student__school_class", "guardian", "academic_year", "created_by")
+    return (Contract.objects.select_related("student__school_class", "guardian", "academic_year", "created_by",
+                                           "branch", "template")
             .get(branch=branch, pk=pk))
 
 
 def active_contract_for(student) -> Contract | None:
     return (student.contracts.exclude(status=Contract.Status.CANCELLED)
             .select_related("academic_year").order_by("-created_at").first())
+
+
+def contract_candidates(branch, year):
+    """Yangi shartnoma uchun: faol o'quvchilar, shu o'quv yilida amaldagi shartnomasi yo'q."""
+    from apps.people.models import Student
+    taken = Contract.objects.filter(academic_year=year).exclude(status=Contract.Status.CANCELLED).values("student")
+    return (Student.objects.filter(branch=branch, status=Student.Status.ACTIVE).exclude(pk__in=taken)
+            .select_related("school_class").prefetch_related("guardian_links__guardian")
+            .order_by("last_name", "first_name"))
+
+
+def candidate_map(students) -> dict:
+    """JS uchun: {o'quvchi_id: {tarif, sinf, vasiylar: [[id, "F.I.Sh. · Ota", asosiymi], ...]}}."""
+    result = {}
+    for s in students:
+        links = sorted(s.guardian_links.all(), key=lambda link: not link.is_primary)
+        result[s.pk] = {
+            "tariff": int(s.school_class.monthly_tariff) if s.school_class else None,
+            "class": s.school_class.name if s.school_class else "",
+            "guardians": [[link.guardian_id, f"{link.guardian.full_name} · {link.get_relation_display()}",
+                           link.is_primary] for link in links],
+        }
+    return result

@@ -9,7 +9,10 @@
     <h1>Shartnomalar</h1>
     <p class="sub">O'quvchi — maktab shartnomalari · {{ page.paginator.count }} ta topildi</p>
   </div>
-  <a class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish</a>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'contracts:template_list' %}">{% include "partials/icon.html" with name="file" class="sm" %} Shablonlar</a>
+    <a data-write class="btn btn-primary" href="{% url 'contracts:contract_new' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma yaratish</a>
+  </div>
 </div>
 
 <div class="grid grid-4 stats-row">

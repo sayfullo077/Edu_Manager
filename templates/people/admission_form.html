@@ -75,7 +75,8 @@
   {# ---------- Shartnoma ---------- #}
   <details class="card form-fold" open>
     <summary><h3>{% include "partials/icon.html" with name="file" class="sm" %} Shartnoma <span class="badge badge-muted">majburiy</span></h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
-    <div class="field" data-signer-field>
+    {% include "partials/field.html" with field=contract_form.template %}
+    <div class="field mt-12" data-signer-field>
       <span class="label">Shartnoma vasiysi *</span>
       <div class="radio-row">
         {% for choice in meta_form.signer %}<label data-signer="{{ choice.data.value }}">{{ choice.tag }} {{ choice.choice_label }}</label>{% endfor %}

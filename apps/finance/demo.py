@@ -68,8 +68,11 @@ def seed(branch, reception_user) -> dict:
         amount = inv.amount if roll < 0.78 else (inv.amount / 2).quantize(Decimal("1000")) if roll < 0.9 else 0
         if amount:
             method = rng.choice([Payment.Method.CASH, Payment.Method.CARD, Payment.Method.TRANSFER])
-            paid_at = min(timezone.now(), timezone.make_aware(datetime.combine(
-                today.replace(day=rng.randint(2, today.day)), time(rng.randint(9, 17), rng.randint(0, 59)))))
+            if method == Payment.Method.CASH:
+                paid_at = timezone.now()  # naqd — faqat bugun, ochiq kassaga (to'lov qoidasi)
+            else:
+                paid_at = min(timezone.now(), timezone.make_aware(datetime.combine(
+                    today.replace(day=rng.randint(1, today.day)), time(rng.randint(9, 17), rng.randint(0, 59)))))
             payments.accept_payment(student=s, amount=amount, method=method, by=reception_user, paid_at=paid_at,
                                     card_network="humo" if method == Payment.Method.CARD else "")
 

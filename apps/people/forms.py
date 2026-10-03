@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.core.validators import MaxLengthValidator
 
+from apps.academics.models import Language
 from apps.accounts.forms import PhoneField
 from apps.common.forms import StyledFormMixin
 from apps.common.templatetags.ui import money
@@ -10,7 +11,7 @@ from apps.core.models import AcademicYear
 
 from . import selectors
 from .domain.regions import region_choices
-from .models import Gender, Guardian, Student, StudentGuardian
+from .models import Certificate, Gender, Guardian, Student, StudentGuardian, Teacher
 
 
 class DateInput(forms.DateInput):
@@ -269,3 +270,142 @@ class GuardianFilterForm(forms.Form):
     def values(self) -> dict:
         d = self.cleaned_data if self.is_valid() else {}
         return {"q": (d.get("q") or "").strip(), "relation": d.get("relation", ""), "status": d.get("status", "")}
+
+
+class TeacherFilterForm(forms.Form):
+    """O'qituvchilar filtri ("Filtr qo'shish" — asl tizimdagidek: turi, status, fan, jinsi, toifa)."""
+
+    FILTERS = [("kind", "Turi", "users"), ("status", "Status", "check"), ("subject", "Fan", "book"),
+               ("gender", "Jinsi", "users"), ("category", "Toifa", "sparkles")]
+
+    q = forms.CharField(required=False, max_length=100)
+    kind = forms.ChoiceField(required=False, choices=[("", "Turi"), *Teacher.Kind.choices])
+    status = forms.ChoiceField(required=False, choices=[("", "Status"), *Teacher.Status.choices])
+    subject = forms.ModelChoiceField(required=False, queryset=None, empty_label="Fan")
+    gender = forms.ChoiceField(required=False, choices=[("", "Jinsi"), ("M", "Erkak"), ("F", "Ayol")])
+    category = forms.ChoiceField(required=False, choices=[("", "Toifa"), *Teacher.Category.choices])
+
+    def __init__(self, *args, branch, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.academics.models import Subject
+        self.fields["subject"].queryset = Subject.objects.filter(teachers__branch=branch).distinct().order_by("name")
+        labels = {name: label for name, label, _ in self.FILTERS}
+        for name in labels:
+            self.fields[name].widget.attrs.update({"class": "input", "aria-label": labels[name]})
+
+    def active_filters(self) -> set[str]:
+        return {name for name, _, _ in self.FILTERS if self.data.get(name)}
+
+    def to_filters(self) -> selectors.TeacherFilters:
+        d = self.cleaned_data if self.is_bound and self.is_valid() else {}
+        return selectors.TeacherFilters(
+            q=(d.get("q") or "").strip(), kind=d.get("kind", ""), status=d.get("status", ""),
+            subject=d["subject"].pk if d.get("subject") else None, gender=d.get("gender", ""),
+            category=d.get("category", ""))
+
+
+class TeacherForm(StyledFormMixin, forms.ModelForm):
+    """O'qituvchini qo'shish/tahrirlash (asl tizimdagidek bo'limlar). Ism va telefon — foydalanuvchida (login)."""
+
+    last_name = forms.CharField(label="Familiyasi", max_length=60)
+    first_name = forms.CharField(label="Ismi", max_length=60)
+    middle_name = forms.CharField(label="Otasining ismi", max_length=60, required=False)
+    phone = PhoneField(label="Telefon (login)")
+    passport_series = forms.CharField(label="Pasport seriyasi", max_length=2, required=False,
+                                      widget=forms.TextInput(attrs={"placeholder": "AB", "data-upper": "",
+                                                                    "autocomplete": "off"}))
+    passport_number = forms.CharField(label="Pasport raqami", max_length=7, required=False,
+                                      widget=forms.TextInput(attrs={"placeholder": "1234567", "inputmode": "numeric",
+                                                                    "autocomplete": "off"}))
+    teaching_languages = forms.MultipleChoiceField(label="Dars tili", required=False,
+                                                   choices=Language.choices, widget=forms.CheckboxSelectMultiple)
+
+    class Meta:
+        model = Teacher
+        fields = ["kind", "status", "category", "birth_date", "gender", "marital_status", "email", "pinfl",
+                  "card_number", "address", "official_employment", "fixed_salary", "education", "specialty",
+                  "experience_years", "hired_at", "contract_start", "contract_end", "subjects", "notes"]
+        widgets = {
+            "birth_date": DateInput(), "hired_at": DateInput(), "contract_start": DateInput(),
+            "contract_end": DateInput(), "subjects": forms.CheckboxSelectMultiple,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+            "fixed_salary": forms.NumberInput(attrs={"step": "1000", "min": "0"}),
+            "pinfl": forms.TextInput(attrs={"inputmode": "numeric", "maxlength": 14, "autocomplete": "off"}),
+        }
+        labels = {"official_employment": "Ish staji yozilsinmi?", "experience_years": "Tajriba (yil)",
+                  "subjects": "O'qitadigan fanlar", "hired_at": "Ishga qabul sanasi"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.academics.models import Subject
+        self.fields["subjects"].queryset = Subject.objects.filter(is_active=True).order_by("name", "language")
+        self.fields["subjects"].label_from_instance = lambda s: f"{s.name} ({s.get_language_display()})"
+        for name in ("birth_date", "hired_at", "education", "specialty"):
+            self.fields[name].required = True
+        self.fields["gender"].choices = [("", "— Tanlang —"), ("M", "Erkak"), ("F", "Ayol")]
+        self.fields["category"].choices = [("", "— Tanlanmagan —"), *Teacher.Category.choices]
+        self.fields["marital_status"].choices = [("", "— Tanlang —"), *Teacher.MaritalStatus.choices]
+        self.fields["education"].choices = [("", "— Tanlang —"), *Teacher.Education.choices]
+        # "3100 0000 ..." bo'shliq bilan kiritilishi mumkin — uzunlik tozalangach model validatorida tekshiriladi
+        pinfl = self.fields["pinfl"]
+        pinfl.max_length = 20
+        pinfl.validators = [v for v in pinfl.validators if not isinstance(v, MaxLengthValidator)]
+        pinfl.widget.attrs["maxlength"] = 20
+        card = self.fields["card_number"]
+        card.max_length = 24
+        card.validators = [v for v in card.validators if not isinstance(v, MaxLengthValidator)]
+        card.widget.attrs.update({"maxlength": 24, "inputmode": "numeric", "autocomplete": "off",
+                                  "placeholder": "8600 0000 0000 0000"})
+        t = self.instance
+        if t.pk:
+            u = t.user
+            self.initial.update(last_name=u.last_name, first_name=u.first_name, middle_name=u.middle_name,
+                                phone=u.phone, teaching_languages=t.teaching_languages,
+                                passport_series=(t.passport or "")[:2], passport_number=(t.passport or "")[2:])
+
+    def clean_pinfl(self):
+        return "".join((self.cleaned_data.get("pinfl") or "").split())
+
+    def clean_card_number(self):
+        return "".join((self.cleaned_data.get("card_number") or "").split())
+
+    def clean(self):
+        d = super().clean()
+        series = (d.get("passport_series") or "").strip().upper()
+        number = (d.get("passport_number") or "").strip()
+        if bool(series) != bool(number):
+            self.add_error("passport_number", "Pasport seriyasi va raqamini birga kiriting.")
+        d["passport"] = f"{series}{number}"
+        start, end = d.get("contract_start"), d.get("contract_end")
+        if start and end and end < start:
+            self.add_error("contract_end", "Shartnoma tugashi boshlanishidan keyin bo'lsin.")
+        return d
+
+    def user_data(self) -> dict:
+        return {k: self.cleaned_data.get(k, "") for k in ("last_name", "first_name", "middle_name", "phone")}
+
+    def teacher_data(self) -> dict:
+        d = {k: v for k, v in self.cleaned_data.items()
+             if k not in ("last_name", "first_name", "middle_name", "phone", "passport_series", "passport_number",
+                          "subjects")}
+        d["teaching_languages"] = list(self.cleaned_data.get("teaching_languages") or [])
+        return d
+
+
+class CertificateForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = Certificate
+        fields = ["kind", "subject", "number", "issued_on", "expires_on", "score", "issued_by"]
+        widgets = {"issued_on": DateInput(), "expires_on": DateInput(),
+                   "score": forms.NumberInput(attrs={"step": "0.01", "min": "0"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.academics.models import Subject
+        self.fields["subject"].queryset = Subject.objects.filter(is_active=True).order_by("name")
+        self.fields["subject"].empty_label = "— Tanlang —"
+        self.fields["subject"].required = True
+        self.fields["kind"].choices = [("", "— Tanlang —"), *Certificate.Kind.choices]
+
+
+CertificateFormSet = forms.inlineformset_factory(Teacher, Certificate, form=CertificateForm, extra=0, can_delete=True)

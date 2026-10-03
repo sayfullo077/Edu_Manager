@@ -53,7 +53,7 @@
               <td class="actions">
                 <div class="split-btn">
                   <button class="btn btn-sm btn-outline" type="button" data-panel-url="{% url 'finance:debtor_panel' s.pk 'info' %}?category={{ category }}" title="Ma'lumot" aria-label="Ma'lumot">{% include "partials/icon.html" with name="info" class="sm" %}</button>
-                  <button class="btn btn-sm btn-success" type="button" data-panel-url="{% url 'finance:debtor_panel' s.pk 'pay' %}?category={{ category }}&amp;next={{ request.get_full_path|urlencode:'' }}">{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov</button>
+                  <button class="btn btn-sm btn-success" type="button" data-write data-panel-url="{% url 'finance:debtor_panel' s.pk 'pay' %}?category={{ category }}&amp;next={{ request.get_full_path|urlencode:'' }}">{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov</button>
                 </div>
               </td>
             </tr>

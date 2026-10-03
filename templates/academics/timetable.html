@@ -1,0 +1,130 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Dars jadvali{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dars jadvali</h1>
+    <p class="sub">Haftalik dars jadvalini tuzish{% if year %} · {{ year.name }} o'quv yili{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <button data-write class="btn btn-secondary" type="button" data-panel-url="{% url 'academics:bells' %}?next={{ request.get_full_path|urlencode:'' }}">{% include "partials/icon.html" with name="clock" class="sm" %} Qo'ng'iroqlar</button>
+    <a class="btn btn-outline" href="{% url 'academics:timetable_export_all' %}{% if grid %}?week={{ grid.monday|date:'Y-m-d' }}{% endif %}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Barcha sinflar</a>
+    {% if target %}
+      <a class="btn btn-excel" href="{% url 'academics:timetable_export' %}?{{ this_q }}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+      <a class="btn btn-outline" href="{% url 'academics:timetable_print' %}?{{ this_q }}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</a>
+    {% endif %}
+  </div>
+</div>
+
+<form class="card toolbar tt-filter" method="get">
+  <input type="hidden" name="by" value="{{ by }}">
+  <nav class="segmented" aria-label="Kimning jadvali">
+    <a href="?by=class" {% if by == "class" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="school" class="sm" %} Sinf</a>
+    <a href="?by=teacher" {% if by == "teacher" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="briefcase" class="sm" %} O'qituvchi</a>
+    <a href="?by=room" {% if by == "room" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="building" class="sm" %} Xona</a>
+  </nav>
+  <div class="tt-filter-fields">
+    <label class="field"><span class="label">O'quv yili</span>{{ form.year }}</label>
+    <div class="field"><span class="label">Filial</span><div class="input input-static">{{ request.branch.name }}</div></div>
+    {% if by == "teacher" %}<label class="field"><span class="label">O'qituvchi</span>{{ form.teacher }}</label>
+    {% elif by == "room" %}<label class="field"><span class="label">Xona</span>{{ form.room }}</label>
+    {% else %}<label class="field"><span class="label">Sinf</span>{{ form.school_class }}</label>{% endif %}
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="calendar" class="sm" %} Jadvalni yuklash</button>
+  </div>
+</form>
+
+{% if grid %}
+  <nav class="tt-week stats-row" aria-label="Hafta">
+    <a class="btn btn-secondary btn-sm btn-icon" href="?{{ prev_q }}" aria-label="Oldingi hafta">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+    <a class="btn btn-secondary btn-sm" href="?{{ this_q }}&amp;week={{ today|date:'Y-m-d' }}">Bugun</a>
+    <a class="btn btn-secondary btn-sm btn-icon" href="?{{ next_q }}" aria-label="Keyingi hafta">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+    <b class="num">{{ grid.monday|date:"j-M" }} — {{ grid.saturday|date:"j-M Y" }}</b>
+    <span class="muted small">{{ grid.total }} soat/hafta</span>
+  </nav>
+
+  {% if cards %}
+    {# ---------- Fan kartalari: yopishqoq panel. Bosib tanlang → katakni bosing (yoki sudrang) ---------- #}
+    <section class="card tt-palette stats-row" data-tt-palette>
+      <div class="tt-palette-head">
+        <h3>Fanlar — {{ target }} <span class="badge {% if cards.hours and cards.placed >= cards.hours %}badge-success{% else %}badge-accent{% endif %}">{{ cards.placed }} / {{ cards.hours }} soat</span></h3>
+        <p class="muted small" data-placing-hint>Kartani bosing, keyin jadvaldagi katakni bosing (yoki sudrang) · {{ effective|date:"d.m.Y" }} dan amal qiladi</p>
+        <p class="tt-placing-bar" data-placing-bar hidden>
+          {% include "partials/icon.html" with name="arrow-right" class="sm" %} <span data-placing-text></span>
+          <button class="btn btn-secondary btn-sm" type="button" data-placing-cancel>Bekor qilish (Esc)</button>
+        </p>
+      </div>
+      {% if cards.cards %}
+        <div class="tt-cards">
+          {% for c in cards.cards %}
+            <button class="tt-chip t{{ c.subject.pk|tone }}{% if c.full %} is-full{% endif %}" type="button"
+                    {% if c.full %}disabled{% else %}draggable="true"{% endif %} aria-pressed="false"
+                    data-drag-card data-groups="{{ c.group_ids }}" data-subject="{{ c.subject.pk }}" data-name="{{ c.subject.name }}"
+                    title="{% for p in c.parts %}{{ p.teacher.user.short_name }} · {{ p.room.name|default:'xona yo‘q' }} [{{ p.room_label }}]{% if not forloop.last %}&#10;{% endif %}{% endfor %}">
+              <span class="tt-chip-name">{{ c.subject.name }}</span>
+              <small>{% for p in c.parts %}{{ p.teacher.user.short_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if c.pool %} · hovuz × {{ c.parts|length }}{% endif %}</small>
+              <span class="tt-count num">{% if c.full %}✓ {% endif %}{{ c.placed }}/{% if c.hours %}{{ c.hours }}{% else %}—{% endif %}</span>
+            </button>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-line">Bu sinfda guruh/fan yo'q — avval <a data-write class="link" href="{% url 'academics:group_create' %}?class={{ target.pk }}">guruh qo'shing</a> (fan, o'qituvchi va haftalik soat bilan).</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="card tt-card" {% if can_edit %}data-tt-board data-place-url="{% url 'academics:lesson_place' %}" data-effective="{{ effective|date:'Y-m-d' }}"{% endif %}>
+    {% csrf_token %}
+    <div class="tt-head">
+      <div>
+        <h3>{% if by == "teacher" %}{{ target.user.short_name }}{% elif by == "room" %}{{ target.name }}{% else %}{{ target }}{% endif %} — haftalik jadval</h3>
+        {% if can_edit %}<p class="muted small">Karta tanlab katakni bosing yoki sudrang · "+" — qo'lda qo'shish · darsni bosing — ma'lumot, ko'chirish, olib tashlash</p>{% endif %}
+      </div>
+    </div>
+    {% if grid.rows %}
+      <div class="table-wrap">
+        <table class="tt-grid">
+          <thead><tr><th class="tt-time">Soat</th>{% for d in grid.days %}<th class="{% if d.date == today %}is-today{% endif %}">{{ d.label }}<small class="num">{{ d.date|date:"j-M" }}</small></th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in grid.rows %}
+              <tr class="{% if row.slot.is_break %}tt-break{% endif %}">
+                <th class="tt-time" scope="row"><b>{% if row.slot.is_break %}OBED{% else %}{{ row.slot.number }}-dars{% endif %}</b><small class="num">{{ row.slot.start|time:"H:i" }}–{{ row.slot.end|time:"H:i" }}</small></th>
+                {% for cell in row.cells %}
+                  <td class="tt-cell{% if cell.date == today %} is-today{% endif %}"
+                      {% if can_edit and not row.slot.is_break %}data-drop data-weekday="{{ cell.weekday }}" data-slot="{{ row.slot.pk }}"{% endif %}>
+                    {% for l in cell.lessons %}
+                      <button class="tt-lesson t{{ l.subject_id|tone }}" type="button"
+                              {% if can_edit %}draggable="true" data-move-url="{% url 'academics:lesson_move' l.pk %}"{% endif %}
+                              data-panel-url="{% url 'academics:lesson_panel' l.pk %}?week={{ grid.monday|date:'Y-m-d' }}&amp;next={{ request.get_full_path|urlencode:'' }}">
+                        {% if by == "class" %}<b>{{ l.subject.name }}</b>{% if l.group.kind == "subset" %}<small class="tt-code">{{ l.group.code }}</small>{% endif %}<small>{{ l.teacher.user.short_name }}{% if l.room %} · {{ l.room.name }}{% endif %}</small>
+                        {% elif by == "teacher" %}<b>{{ l.group.school_class.name }}</b><small>{{ l.subject.name }}{% if l.room %} · {{ l.room.name }}{% endif %}</small>{% if l.group.kind == "subset" %}<small class="tt-code">{{ l.group.code }}</small>{% endif %}
+                        {% else %}<b>{{ l.group.school_class.name }}</b><small>{{ l.subject.name }} · {{ l.teacher.user.short_name }}</small>{% endif %}
+                      </button>
+                    {% endfor %}
+                    {% if can_edit and not row.slot.is_break %}
+                      <button data-write class="tt-add" type="button" title="Qo'lda qo'shish" aria-label="{{ cell.date|date:'d.m' }}, {{ row.slot.number }}-dars — dars qo'shish"
+                              data-panel-url="{% url 'academics:lesson_panel_new' %}?class={{ target.pk }}&amp;slot={{ row.slot.pk }}&amp;weekday={{ cell.weekday }}&amp;week={{ grid.monday|date:'Y-m-d' }}&amp;next={{ request.get_full_path|urlencode:'' }}">{% include "partials/icon.html" with name="plus" class="sm" %}</button>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-line">Qo'ng'iroq vaqtlari yo'q — «Qo'ng'iroqlar» orqali kiriting.</p>
+    {% endif %}
+  </section>
+{% else %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="calendar" class="lg" %}</span>
+    <h3>Jadvalni tuzishni boshlang</h3>
+    <p>O'quv yili va {% if by == "teacher" %}o'qituvchini{% elif by == "room" %}xonani{% else %}sinfni{% endif %} tanlab, «Jadvalni yuklash» tugmasini bosing.</p>
+  </div>
+{% endif %}
+
+<dialog class="side-panel" id="side-panel" aria-label="Yon panel"><div class="side-panel-body" data-panel-body></div></dialog>
+{% endblock %}

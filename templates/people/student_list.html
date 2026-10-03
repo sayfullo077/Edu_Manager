@@ -10,7 +10,7 @@
     <p class="sub">{{ request.branch.name }} · {{ page.paginator.count }} ta topildi</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-primary" href="{% url 'people:student_create' %}">
+    <a data-write class="btn btn-primary" href="{% url 'people:student_create' %}">
       {% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish
     </a>
   </div>
@@ -93,6 +93,7 @@
                       {% if on %}{% include "partials/icon.html" with name="check" class="sm" %} Bor{% else %}Yo'q{% endif %}
                     </button>
                   </form>
+                  <span class="flag ro-only{% if on %} on{% endif %}">{% if on %}{% include "partials/icon.html" with name="check" class="sm" %} Bor{% else %}Yo'q{% endif %}</span>
                 </td>
               {% endfor %}
               <td class="actions">
@@ -105,7 +106,7 @@
                       {% include "partials/icon.html" with name="wallet" class="sm" %}
                     </a>
                   {% endif %}
-                  <a class="icon-btn tone-warning" href="{% url 'people:student_update' s.pk %}" title="Tahrirlash" aria-label="Tahrirlash">
+                  <a data-write class="icon-btn tone-warning" href="{% url 'people:student_update' s.pk %}" title="Tahrirlash" aria-label="Tahrirlash">
                     {% include "partials/icon.html" with name="pencil" class="sm" %}
                   </a>
                   <form class="inline-form" method="post" action="{% url 'people:student_delete' s.pk %}"
@@ -129,7 +130,7 @@
       <span class="ico">{% include "partials/icon.html" with name="search" class="lg" %}</span>
       <h3>O'quvchi topilmadi</h3>
       <p>Qidiruv so'zini yoki filtrlarni o'zgartirib ko'ring, yoki yangi o'quvchi qo'shing.</p>
-      <a class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Yangi o'quvchi</a>
+      <a data-write class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Yangi o'quvchi</a>
     </div>
   {% endif %}
 </div>

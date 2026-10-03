@@ -11,11 +11,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Role
-from apps.accounts.permissions import role_required
+from apps.accounts.permissions import director_can_write, role_required
 from apps.common import excel
 from apps.common.charts import donut, dual_line_chart, ring
 from apps.common.forms import apply_errors, filter_menu
-from apps.common.http import safe_next
+from apps.common.http import int_param, safe_next
 from apps.common.templatetags.ui import money
 from apps.people.models import Student
 
@@ -40,7 +40,9 @@ from .services import cash, expenses, invoices, ledger, payments, withdrawal
 
 FINANCE_ROLES = (Role.RECEPTION,)
 # Faqat ko'rish (o'quvchi kartasidagi "To'lov" bo'limi, kvitansiya, grafik Excel'i) — Zavuch ham
-FINANCE_VIEW_ROLES = (Role.RECEPTION, Role.HEAD_TEACHER)
+FINANCE_VIEW_ROLES = (Role.RECEPTION, Role.HEAD_TEACHER, Role.DIRECTOR)
+FINANCE_READ_ROLES = (*FINANCE_ROLES, Role.DIRECTOR)  # moliya ro'yxatlari: direktor — faqat ko'radi
+BUDGET_ROLES = (*FINANCE_ROLES, Role.DIRECTOR)  # byudjet limiti — direktor qarori
 PAGE_SIZE = 25
 INVOICE_EXPORT_HEADERS = ["Oy", "Hisob (to'liq tarif)", "Chegirma", "Kechilgan", "To'lanishi kerak",
                           "To'langan", "Qoldiq", "Holati"]
@@ -122,7 +124,7 @@ def payment_reverse(request, pk):
     return redirect(f"{reverse('people:student_detail', args=[payment.student_id])}?view=payment")
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def cashbox(request):
     """Kirim → Kassa: qoldiqlar, sessiya, bugungi/oylik kirim-chiqim, to'lov turlari kesimi. ?date= — boshqa kun."""
     session = cash.current_session(request.branch)
@@ -166,7 +168,8 @@ def cashbox_open(request):
 @role_required(*FINANCE_ROLES)
 def expense_create(request):
     """Asosan dashboard'dagi yon paneldan POST qilinadi; GET — JS o'chiq bo'lsa zaxira sahifa."""
-    category = ExpenseCategory.objects.filter(pk=request.POST.get("category") or request.GET.get("category") or 0,
+    category_pk = int_param(request.POST.get("category") or request.GET.get("category"), 0)
+    category = ExpenseCategory.objects.filter(pk=category_pk,
                                               is_active=True).first()
     form = ExpenseForm(request.POST or None, initial={"category": category})
     from_drawer = request.POST.get("from") == "drawer"
@@ -188,7 +191,8 @@ def expense_create(request):
                   {"form": form, "session": cash.current_session(request.branch)})
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*BUDGET_ROLES)
+@director_can_write
 def budget_edit(request):
     if not settings.BUDGET_PAGE_ENABLED:  # hozircha yopiq — to'g'ridan-to'g'ri manzil ham "tayyorlanmoqda"ga
         return redirect("core:section", slug="budget")
@@ -304,7 +308,7 @@ def payment_receipt(request, pk):
     })
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def payment_list(request):
     """Kirim → To'lovlar: qabul qilingan to'lovlar tarixi. Sukut bo'yicha bugungi."""
     form = PaymentFilterForm(request.GET or None, branch=request.branch)
@@ -326,7 +330,7 @@ PAYMENT_EXPORT_HEADERS = ["#", "Kvitansiya", "Sana", "O'quvchi", "Kodi", "Sinf",
                           "Qabul qildi", "Holati", "Storno sababi", "Izoh"]
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def payment_export(request):
     form = PaymentFilterForm(request.GET or None, branch=request.branch)
     qs = selectors.payments_list(request.branch, form.to_filters())[:10_000]
@@ -339,7 +343,7 @@ def payment_export(request):
     return excel.xlsx_response(f"tolovlar-{timezone.localdate():%Y-%m-%d}.xlsx", content)
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def transaction_list(request):
     """Kirim → Tranzaksiyalar: barcha kirim, chiqim, storno va qaytarish harakatlari (jurnal)."""
     form = TransactionFilterForm(request.GET or None, branch=request.branch)
@@ -362,7 +366,7 @@ TRANSACTION_EXPORT_HEADERS = ["ID", "Sana", "Turi", "Kategoriya", "To'lov turi",
                               "Komissiya", "Sof", "Kvitansiya", "O'quvchi", "Izoh", "Filial", "Yaratuvchi", "Status"]
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def transaction_export(request):
     form = TransactionFilterForm(request.GET or None, branch=request.branch)
     qs = selectors.transactions_list(request.branch, form.to_filters())[:20_000]
@@ -379,7 +383,7 @@ def transaction_export(request):
     return excel.xlsx_response(f"tranzaksiyalar-{timezone.localdate():%Y-%m-%d}.xlsx", content)
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def bank_account(request):
     """Kirim → Bank hisobi: bank o'tkazmalari, terminal va ichki o'tkazmalar holati."""
     form = PeriodForm(request.GET or None)
@@ -398,7 +402,7 @@ def bank_account(request):
     })
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def invoice_list(request):
     """Kirim → To'lov grafiklari: barcha o'quvchilarning oylik hisoblari."""
     form = InvoiceFilterForm(request.GET or None, branch=request.branch)
@@ -420,7 +424,7 @@ INVOICE_LIST_EXPORT_HEADERS = ["#", "O'quvchi", "Kodi", "Sinf", "Oy", "Jami", "C
                                "To'lanishi kerak", "To'langan", "Qoldiq", "Muddat", "Holati"]
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def invoice_export(request):
     form = InvoiceFilterForm(request.GET or None, branch=request.branch)
     qs = selectors.invoices_list(request.branch, form.to_filters())[:20_000]
@@ -432,7 +436,7 @@ def invoice_export(request):
 
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def debtor_list(request):
     """Kirim → Qarzdorlar: kelgan oylar bo'yicha qarzi bor o'quvchilar (qoldiq kamayishi bo'yicha)."""
     form = DebtorFilterForm(request.GET or None, branch=request.branch)
@@ -468,7 +472,7 @@ def debtor_export_rows(qs):
              else None] for n, s in enumerate(qs, start=1))
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def debtor_export(request):
     form = DebtorFilterForm(request.GET or None, branch=request.branch)
     qs = selectors.debtors(request.branch, form.to_filters())[:20_000]
@@ -476,7 +480,7 @@ def debtor_export(request):
     return excel.xlsx_response(f"qarzdorlar-{timezone.localdate():%Y-%m-%d}.xlsx", content)
 
 
-@role_required(*FINANCE_ROLES)
+@role_required(*FINANCE_READ_ROLES)
 def debtor_panel(request, student_pk, kind):
     """Qarzdorlar yon paneli (fragment): kind = "info" (ma'lumot) yoki "pay" (to'lov qabul qilish)."""
     student = get_object_or_404(Student.objects.select_related("school_class"), branch=request.branch, pk=student_pk)

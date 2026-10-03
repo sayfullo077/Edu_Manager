@@ -6,57 +6,12 @@
 
 {% block body %}
 <div class="print-toolbar no-print">
-  <a class="btn btn-secondary" href="{% url 'contracts:contract_detail' contract.pk %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
-  <button class="btn btn-primary" type="button" data-print>{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</button>
+  <a class="btn btn-secondary" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  <button class="btn btn-primary" type="button" data-print>{% include "partials/icon.html" with name="file" class="sm" %} Chop etish / PDF saqlash</button>
 </div>
+<p class="print-hint no-print">PDF kerak bo'lsa: «Chop etish» → printer o'rniga <b>«PDF sifatida saqlash»</b>ni tanlang.</p>
 
-<article class="sheet">
-  <header class="sheet-head">
-    <div>
-      <div class="sheet-school">{{ school.name }}</div>
-      <div class="muted">{{ contract.branch.name }}{% if contract.branch.address %} · {{ contract.branch.address }}{% endif %}</div>
-    </div>
-    <div class="sheet-no">
-      <div class="muted">Shartnoma</div>
-      <strong>№ {{ contract.number }}</strong>
-      <div class="muted num">{{ contract.created_at|date:"d.m.Y" }}</div>
-    </div>
-  </header>
-
-  <h1 class="sheet-title">Ta'lim xizmatlarini ko'rsatish to'g'risida shartnoma</h1>
-
-  <p>Bir tomondan <b>{{ school.name }}</b> (keyingi o'rinlarda — «Maktab»), ikkinchi tomondan
-    <b>{{ contract.guardian.full_name }}</b> (keyingi o'rinlarda — «Buyurtmachi»), o'quvchi
-    <b>{{ contract.student.full_name }}</b>ning qonuniy vakili sifatida, quyidagilar haqida ushbu shartnomani tuzdilar.</p>
-
-  <h2>1. Shartnoma predmeti</h2>
-  <p>Maktab o'quvchiga {{ contract.academic_year.name }} o'quv yilida{% if contract.class_name %} «{{ contract.class_name }}» sinfida{% endif %}
-    ta'lim xizmatlarini ko'rsatadi, Buyurtmachi esa ushbu xizmatlar uchun belgilangan to'lovni o'z vaqtida amalga oshiradi.</p>
-
-  <h2>2. To'lov shartlari</h2>
-  <table class="sheet-table">
-    <tr><td>Shartnoma muddati</td><td class="num">{{ contract.start_date|date:"d.m.Y" }} — {{ contract.end_date|date:"d.m.Y" }} ({{ contract.months }} oy)</td></tr>
-    <tr><td>To'liq oylik tarif</td><td class="num">{{ contract.full_tariff|money }} so'm</td></tr>
-    {% if contract.discount_percent %}<tr><td>Chegirma</td><td class="num">{{ contract.discount_percent|floatformat:"-2" }}% ({{ contract.discount_reason }})</td></tr>{% endif %}
-    <tr class="strong-row"><td>Oylik to'lov</td><td class="num">{{ contract.monthly_fee|money }} so'm</td></tr>
-  </table>
-  <p>To'lov har oyning 10-sanasiga qadar amalga oshiriladi. {# TODO: maktabning haqiqiy shartnoma matni bilan almashtiriladi #}</p>
-
-  <h2>3. Tasdiqlash</h2>
-  <p>Shartnoma tomonlar imzosi bilan hamda Buyurtmachining <b class="num">{{ contract.guardian.phone|phone }}</b>
-    raqamiga yuborilgan bir martalik kod orqali elektron tasdiqlangan paytdan kuchga kiradi.</p>
-
-  <footer class="sheet-sign">
-    <div>
-      <div class="muted">Maktab</div>
-      <div class="sign-line"></div>
-      <div class="muted">{{ contract.created_by.short_name }}</div>
-    </div>
-    <div>
-      <div class="muted">Buyurtmachi</div>
-      <div class="sign-line"></div>
-      <div class="muted">{{ contract.guardian.short_name }}</div>
-    </div>
-  </footer>
+<article class="sheet contract-sheet">
+  {% include "contracts/_document.html" %}
 </article>
 {% endblock %}

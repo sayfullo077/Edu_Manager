@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    DJANGO_SETTINGS_MODULE=config.settings.prod
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
+    PATH="/app/.venv/bin:$PATH"
 
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 WORKDIR /app
@@ -24,6 +25,9 @@ RUN SECRET_KEY=build-only-$(head -c 48 /dev/urandom | base64) ALLOWED_HOSTS=buil
 RUN useradd --system --uid 10001 app && mkdir -p /app/media /app/private_media && chown -R app /app/media /app/private_media
 USER app
 
+COPY --chmod=755 deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz/')"
-CMD ["uv", "run", "--no-sync", "gunicorn", "config.wsgi:application", "-c", "deploy/gunicorn.conf.py"]
+# Ish vaqtida uv kerak emas: tayyor .venv (PATH'da) — root'siz foydalanuvchi uchun kesh papkasi talab qilinmaydi.
+CMD ["gunicorn", "config.wsgi:application", "-c", "deploy/gunicorn.conf.py"]

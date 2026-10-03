@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block title %}Dars jadvali — chop etish{% endblock %}
+{% block body_attrs %}class="print-page"{% endblock %}
+
+{% block body %}
+<div class="print-toolbar no-print">
+  <a class="btn btn-secondary" href="{% url 'academics:timetable' %}?{{ this_q }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  <button class="btn btn-primary" type="button" data-print>{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</button>
+</div>
+<article class="sheet sheet-landscape">
+  <header class="sheet-head">
+    <div><div class="sheet-school">{{ school.name }}</div><div class="muted">{{ request.branch.name }} · {{ year.name }} o'quv yili</div></div>
+    <div class="sheet-no"><div class="muted">Hafta</div><strong class="num">{{ grid.monday|date:"d.m" }} — {{ grid.saturday|date:"d.m.Y" }}</strong></div>
+  </header>
+  <h1 class="sheet-title">Dars jadvali — {% if by == "teacher" %}{{ target.user.full_name }}{% elif by == "room" %}{{ target.name }} xonasi{% else %}{{ target }} sinfi{% endif %}</h1>
+  <table class="sheet-table tt-print">
+    <thead><tr><th></th>{% for d in grid.days %}<th>{{ d.label }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in grid.rows %}
+        <tr>
+          <th><b>{{ row.slot.number }}</b><br><small class="num">{{ row.slot.start|time:"H:i" }}–{{ row.slot.end|time:"H:i" }}</small></th>
+          {% for cell in row.cells %}
+            <td>{% for l in cell.lessons %}<div class="tt-print-lesson">{% if by == "class" %}<b>{{ l.subject.name }}</b><br>{{ l.teacher.user.short_name }}{% else %}<b>{{ l.group.school_class.name }}</b><br>{{ l.subject.name }}{% endif %}{% if l.room %} · {{ l.room.name }}{% endif %}</div>{% endfor %}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">Jami: {{ grid.total }} soat/hafta</p>
+</article>
+{% endblock %}

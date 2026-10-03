@@ -1,0 +1,53 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Xodimlar va kirish{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Xodimlar va kirish</h1>
+    <p class="sub">{{ request.branch.name }} · kim tizimga qaysi rol bilan kira oladi</p>
+  </div>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Xodimlar</span><span class="ico">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.total }}</div><div class="foot">{{ stats.active }} tasi faol</div></div>
+  <div class="card stat"><div class="top"><span class="label">Reception</span><span class="ico tone-warning">{% include "partials/icon.html" with name="building" class="sm" %}</span></div><div class="value">{{ stats.reception }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Zavuch</span><span class="ico tone-info">{% include "partials/icon.html" with name="school" class="sm" %}</span></div><div class="value">{{ stats.head_teacher }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">O'qituvchi</span><span class="ico tone-success">{% include "partials/icon.html" with name="book" class="sm" %}</span></div><div class="value">{{ stats.teacher }}</div></div>
+</div>
+
+<form class="card toolbar" method="get" role="search">
+  <div class="search-input">{% include "partials/icon.html" with name="search" class="sm" %}<input class="input" type="search" name="q" value="{{ q }}" placeholder="Ism yoki telefon…" aria-label="Qidiruv"></div>
+  <button class="btn btn-secondary" type="submit">Qidirish</button>
+</form>
+
+<section class="card">
+  {% if people %}
+    <ul class="entity-list staff-list">
+      {% for p in people %}
+        <li class="{% if not p.active %}row-muted{% endif %}">
+          <span class="avatar t{{ p.user.phone|tone }}">{{ p.user.initials }}</span>
+          <span class="grow"><b>{{ p.user.full_name }}</b><small class="num">{{ p.user.phone|phone }}{% if p.user.last_login %} · oxirgi kirish {{ p.user.last_login|date:"d.m.Y H:i" }}{% endif %}</small></span>
+          <span class="staff-roles">
+            {% for r in p.roles %}
+              <span class="staff-role{% if not r.is_active %} is-off{% endif %}">
+                <span class="badge {% if r.is_active %}badge-info{% else %}badge-muted{% endif %}">{% include "partials/icon.html" with name=r.role|role_icon class="sm" %} {{ r.get_role_display }}</span>
+                {% if r.manageable and r.user_id != request.user.pk %}
+                  <form method="post" action="{% url 'director:staff_toggle' r.pk %}" data-readonly-ok
+                        data-confirm="{% if r.is_active %}{{ p.user.short_name }} — «{{ r.get_role_display }}» kirishi o'chirilsinmi? U bu rol bilan tizimga kira olmaydi.{% else %}{{ p.user.short_name }} — «{{ r.get_role_display }}» kirishi yoqilsinmi?{% endif %}">
+                    {% csrf_token %}<input type="hidden" name="active" value="{% if r.is_active %}0{% else %}1{% endif %}">
+                    <button class="switch-btn{% if r.is_active %} is-on{% endif %}" type="submit" role="switch" aria-checked="{% if r.is_active %}true{% else %}false{% endif %}" aria-label="{{ p.user.short_name }} — {{ r.get_role_display }} kirishi"><span></span></button>
+                  </form>
+                {% endif %}
+              </span>
+            {% endfor %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}<p class="empty-line">Xodim topilmadi.</p>{% endif %}
+</section>
+<p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Kirishni o'chirish xodim ma'lumotini o'chirmaydi — faqat shu rol bilan tizimga kira olmaydi. Yangi xodim va direktor rollarini superadmin qo'shadi.</p>
+{% endblock %}

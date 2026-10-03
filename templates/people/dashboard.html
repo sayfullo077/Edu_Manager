@@ -10,7 +10,7 @@
     <p class="sub">{{ request.branch.name }} · {{ today|date:"j-F Y, l" }}{% if year %} · {{ year.name }} o'quv yili{% endif %}</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish</a>
+    <a data-write class="btn btn-primary" href="{% url 'people:student_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qabul qilish</a>
   </div>
 </div>
 

@@ -1,0 +1,221 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ teacher.user.short_name }} · Ish haqi{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'payroll:list' %}?month={{ month|date:'Y-m' }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Ish haqi hisobi</a>
+    <h1 class="mt-12">{{ teacher.user.full_name }}</h1>
+    <p class="sub">Ish haqi tafsiloti · {{ month_label }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary btn-icon" href="?month={{ prev_month|date:'Y-m' }}" aria-label="Oldingi oy">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+    <a class="btn btn-secondary btn-icon" href="?month={{ next_month|date:'Y-m' }}" aria-label="Keyingi oy">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+    <a class="btn btn-excel" href="{% url 'payroll:teacher_export' teacher.pk %}?month={{ month|date:'Y-m' }}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+  </div>
+</div>
+
+{# ---------- Oylik xulosa ---------- #}
+<section class="card pay-summary">
+  <div class="card-title">
+    <h3>{% include "partials/icon.html" with name="wallet" class="sm" %} Hisob tarkibi</h3>
+    <span class="badge badge-accent">{% include "partials/icon.html" with name="calendar" class="sm" %} {{ month_label }}</span>
+  </div>
+  <div class="pay-summary-body">
+    <div class="pay-tiles">
+      <div class="pay-tile"><span class="ico tone-info">{% include "partials/icon.html" with name="clock" class="sm" %}</span><span class="label">Jami darslar</span><b class="num">{{ pay.lessons }}</b></div>
+      <div class="pay-tile"><span class="ico tone-warning">{% include "partials/icon.html" with name="file" class="sm" %}</span><span class="label">Guruh fanlari</span><b class="num">{{ pay.items|length }}</b></div>
+      <div class="pay-tile"><span class="ico tone-success">{% include "partials/icon.html" with name="users" class="sm" %}</span><span class="label">O'quvchilar</span><b class="num">{{ pay.students_count }}</b></div>
+    </div>
+    <table class="pay-table">
+      <thead><tr><th></th><th class="text-right">Reja (100%)</th><th class="text-right">Haqiqiy</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Asosiy{% if pay.fixed_salary %} <small class="muted block">belgilangan {{ pay.fixed_salary|money }} bilan</small>{% endif %}</th><td class="num muted">{{ pay.base.max|money }}</td><td class="num">{{ pay.base.real|money }}</td></tr>
+        <tr><th scope="row">Ustamalar
+          <small class="muted block">toifa {{ pay.category_bonus.real|money }} · sertifikat {{ pay.certificate_bonus.real|money }} · til {{ pay.language_bonus.real|money }}</small></th>
+          <td class="num muted">+{{ pay.bonuses.max|money }}</td><td class="num text-success">+{{ pay.bonuses.real|money }}</td></tr>
+        <tr><th scope="row">Sinf rahbarlik</th><td class="num muted">+{{ pay.homeroom_bonus.max|money }}</td><td class="num text-info">+{{ pay.homeroom_bonus.real|money }}</td></tr>
+        {% if pay.deductions %}<tr><th scope="row">Jarimalar <small class="muted block">ushlanma + qo'lda</small></th><td class="num muted">−{{ pay.deductions.max|money }}</td><td class="num text-danger">−{{ pay.deductions.real|money }}</td></tr>{% endif %}
+      </tbody>
+      <tfoot><tr><th scope="row">Jami</th><td class="num">{{ pay.total.max|money }}</td><td class="num text-success">{{ pay.total.real|money }}</td></tr></tfoot>
+    </table>
+  </div>
+</section>
+
+<div class="pay-grid mt-20">
+  <div class="stack">
+    <section class="card pay-person">
+      <span class="avatar hero-avatar t{{ teacher.code|tone }}">{% if teacher.user.avatar %}<img src="{{ teacher.user.avatar.url }}" alt="">{% else %}{{ teacher.user.initials }}{% endif %}</span>
+      <div class="grow">
+        <a class="entity-name" href="{% url 'people:teacher_detail' teacher.pk %}">{{ teacher.user.full_name }}</a>
+        <small class="muted block">{{ teacher.code }}{% if teacher.category %} · {{ teacher.get_category_display }}{% endif %}</small>
+        <small class="muted block num">{% include "partials/icon.html" with name="phone" class="sm" %} {{ teacher.user.phone|phone }}</small>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h3>{% include "partials/icon.html" with name="chart" class="sm" %} Qisqacha</h3></div>
+      <dl class="kv pay-kv">
+        <dt>Reja (100%)</dt><dd class="num">{{ pay.total.max|money }}</dd>
+        <dt>Asosiy</dt><dd class="num">{{ pay.base.real|money }}</dd>
+        <dt>Ustamalar</dt><dd class="num text-success">+{{ pay.bonuses.real|money }}</dd>
+        <dt>Sinf rahbarlik</dt><dd class="num text-info">+{{ pay.homeroom_bonus.real|money }}</dd>
+        {% if pay.deductions %}<dt>Jarimalar</dt><dd class="num text-danger">−{{ pay.deductions.real|money }}</dd>{% endif %}
+        <dt><b>Hisoblangan</b></dt><dd class="num pay-big text-success">{{ pay.total.real|money }}</dd>
+        <dt>Farq <small class="muted">to'lanmagan pul</small></dt><dd class="num {% if pay.gap < 0 %}text-danger{% endif %}">{{ pay.gap|money }}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-title">
+        <h3>{% include "partials/icon.html" with name="receipt" class="sm" %} Berilgan pul</h3>
+        <span class="badge {% if status.key == 'paid' %}badge-success{% elif status.key == 'partial' %}badge-info{% elif status.key == 'over' %}badge-danger{% else %}badge-warning{% endif %}">{{ status.label }}</span>
+      </div>
+      <dl class="kv pay-kv">
+        <dt>Hisoblangan</dt><dd class="num">{{ status.accrued|money }}</dd>
+        <dt>Berilgan</dt><dd class="num text-success">{% if status.paid %}−{% endif %}{{ status.paid|money }}</dd>
+        <dt><b>Qoldiq</b></dt><dd class="num pay-big {% if status.left > 0 %}text-danger{% elif status.left < 0 %}text-warning{% endif %}">{{ status.left|money }}</dd>
+      </dl>
+      <div class="pay-payments">
+        <div class="pay-payments-head">
+          <h4>To'lovlar</h4>
+          <button data-write class="btn btn-primary btn-sm" type="button" data-open-dialog="pay-dialog">{% include "partials/icon.html" with name="plus" class="sm" %} Pul berish</button>
+        </div>
+        {% if payments %}
+          <ul class="list-plain">
+            {% for p in payments %}
+              <li><span class="num">{{ p.paid_on|date:"d.m.Y" }}</span>
+                <span class="badge {% if p.kind == 'advance' %}badge-warning{% else %}badge-success{% endif %}">{{ p.get_kind_display }}</span>
+                <small class="muted grow">{{ p.expense.account.get_kind_display }}{% if p.note %} · {{ p.note }}{% endif %}</small>
+                <b class="num">{{ p.amount|money }}</b></li>
+            {% endfor %}
+          </ul>
+        {% else %}<p class="empty-line">Bu oy uchun hali pul berilmagan.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <h3>{% include "partials/icon.html" with name="alert" class="sm" %} Jarimalar</h3>
+        <button data-write class="btn btn-secondary btn-sm" type="button" data-open-dialog="penalty-dialog">{% include "partials/icon.html" with name="plus" class="sm" %} Jarima</button>
+      </div>
+      {% if penalties %}
+        <ul class="list-plain penalty-list">
+          {% for p in penalties %}
+            <li class="{% if not p.is_active %}row-muted{% endif %}">
+              <span class="grow"><b class="num {% if p.is_active %}text-danger{% endif %}">−{{ p.amount|money }}</b> {{ p.reason }}
+                <small class="muted block">{{ p.created_by.short_name }} · {{ p.created_at|date:"d.m.Y H:i" }}{% if not p.is_active %} · bekor qilingan: {{ p.cancel_reason }} ({{ p.cancelled_by.short_name }}){% endif %}</small></span>
+              {% if p.is_active %}
+                <form class="inline-form penalty-cancel" method="post" action="{% url 'payroll:penalty_cancel' p.pk %}">
+                  {% csrf_token %}
+                  <input class="input input-sm" name="reason" placeholder="Bekor qilish sababi" aria-label="Bekor qilish sababi" maxlength="255" required>
+                  <button class="btn btn-ghost btn-sm tone-danger" type="submit">Bekor qilish</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}<p class="empty-line">Bu oy qo'lda jarima yo'q.</p>{% endif %}
+    </section>
+  </div>
+</div>
+
+{# ---------- Shartnomalar (guruh fanlari va sinf rahbarligi) ---------- #}
+<section class="card mt-20">
+  <div class="card-title">
+    <div><h3>{% include "partials/icon.html" with name="school" class="sm" %} Guruhlar va sinflar</h3><small class="muted">Jami darslar: <b class="text-info">{{ pay.lessons }} soat</b> · qatorni bosing — o'quvchilar bo'yicha</small></div>
+  </div>
+  {% for item in pay.items %}
+    {% with line=item.line %}
+    <details class="payroll-line">
+      <summary>
+        <span class="chip-row grow">
+          <span class="badge badge-info">{{ line.class_name }}</span>
+          <span class="badge t{{ line.subject_id|tone }} badge-tone">{{ line.subject_name }}</span>
+          {% if line.group_code != line.class_name %}<span class="badge badge-warning">{{ line.group_code }}</span>{% endif %}
+          <span class="badge badge-muted">{% if line.per_lesson %}Darsbay · {{ line.lessons }} dars{% else %}Belgilangan{% endif %}</span>
+        </span>
+        <span class="pay-amount num">{% if item.total.max|floatformat:0 != item.total.real|floatformat:0 %}<s class="muted">{{ item.total.max|money }}</s> {% endif %}<b class="text-success">{{ item.total.real|money }}</b></span>
+        {% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}
+      </summary>
+      <p class="small muted pay-line-note">
+        {% if line.per_lesson %}{{ line.lessons }} dars × {{ line.rate|money }} so'm × to'lov ulushi{% else %}{{ line.rate|money }} so'm × to'lov ulushi{% endif %}
+        = <b>{{ line.gross.real|money }}</b>{% if item.bonus %} · ustama <span class="text-success">+{{ item.bonus.real|money }}</span>{% endif %}{% if item.deduction %} · ushlanma {{ line.deduction_percent|floatformat:"-2" }}% <span class="text-danger">−{{ item.deduction.real|money }}</span>{% endif %}
+      </p>
+      {% if line.students %}
+        <div class="table-wrap"><table class="table table-dense">
+          <thead><tr><th class="num-col">#</th><th>O'quvchi</th><th class="text-right hide-sm">To'liq tarif</th><th class="text-right">To'lashi kerak</th><th class="text-right">To'lagan</th><th class="text-right">Real</th><th class="text-right hide-sm">Max</th></tr></thead>
+          <tbody>{% for s, a in line.rows %}<tr>
+            <td class="num-col">{{ forloop.counter }}</td><td>{{ s.name }}</td>
+            <td class="text-right num hide-sm">{{ s.full|money }}</td><td class="text-right num">{{ s.amount|money }}</td>
+            <td class="text-right num {% if s.paid < s.amount %}text-danger{% endif %}">{{ s.paid|money }}</td>
+            <td class="text-right num">{{ a.real|money }}</td><td class="text-right num muted hide-sm">{{ a.max|money }}</td>
+          </tr>{% endfor %}</tbody>
+        </table></div>
+      {% else %}<p class="empty-line">Shu oy to'lov grafigi bor o'quvchi yo'q.</p>{% endif %}
+    </details>
+    {% endwith %}
+  {% endfor %}
+  {% for h in pay.homeroom_items %}
+    <details class="payroll-line">
+      <summary>
+        <span class="chip-row grow">
+          <span class="badge badge-info">{{ h.homeroom.class_name }}</span>
+          <span class="badge badge-warning">Sinf rahbarlik</span>
+          <span class="badge badge-muted">{{ h.homeroom.students|length }} o'quvchi</span>
+        </span>
+        <span class="pay-amount num">{% if h.total.max|floatformat:0 != h.total.real|floatformat:0 %}<s class="muted">{{ h.total.max|money }}</s> {% endif %}<b class="text-success">{{ h.total.real|money }}</b></span>
+        {% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}
+      </summary>
+      <p class="small muted pay-line-note">O'quvchi boshiga {{ pay.rates.homeroom_rate|money }} so'm × to'lov ulushi</p>
+      {% if h.homeroom.students %}
+        <div class="table-wrap"><table class="table table-dense">
+          <thead><tr><th class="num-col">#</th><th>O'quvchi</th><th class="text-right">To'lashi kerak</th><th class="text-right">To'lagan</th></tr></thead>
+          <tbody>{% for s in h.homeroom.students %}<tr>
+            <td class="num-col">{{ forloop.counter }}</td><td>{{ s.name }}</td>
+            <td class="text-right num">{{ s.amount|money }}</td>
+            <td class="text-right num {% if s.paid < s.amount %}text-danger{% endif %}">{{ s.paid|money }}</td>
+          </tr>{% endfor %}</tbody>
+        </table></div>
+      {% endif %}
+    </details>
+  {% endfor %}
+  {% if not pay.items and not pay.homeroom_items %}<p class="empty-line">Guruh yoki sinf rahbarligi yo'q.</p>{% endif %}
+</section>
+
+<dialog class="modal" id="pay-dialog" aria-labelledby="pay-title">
+  <form method="post" action="{% url 'payroll:salary_pay' teacher.pk %}" novalidate>
+    {% csrf_token %}<input type="hidden" name="month" value="{{ month|date:'Y-m' }}">
+    <header class="modal-head"><h3 id="pay-title">{% include "partials/icon.html" with name="wallet" class="sm" %} Pul berish</h3><button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button></header>
+    <div class="modal-body">
+      <p class="muted small">{{ teacher.user.short_name }} · {{ month_label }} uchun · qoldiq <b class="num">{{ status.left|money }}</b> so'm</p>
+      {% include "partials/field.html" with field=payment_form.kind %}
+      <div class="form-grid cols-2">
+        {% include "partials/field.html" with field=payment_form.amount %}
+        {% include "partials/field.html" with field=payment_form.paid_on %}
+        {% include "partials/field.html" with field=payment_form.account_kind %}
+        {% include "partials/field.html" with field=payment_form.note %}
+      </div>
+      <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Kassa yoki bankdan «Ish haqi» xarajati sifatida chiqim qilinadi. Naqd berish uchun kassa ochiq bo'lishi kerak.</p>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-secondary" type="button" data-close-dialog>Bekor qilish</button><button class="btn btn-primary" type="submit">Berish</button></footer>
+  </form>
+</dialog>
+
+<dialog class="modal" id="penalty-dialog" aria-labelledby="penalty-title">
+  <form method="post" action="{% url 'payroll:penalty_add' teacher.pk %}" novalidate>
+    {% csrf_token %}<input type="hidden" name="month" value="{{ month|date:'Y-m' }}">
+    <header class="modal-head"><h3 id="penalty-title">Jarima qo'shish</h3><button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button></header>
+    <div class="modal-body">
+      <p class="muted small">{{ teacher.user.short_name }} · {{ month_label }}</p>
+      {% include "partials/field.html" with field=penalty_form.amount %}
+      {% include "partials/field.html" with field=penalty_form.reason %}
+    </div>
+    <footer class="modal-foot"><button class="btn btn-secondary" type="button" data-close-dialog>Bekor qilish</button><button class="btn btn-primary" type="submit">Qo'shish</button></footer>
+  </form>
+</dialog>
+{% endblock %}

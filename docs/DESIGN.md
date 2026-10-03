@@ -121,8 +121,15 @@ ko'rinadi: `<th class="actions">Amallar</th>`; har bir ikon tugmada `title` va `
 - Boolean → **iOS switch** (`.check` ichidagi checkbox avtomatik switch bo'ladi).
 - Radio tanlov (2–4 variant) → **Segmented Control** (`.radio-row`, `field.html` avtomatik beradi).
 - Ko'p tanlov ro'yxati → `.check-item` (dumaloq ✓); filtrda `partials/multiselect.html`.
+- Ko'p variantli tanlov (o'quvchi va h.k.) → qidiruv maydoni `input[data-search-for="<select id>"]` + ochiq ro'yxat
+  `select.input[size="7"]` (Enter — birinchi mos variant). Bog'liq maydonlar — sahifadagi JSON (`json_script`).
 - Prefiks: `.input-group` + `.addon` (`+998`, `so'm` → `.input-group.suffix`).
 - Katta formalar — yig'iladigan bo'limlar `.card.form-fold`, maydonlar `.form-grid.cols-2|3|4`.
+- Takrorlanuvchi bloklar (sertifikatlar va h.k.) — Django formset: `[data-formset-list="{prefix}"]` ichida
+  `.guardian-box[data-formset-item]`, bo'sh nusxa `<template id="{prefix}-empty">`, "+ … qo'shish" tugmasi
+  `[data-formset-add="{prefix}"]`, olib tashlash — `[data-formset-delete]` (DELETE belgilanadi, blok yashiriladi).
+- Ko'p belgili tanlov ro'yxati (fanlar) — `input[data-search-for]` + `.check-list` (`.check-item`), tanlanganlari
+  qidiruvda yashirilmaydi. Tanlagichlarda bo'sh variant — "— Tanlang —" (`---------` ko'rsatilmaydi).
 - Xabar bloki: `.alert.alert-info|success|error`.
 
 ### Ko'rinishni almashtirish
@@ -154,6 +161,10 @@ ko'rinadi: `<th class="actions">Amallar</th>`; har bir ikon tugmada `title` va `
 - Shaxs katagi: `<a class="person"><span class="avatar t{{ code|tone }}">…</span><span><b>Ism</b></span></a>`.
 - Holat: `.badge.badge-success|warning|danger|info|muted|pink` (kapsula, tint). Jinsi: o'g'il — `badge-info`,
   qiz — `badge-pink`.
+- Teglar ro'yxati (fanlar va h.k.): `.chip-row.tag-row` > `.badge.badge-tone.t{n}` (rang — `|tone`), ko'pi bilan 3 ta + `+N`.
+- Qatorda holatni o'zgartirish: `select.input.input-sm.status-select.status-{qiymat}` + `data-autosubmit`
+  (rang — holat bo'yicha). Yangi holat ranglari ham `select.input.status-select.status-…` ko'rinishida yoziladi
+  (aks holda `select.input` qoidasi ustun keladi).
 - Pul ustunlari `text-right num`; qarz `text-danger`, to'langan `text-success`.
 - Tor ekranda yashirish: `.hide-xl` (≤1320), `.hide-lg` (≤1180), `.hide-sm` (≤1024), `.hide-xs` (≤700).
 - Bo'sh holat: `.empty` (dumaloq kulrang ikon + sarlavha + izoh).
@@ -161,12 +172,79 @@ ko'rinadi: `<th class="actions">Amallar</th>`; har bir ikon tugmada `title` va `
 ### Batafsil ma'lumot
 - Kalit–qiymat: `.kv` yoki `.kv-plain`; ro'yxat: `.list-plain`, `.entity-list` (iOS inset grouped).
 - Kichik yig'indilar: `.sum-grid` / `.mini-grid` / `.drawer-stats` (kulrang tint bloklar, chegarasiz).
+- Shaxs sahifasi (o'qituvchi namunasi): `.student-hero` (avatar, holat, kod/filial/telefon/toifa ★, «Tahrirlash» +
+  «Orqaga») → 4 statistika → bo'limlar `<nav class="segmented seg-wide">` (`?tab=`, kichik ekranda gorizontal aylanadi,
+  son — `.tab-count`) → yig'iladigan `.card.form-fold` ichida `<dl class="info-grid cols-3|4">` (`<div><dt><dd>`,
+  `.span-2`/`.span-all`). Pasport/JSHSHIR/karta — doim `|mask` (pasportda seriya ochiq: `AB •••4567`).
+- Oy tanlash paneli: `form.card.toolbar.month-bar` — ← `input[type=month][data-autosubmit]` → + «Joriy oy».
+- 3 ta statistika: `.grid.grid-3.stats-lead` — telefonda birinchisi to'liq kenglikda, qolgan ikkitasi yonma-yon.
+- Keng moliyaviy jadval: `.payroll-table` (guruhlangan sarlavha `th.th-group` colspan, `tfoot` — «Jami»);
+  musbat ustama `.text-warning`/`.text-info` «+», ayirma `.text-danger` «−», bo'sh — `.muted` «—».
+- Hisob xulosasi: `.pay-summary-body` (chapda `.pay-tiles` — 3 ta kulrang plitka, o'ngda `table.pay-table` Max/Real,
+  `tfoot` — Jami), `.pay-grid` (chapda profil + «Tezkor hisob» `.kv.pay-kv`, o'ngda «To'lov holati»); katta summa —
+  `dd.pay-big`; qatorda eski/100% summa — `<s class="muted">`, haqiqiy — `.text-success`.
+- Davomat to'ri: `table.att-table` (birinchi ustun yopishqoq `.att-name`, dam olish kunlari `.is-weekend` — qizil,
+  bugun `.is-today`), katak — `.att-cell.att-B|Y|K|S|empty` (rang tokeni `--c`), yashamagan kun — `.att-off`;
+  katak menyusi — `.att-pop` (`[data-att-board]` JS), kunlik ro'yxat — `.att-day-list` + `.att-choice` (radio, `.is-on`).
+- Kunlik darslar ro'yxati: `ol.day-lessons > li.is-done|is-now|is-waiting.t{0-5}` (`.day-time`, rangli `.day-bar`,
+  holat — `.badge`); kichik guruh kartasi — `.my-group` (kulrang blok, avatar + kod, `{% bar %}`).
+- Faqat ko'rish uchun haftalik jadval: `.tt-grid` + `div.tt-lesson` (tugma emas); ≤768px'da to'r yashirinadi, `.lesson-days` ro'yxati chiqadi (`.my-tt-grid` / `.my-tt-list`).
+- Kichik ko'rsatkichlar qatori: `.mini-stats` (4 ta kulrang blok, telefonda 2×2); «Men o'qitaman» — `.my-subject` (yashil tint).
+- Ikki ustunli a'zo boshqaruvi: `.member-split` > `.entity-list.member-list` (chapda a'zolar — `icon-btn.tone-danger`,
+  o'ngda nomzodlar — `icon-btn.tone-success`, qidiruv `data-search-for` + `li[data-search-item]`).
+- `.alert` ichidagi matn bitta `<span>`ga o'raladi (alert — flex, aks holda `<b>` alohida ustunga bo'linadi).
+- Bosib aylantiriladigan belgi: `button.att-cell.hr-mark[data-hr-mark]` + yashirin input (`[data-homeroom-day]` JS), yo'riqnoma — `.hr-hint` (asboblar qatoridan alohida, telefonda siqilmaydi).
+- Qoidalar sahifasi (`.rules`): bosiladigan formula — `button.formula-part.tone-*[role=tab]` + `.formula-panel`, kalkulyatorlar — `[data-share-calc]`, `[data-advance-calc]` (`.radio-row`, `input.range`, `.kv.pay-kv`), taqvim — `.rules-timeline`, savollar — `.rules-faq details` + `data-search-for`. Emoji ishlatilmaydi.
+- **Atamalar**: «Ish haqi» (oylik emas), «Reja (100%)» / «Hisoblangan» (max/real emas), «Ushlanma» (jarima + guruh ushlanmasi).
+- **Direktor (faqat ko'rish) qoidasi:** yozish sahifasiga/paneliga olib boruvchi har bir `<a>`/`<button>` — `data-write`;
+  direktor o'zgartira oladigan forma — `data-readonly-ok`; inline holat formasi (select, belgi) yoniga `.ro-only` nusxa
+  (badge/flag) — direktor holatni ko'rishi uchun. Rol rangi: direktor — `--c-purple`.
+- Direktor hisobotlari: `.money-bars` (kirim/chiqim — bitta shkala, `{% bar %}` success/danger), `.report-rows`
+  (nom · chiziq · summa), `.budget-mini`, `.legend-dot.is-income|is-expense`, rol kalitlari — `button.switch-btn[role=switch]`.
+- Ochiladigan qatorlar: `details.payroll-line` (summary — nom + summa + `fold-chevron`, ichida jadval).
+- Haftalik darslar ro'yxati (to'rsiz): `.lesson-days` > `.lesson-day` > `.lesson-row.t{0-5}` (`.lesson-time` + fan/sinf/xona).
+
+### Kartalar to'ri (guruhlar va h.k.)
+- `div.group-grid` > `article.card.group-card` (`academics/_group_card.html`): sarlavha (`.group-card-head` —
+  sinf avatari + kod + izoh), belgilar qatori (`.chip-row` + `.badge`), "Birlashma" (`.group-merge`, binafsha
+  tint), o'qituvchilar (`.group-teachers`), meta (`.group-meta` — o'quvchilar/sig'im, xona), pastda
+  `btn-secondary btn-block` ("Boshqarish"). Faol emas — `.is-off`.
+- Bir sahifada ikki ko'rinish (jadval / kartalar) — `nav.segmented.view-switch` (`?view=`), soni `<small>` da.
+  Filtr paneli ko'rinishni saqlashi uchun `filter_bar.html` ga `keep_view=view`.
+
+### Hujjat sahifasi (shartnoma va h.k.)
+- `.doc-grid`: chapda ma'lumot kartalari (`.kv-plain`, holat kartalari), o'ngda `section.card.doc-card` —
+  sarlavhada holat belgisi (Muhrlangan / Qoralama matn), ichida `.doc-scroll` (o'z aylanishi bilan).
+  ≤1180px — bitta ustun.
+- Hujjat matni: `contracts/_document.html` (`.contract-doc`: `.doc-title`, `.doc-subtitle`, `.doc-heading`,
+  `.doc-right`, `.doc-item`, rekvizitlar `.doc-sides`). Ranglar **meros olinadi** — bir xil qism ilova kartasida
+  ham, oq qog'ozda (`.sheet.contract-sheet`, chop etish/PDF) ham to'g'ri ko'rinadi.
+- Uzun matn tahrirlash: `.template-layout` (chapda katta `textarea.template-editor` — monospace, o'ngda yopishqoq
+  `.template-help` — belgilash va o'rinbosarlar ro'yxati).
+
+### Haftalik to'r (dars jadvali)
+- `table.tt-grid` (`academics/timetable.html`): qatorlar — dars vaqtlari (`th.tt-time`: raqam + vaqt), ustunlar —
+  Dushanba–Shanba (sana bilan, bugun — `.is-today`). Katak `.tt-cell` (kulrang tint), ichida dars kartochkasi
+  `button.tt-lesson.t{n}` (rang — fan bo'yicha `|tone`, chapda rangli chiziq) va bo'sh joyga `button.tt-add`
+  (hover'da "+"; sensorli ekranda doim ko'rinadi). Kartochka/"+" bosilganda — yon panel (`data-panel-url`).
+- Hafta varaqlash: `.tt-week` (‹ · Bugun · › · sana oralig'i · soat/hafta). Chop etish — `.sheet.sheet-landscape`.
+- Tanaffus (OBED) qatori — `tr.tt-break` (yo'l-yo'l fon, katakka tashlab bo'lmaydi).
+- **Joylash (ikki usul, bitta servis)**: fan kartalari — yopishqoq ixcham panel `section.tt-palette` (aylantirilganda
+  topbar ostida qoladi) > `button.tt-chip.t{n}[data-drag-card]` (fan, o'qituvchi, `qo'yilgan/limit`; limit tugasa
+  `disabled`). (1) **Bosib qo'yish** — chip bosiladi (`aria-pressed`, to'liq rang), panelda `.tt-placing-bar`
+  ("endi katakni bosing" + Bekor qilish/Esc), keyin istalgan katak bosiladi; tanlov qo'yishdan keyin ham saqlanadi
+  (ketma-ket qo'yish). Sensorli ekranda ham ishlaydi. (2) **Sudrash** — ekran chetida sahifa o'zi aylanadi.
+  Katak `[data-drop]` (ustida `.is-over`). Jadvaldagi dars ham sudraladi yoki panelda "Boshqa katakka ko'chirish".
+  Server JSON qaytaradi; xato — JS toast; muvaffaqiyat — sahifa yangilanadi va aylantirish joyi tiklanadi.
+  Uzun sahifada "pastga sudrash" kerak bo'ladigan har qanday joyda shu naqsh (yopishqoq manba + bosib tanlash) ishlatiladi.
 
 ### Yon panel va dialoglar
 - Tez amal (to'lov, ma'lumot): `<dialog class="side-panel" id="side-panel">` + tugmada `data-panel-url` —
   kompyuterda chetdan ajralgan suzuvchi varaq, **telefonda pastdan chiquvchi sheet** (avtomatik).
   Ichida: `header.drawer-head` → `.drawer-body` → pastda `.drawer-actions` (asosiy + "Bekor qilish").
 - Forma oynasi: `<dialog class="modal">` (`.modal-head/.modal-body/.modal-foot`), ochish `data-open-dialog`.
+  URL langari (`…#oyna-id`) bilan ochilsa — sahifa yuklanganda o'sha oyna avtomatik ochiladi (masalan, oynadagi
+  segment boshqa ro'yxatni yuklaganda). Ichida uzun tanlov ro'yxati — `.check-list` (aylanadigan, `.check-item`).
 - Xavfli amal: `<form data-confirm="Savol?" data-confirm-ok="Ha">` → Apple Alert uslubidagi umumiy oyna.
 - Xabarlar: Django `messages` — o'ng yuqorida bildirishnoma, 6 s da yo'qoladi (telefonda to'liq kenglik).
 

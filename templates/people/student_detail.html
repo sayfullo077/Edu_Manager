@@ -27,12 +27,12 @@
         <a href="?view=payment" {% if view == "payment" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="wallet" class="sm" %} To'lov <small>Moliya</small></a>
       </nav>
     {% endif %}
-    <a class="btn btn-secondary" href="{% url 'people:student_update' student.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>
+    <a data-write class="btn btn-secondary" href="{% url 'people:student_update' student.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>
     {% if finance_edit %}
       {% if withdrawal %}
-        <a class="btn btn-secondary" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="file" class="sm" %} Chiqish hisob-kitobi</a>
+        <a data-write class="btn btn-secondary" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="file" class="sm" %} Chiqish hisob-kitobi</a>
       {% elif student.status == "active" or student.status == "frozen" %}
-        <a class="btn btn-warning-soft" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="logout" class="sm" %} O'qishdan chiqarish</a>
+        <a data-write class="btn btn-warning-soft" href="{% url 'finance:student_withdraw' student.pk %}">{% include "partials/icon.html" with name="logout" class="sm" %} O'qishdan chiqarish</a>
       {% endif %}
     {% endif %}
     <form class="inline-form" method="post" action="{% url 'people:student_delete' student.pk %}"
@@ -75,7 +75,7 @@
     <div>{{ withdrawal.left_on|date:"d.m.Y" }} da o'qishdan chiqqan ({{ withdrawal.get_reason_display }}).
       {% if withdrawal.refund %}Qaytarilgan: <b class="num">{{ withdrawal.refund|money }}</b> so'm.{% endif %}
       {% if withdrawal.debt %}Qolgan qarz: <b class="num">{{ withdrawal.debt|money }}</b> so'm.{% endif %}
-      {% if finance_edit %}<a class="link" href="{% url 'finance:student_withdraw' student.pk %}">Hisob-kitob hujjati</a>{% endif %}</div>
+      {% if finance_edit %}<a data-write class="link" href="{% url 'finance:student_withdraw' student.pk %}">Hisob-kitob hujjati</a>{% endif %}</div>
   </div>
 {% endif %}
 
@@ -110,6 +110,7 @@
                 {% if field == "in_erp" %}ERP{% else %}E-maktab{% endif %}
               </button>
             </form>
+            <span class="flag ro-only{% if on %} on{% endif %}">{% if on %}{% include "partials/icon.html" with name="check" class="sm" %}{% endif %} {% if field == "in_erp" %}ERP{% else %}E-maktab{% endif %}</span>
           {% endfor %}
         </dd></div>
       </dl>
@@ -130,7 +131,7 @@
           <dt>Ko'cha / uy</dt><dd>{{ student.address|default:"—" }}</dd>
         </dl>
       {% else %}
-        <p class="muted small">Manzil kiritilmagan. <a class="link" href="{% url 'people:student_update' student.pk %}">Kiritish</a></p>
+        <p class="muted small">Manzil kiritilmagan. <a data-write class="link" href="{% url 'people:student_update' student.pk %}">Kiritish</a></p>
       {% endif %}
 
       {% if student.notes %}
@@ -144,7 +145,7 @@
       <section class="card">
         <div class="card-title">
           <h3 class="with-count">Vasiylar <span class="badge badge-info">{{ guardians|length }} ta</span></h3>
-          <a class="btn btn-ghost btn-sm" href="{% url 'people:student_add_guardian' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qo'shish</a>
+          <a data-write class="btn btn-ghost btn-sm" href="{% url 'people:student_add_guardian' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Qo'shish</a>
         </div>
         <ul class="entity-list">
           {% for link in guardians %}
@@ -162,7 +163,7 @@
                     {% csrf_token %}<button class="flag" type="submit">Asosiy qilish</button>
                   </form>
                 {% endif %}
-                <a class="icon-btn tone-warning" href="{% url 'people:student_update' student.pk %}#g{{ link.pk }}" title="Tahrirlash" aria-label="Tahrirlash">{% include "partials/icon.html" with name="pencil" class="sm" %}</a>
+                <a data-write class="icon-btn tone-warning" href="{% url 'people:student_update' student.pk %}#g{{ link.pk }}" title="Tahrirlash" aria-label="Tahrirlash">{% include "partials/icon.html" with name="pencil" class="sm" %}</a>
               </span>
             </li>
           {% empty %}
@@ -197,7 +198,7 @@
           <a class="btn btn-secondary btn-block" href="{% url 'contracts:contract_detail' contract.pk %}?next={{ request.get_full_path|add:'#shartnoma'|urlencode:'' }}">Ochish</a>
         {% elif student.status == "active" %}
           <p class="muted">Joriy o'quv yili uchun shartnoma tuzilmagan.</p>
-          <a class="btn btn-primary btn-block" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma tuzish</a>
+          <a data-write class="btn btn-primary btn-block" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma tuzish</a>
         {% else %}
           <p class="muted">O'quvchi faol emas.</p>
         {% endif %}

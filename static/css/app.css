@@ -97,8 +97,9 @@
   color-scheme: light;
 }
 
-/* Rol belgisi: O'qituvchi — yashil, Zavuch — indigo, Reception — to'q sariq */
+/* Rol belgisi: O'qituvchi — yashil, Zavuch — indigo, Reception — to'q sariq, Direktor — binafsha */
 [data-role="teacher"] { --role: var(--c-green); }
+[data-role="director"] { --role: var(--c-purple); }
 [data-role="head_teacher"] { --role: var(--c-indigo); }
 [data-role="reception"] { --role: var(--c-orange); }
 
@@ -274,9 +275,9 @@ button { font: inherit; color: inherit; }
 .btn-ghost:hover { background: var(--fill); color: var(--text); }
 .btn-outline { background: var(--accent-soft); color: var(--accent); }
 .btn-outline:hover { background: color-mix(in oklab, var(--accent) 20%, transparent); }
-.btn-success { background: var(--success-fill); color: #fff; }
+.btn-success { background: var(--success-fill); color: var(--on-color); }
 .btn-success:hover { background: color-mix(in oklab, var(--success-fill) 86%, black); }
-.btn-danger { background: var(--danger-fill); color: #fff; }
+.btn-danger { background: var(--danger-fill); color: var(--on-color); }
 .btn-danger:hover { background: color-mix(in oklab, var(--danger-fill) 86%, black); }
 .btn-excel { background: var(--success-soft); color: var(--success); }
 .btn-excel:hover { background: color-mix(in oklab, var(--success) 20%, transparent); }
@@ -325,7 +326,10 @@ select.input {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%238e8e93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 4.5 6 2l2.5 2.5M3.5 7.5 6 10l2.5-2.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 13px center; background-size: 12px;
 }
-select.input[multiple] { height: auto; padding: 6px; background-image: none; }
+select.input[multiple], select.input[size] { height: auto; padding: 6px; background-image: none; }
+select.input[size] option { padding: 7px 10px; border-radius: 6px; }
+select.input[size] option:checked { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+input[data-search-for] { margin-bottom: 6px; }
 textarea.input { height: auto; min-height: 88px; padding: 11px 14px; resize: vertical; line-height: 1.45; }
 input[type="date"].input, input[type="month"].input { padding-right: 10px; }
 .input-sm { height: 36px; font-size: 14px; width: auto; }
@@ -363,7 +367,7 @@ input[type="date"].input, input[type="month"].input { padding-right: 10px; }
 }
 .check input[type="checkbox"]::before {
   content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%;
-  background: #fff; box-shadow: 0 2px 5px rgb(0 0 0 / 0.18), 0 0 0 0.5px rgb(0 0 0 / 0.04);
+  background: var(--on-color); box-shadow: 0 2px 5px rgb(0 0 0 / 0.18), 0 0 0 0.5px rgb(0 0 0 / 0.04);
   transition: transform 0.3s var(--ease);
 }
 .check input[type="checkbox"]:checked { background: var(--c-green); }
@@ -409,8 +413,8 @@ input[type="date"].input, input[type="month"].input { padding-right: 10px; }
   background: var(--surface); color: var(--text); font-weight: 600;
   box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04);
 }
-:root[data-theme="dark"] .segmented a[aria-current="page"] { background: #636366; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .segmented a[aria-current="page"] { background: #636366; } }
+:root[data-theme="dark"] .segmented a[aria-current="page"] { background: var(--faint); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .segmented a[aria-current="page"] { background: var(--faint); } }
 
 /* Radio tugmalar qatori — ham segment boshqaruvi ko'rinishida */
 .radio-row {
@@ -429,8 +433,8 @@ input[type="date"].input, input[type="month"].input { padding-right: 10px; }
   background: var(--surface); color: var(--text); font-weight: 600;
   box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04);
 }
-:root[data-theme="dark"] .radio-row label:has(input:checked) { background: #636366; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .radio-row label:has(input:checked) { background: #636366; } }
+:root[data-theme="dark"] .radio-row label:has(input:checked) { background: var(--faint); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .radio-row label:has(input:checked) { background: var(--faint); } }
 .radio-row label:has(input:focus-visible) { outline: 3px solid var(--accent-ring); outline-offset: 1px; }
 
 /* Kod yuborish kanali (SMS / Telegram) */
@@ -449,7 +453,7 @@ input[type="date"].input, input[type="month"].input { padding-right: 10px; }
   background: var(--fill); color: var(--muted); transition: background 0.2s, color 0.2s;
 }
 .channel:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
-.channel:has(input:checked) .channel-ico { background: var(--accent); color: #fff; }
+.channel:has(input:checked) .channel-ico { background: var(--accent); color: var(--on-color); }
 .channel-tg, .tg-box { --accent: #229ed9; } /* Telegram'ning o'z rangi */
 .channel:has(input:focus-visible) { outline: 3px solid var(--accent-ring); outline-offset: 2px; }
 .tg-box {
@@ -506,25 +510,25 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; flex: none;
   background: linear-gradient(180deg, color-mix(in oklab, var(--brand) 78%, white), var(--brand));
   box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.35), 0 2px 6px rgb(0 0 0 / 0.18);
-  font-weight: 700; font-size: 19px; letter-spacing: -0.02em; color: #fff; font-family: var(--font-rounded);
+  font-weight: 700; font-size: 19px; letter-spacing: -0.02em; color: var(--on-color); font-family: var(--font-rounded);
 }
 .brand-mark img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .brand-name { font-family: var(--font-heading); font-weight: 650; font-size: 16px; letter-spacing: -0.015em; }
 .brand-tag { font-size: 12.5px; opacity: 0.72; }
-.auth-hero .brand-name { color: #fff; }
+.auth-hero .brand-name { color: var(--on-color); }
 .auth-hero h1 {
   font-size: clamp(34px, 3.8vw, 54px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.06;
-  color: #fff; max-width: 13ch;
+  color: var(--on-color); max-width: 13ch;
 }
 .auth-hero .lead { margin-top: 18px; font-size: 17px; line-height: 1.5; max-width: 40ch; color: rgb(255 255 255 / 0.74); }
 .features { display: grid; gap: 16px; margin-top: 36px; padding: 0; list-style: none; }
 .features li { display: flex; gap: 14px; align-items: flex-start; font-size: 15px; }
 .features .dot {
-  width: 34px; height: 34px; border-radius: 10px; flex: none; display: grid; place-items: center; color: #fff;
+  width: 34px; height: 34px; border-radius: 10px; flex: none; display: grid; place-items: center; color: var(--on-color);
   background: rgb(255 255 255 / 0.12); box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.22);
   backdrop-filter: blur(10px);
 }
-.features b { display: block; color: #fff; font-weight: 600; }
+.features b { display: block; color: var(--on-color); font-weight: 600; }
 .features span { color: rgb(255 255 255 / 0.66); font-size: 14px; }
 
 .preview-card {
@@ -537,7 +541,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 @keyframes float { 50% { transform: translateY(-6px); } }
 .preview-card .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .preview-card .k { font-size: 12px; font-weight: 500; color: rgb(255 255 255 / 0.66); }
-.preview-card .v { margin-top: 4px; font-size: 30px; font-weight: 600; color: #fff; font-family: var(--font-rounded); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.preview-card .v { margin-top: 4px; font-size: 30px; font-weight: 600; color: var(--on-color); font-family: var(--font-rounded); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .preview-card .v .unit { color: rgb(255 255 255 / 0.6); }
 .preview-card .bar { height: 6px; margin-top: 14px; border-radius: 99px; background: rgb(255 255 255 / 0.16); overflow: hidden; }
 .preview-card .bar i { display: block; height: 100%; width: 80%; border-radius: inherit; background: linear-gradient(90deg, #64d2ff, #30d158); }
@@ -608,8 +612,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .nav a:hover { background: var(--fill-2); }
 .nav a .icon { color: var(--accent); }
 /* iPadOS sidebar: tanlangan band — to'liq urg'u rangida, matn oq */
-.nav a[aria-current="page"] { background: var(--accent); color: #fff; font-weight: 600; }
-.nav a[aria-current="page"] .icon { color: #fff; }
+.nav a[aria-current="page"] { background: var(--accent); color: var(--on-color); font-weight: 600; }
+.nav a[aria-current="page"] .icon { color: var(--on-color); }
 .sidebar-foot { padding: 12px; border-top: 1px solid var(--glass-line); }
 
 .user-chip { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius); }
@@ -671,12 +675,12 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   font-size: 14px; text-align: left; cursor: pointer; color: var(--text);
 }
 .menu-item .icon { color: var(--muted); }
-.menu-item:hover { background: var(--accent); color: #fff; }
-.menu-item:hover .icon, .menu-item:hover small { color: #fff; }
+.menu-item:hover { background: var(--accent); color: var(--on-color); }
+.menu-item:hover .icon, .menu-item:hover small { color: var(--on-color); }
 .menu-item.text-danger { color: var(--danger) !important; }
 .menu-item.text-danger .icon { color: var(--danger); }
-.menu-item.text-danger:hover { background: var(--danger-fill); color: #fff !important; }
-.menu-item.text-danger:hover .icon { color: #fff; }
+.menu-item.text-danger:hover { background: var(--danger-fill); color: var(--on-color) !important; }
+.menu-item.text-danger:hover .icon { color: var(--on-color); }
 .menu-item .role-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--role); flex: none; }
 .menu-item .check-mark { margin-left: auto; color: var(--accent); }
 .menu-item small { display: block; font-size: 12px; color: var(--muted); }
@@ -691,7 +695,9 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 .content { width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px 32px 48px; }
 /* Katta sarlavha (Large Title) */
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.page-head > div:first-child { flex: 1 1 320px; min-width: 0; }
+.page-head h1 { overflow-wrap: anywhere; }
 .page-head h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; }
 .page-head h2 { font-size: 22px; }
 .page-head .sub { margin-top: 4px; color: var(--muted); font-size: 15px; }
@@ -768,7 +774,7 @@ a.card:active { transform: scale(0.99); }
 .badge-pink { background: color-mix(in oklab, var(--c-pink) 12%, transparent); color: var(--c-pink); }
 .count-badge {
   display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px;
-  background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700;
+  background: var(--accent); color: var(--on-color); font-size: 11.5px; font-weight: 700;
 }
 
 /* Xabarlar (Django messages) — macOS bildirishnomasi kabi o'ng yuqorida */
@@ -786,7 +792,7 @@ a.card:active { transform: scale(0.99); }
 }
 .toast > .icon {
   width: 26px; height: 26px; padding: 5px; border-radius: 50%; flex: none;
-  background: var(--c-green); color: #fff; stroke-width: 2.4;
+  background: var(--c-green); color: var(--on-color); stroke-width: 2.4;
 }
 .toast.error > .icon { background: var(--c-red); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-12px) scale(0.96); } }
@@ -822,7 +828,7 @@ a.card:active { transform: scale(0.99); }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table .num-col { width: 48px; color: var(--faint); }
 .table .actions { text-align: right; white-space: nowrap; }
-.table small.block { display: block; margin-top: 2px; font-size: 12px; }
+.table small.block, small.block { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; }
 .table .row-muted td { color: var(--faint); }
 .table .row-muted td b { color: var(--muted); text-decoration: line-through; }
 .table tbody tr.row-partial { background: color-mix(in oklab, var(--warning) 6%, transparent); }
@@ -865,7 +871,7 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
   border-radius: var(--radius-pill); font-weight: 500; color: var(--text-2);
 }
 .pagination a:hover { background: var(--fill); }
-.pagination span.cur { background: var(--accent); color: #fff; font-weight: 600; }
+.pagination span.cur { background: var(--accent); color: var(--on-color); font-weight: 600; }
 
 /* =========================================================================
    Formalar va batafsil sahifa (iOS "inset grouped" ro'yxatlari)
@@ -918,7 +924,7 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
 .steps li.done { color: var(--success); }
 .steps li.done span { background: var(--success-soft); }
 .steps li.current { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.steps li.current span { background: var(--accent); color: #fff; }
+.steps li.current span { background: var(--accent); color: var(--on-color); }
 .steps-list { padding-left: 18px; margin: 10px 0 0; display: grid; gap: 6px; }
 .note { margin-top: 14px; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; }
 .note .icon { margin-top: 2px; flex: none; }
@@ -948,7 +954,7 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
 .print-toolbar { display: flex; justify-content: center; gap: 10px; padding: 16px; }
 .sheet {
   width: 210mm; min-height: 297mm; margin: 0 auto 32px; padding: 18mm 20mm;
-  background: #fff; color: #111; box-shadow: var(--shadow-lg); font-size: 13.5px; line-height: 1.6;
+  background: var(--on-color); color: #111; box-shadow: var(--shadow-lg); font-size: 13.5px; line-height: 1.6;
   border-radius: 4px;
 }
 .sheet .muted { color: #666; font-size: 12px; }
@@ -980,7 +986,7 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
 @media print {
   @page { size: A4; margin: 0; }
   .no-print { display: none !important; }
-  .print-page { background: #fff; }
+  .print-page { background: var(--on-color); }
   .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; border-radius: 0; }
 }
 
@@ -1051,7 +1057,7 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
 .cat-nums b { color: var(--heading); font-weight: 600; }
 .round-btn {
   width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--accent); color: #fff; transition: transform 0.2s var(--ease);
+  background: var(--accent); color: var(--on-color); transition: transform 0.2s var(--ease);
 }
 .round-btn:hover { transform: scale(1.08); }
 .limit-row { display: grid; grid-template-columns: 1fr 220px; gap: 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
@@ -1111,10 +1117,10 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
   display: flex; align-items: center; gap: 12px; padding: 10px 28px;
   background: var(--info-soft); color: var(--info); font-size: 14px;
 }
-.su-banner.danger { background: var(--danger-fill); color: #fff; position: sticky; top: 0; z-index: 25; min-height: 52px; }
+.su-banner.danger { background: var(--danger-fill); color: var(--on-color); position: sticky; top: 0; z-index: 25; min-height: 52px; }
 .su-banner > span { flex: 1; }
 .su-banner form { margin: 0; }
-.su-banner.danger .btn-sm { background: #fff; color: var(--danger-fill); }
+.su-banner.danger .btn-sm { background: var(--on-color); color: var(--danger-fill); }
 .su-banner:not(.danger) .btn-sm { background: var(--surface); color: var(--text); }
 .su-banner.danger + .topbar { top: 52px; }  /* ogohlantirish doim ko'rinib tursin */
 .su-pill { background: var(--info-soft); color: var(--info); }
@@ -1127,7 +1133,7 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
   transition: transform 0.3s var(--ease), box-shadow 0.3s;
 }
 .role-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--card-border), var(--shadow-float); }
-.role-card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: #fff; flex: none; }
+.role-card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: var(--on-color); flex: none; }
 .role-card b { display: block; color: var(--heading); font-size: 16px; font-weight: 600; }
 .role-card small { color: var(--muted); }
 
@@ -1164,11 +1170,11 @@ a.person:hover b, .person a:hover b { color: var(--accent); }
   font: inherit; font-size: 14px; color: var(--text); text-align: left; cursor: pointer;
 }
 .role-item .icon { color: var(--muted); }
-.role-item:hover { background: var(--accent); color: #fff; }
-.role-item:hover .icon, .role-item:hover small { color: #fff; }
+.role-item:hover { background: var(--accent); color: var(--on-color); }
+.role-item:hover .icon, .role-item:hover small { color: var(--on-color); }
 .role-item.current { font-weight: 600; }
 .role-item.current::after { content: "✓"; margin-left: auto; color: var(--accent); font-weight: 600; }
-.role-item.current:hover::after { color: #fff; }
+.role-item.current:hover::after { color: var(--on-color); }
 .role-item.current .icon { color: var(--accent); }
 .role-item small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
 .role-item.muted-item { color: var(--muted); }
@@ -1286,7 +1292,7 @@ body.drawer-open { overflow: hidden; }
   background: var(--fill); font-size: 13.5px; font-weight: 500; color: var(--text-2);
 }
 a.chip:hover { background: var(--danger-soft); color: var(--danger); }
-.chip-accent { background: var(--accent); color: #fff; font-weight: 600; }
+.chip-accent { background: var(--accent); color: var(--on-color); font-weight: 600; }
 
 /* Tasdiqlash oynasi — Apple Alert */
 .confirm-dialog {
@@ -1434,7 +1440,7 @@ a.chip:hover { background: var(--danger-soft); color: var(--danger); }
 }
 .missing-row b { font-weight: 600; }
 .switch { position: relative; width: 38px; height: 23px; flex: none; border-radius: 99px; background: var(--fill-strong); transition: background 0.25s var(--ease); }
-.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); transition: transform 0.3s var(--ease); }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%; background: var(--on-color); box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); transition: transform 0.3s var(--ease); }
 .missing-row:hover .switch { background: var(--c-green); }
 .missing-row:hover .switch::after { transform: translateX(15px); }
 .sticky-footer {
@@ -1460,8 +1466,8 @@ a.chip:hover { background: var(--danger-soft); color: var(--danger); }
 }
 .tabs a:hover { color: var(--text); }
 .tabs a[aria-current="page"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04); }
-:root[data-theme="dark"] .tabs a[aria-current="page"] { background: #636366; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabs a[aria-current="page"] { background: #636366; } }
+:root[data-theme="dark"] .tabs a[aria-current="page"] { background: var(--faint); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabs a[aria-current="page"] { background: var(--faint); } }
 .tab-count { min-width: 22px; padding: 0 7px; border-radius: 99px; font-size: 12px; font-weight: 600; text-align: center; background: var(--fill); color: var(--muted); }
 .tabs a[aria-current="page"] .tab-count { background: var(--accent-soft); color: var(--accent); }
 .tab-count.warn { background: var(--warning-soft); color: var(--warning); }
@@ -1541,6 +1547,170 @@ a.chip:hover { background: var(--danger-soft); color: var(--danger); }
 .period-bar .field { margin: 0; }
 .bank-cards .flow-card small b { font-size: inherit; }
 .bank-cards .split.small { font-size: 13.5px; color: var(--text-2); padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* Sinflar va guruhlar: ko'rinish almashtirgich, guruh kartalari, o'quvchi tanlash ro'yxati */
+.view-switch { max-width: 360px; }
+.view-switch small { margin-left: 2px; padding: 0 7px; border-radius: 99px; font-size: 11px; font-weight: 600; background: var(--fill); color: var(--muted); }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.group-card { display: grid; gap: 12px; align-content: start; padding: 18px; }
+.group-card.is-off { opacity: 0.6; }
+.group-card-head { display: flex; align-items: center; gap: 12px; }
+.group-card-head .avatar { width: 44px; height: 44px; border-radius: 12px; }
+.group-card-head .entity-name { font-size: 15.5px; }
+.group-merge { padding: 8px 12px; border-radius: var(--radius-sm); background: color-mix(in oklab, var(--c-purple) 10%, transparent); color: var(--c-purple); }
+.group-teachers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.group-teachers li { display: flex; align-items: center; gap: 8px; }
+.group-teachers .icon { color: var(--muted); }
+.group-teachers small { margin-left: auto; }
+.group-meta { display: flex; gap: 16px; font-size: 13.5px; color: var(--muted); }
+.group-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.group-meta b { color: var(--heading); }
+.check-list { display: grid; gap: 2px; max-height: 46vh; overflow-y: auto; padding: 4px; border-radius: var(--radius); background: var(--fill-2); }
+.subject-rows { display: grid; gap: 12px; }
+.subject-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) 120px; }
+@media (max-width: 640px) { .subject-row { grid-template-columns: 1fr; } }
+.subject-row + .subject-row { padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* Shartnoma: ma'lumot (chapda) + matn (o'ngda); matn chop etishda ham xuddi shu qism */
+.doc-grid { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 1.9fr); gap: 16px; align-items: start; }
+.doc-card .doc-scroll { max-height: calc(100dvh - 190px); overflow-y: auto; padding: 8px 24px 24px; }
+.contract-doc { color: inherit; font-size: 14.5px; line-height: 1.65; text-align: justify; hyphens: auto; }
+.contract-doc p { margin: 0 0 10px; }
+.contract-doc b { font-weight: 650; }
+.contract-doc .doc-title { margin: 8px 0 2px; font-size: 22px; line-height: 1.25; text-align: center; color: inherit; letter-spacing: -0.02em; }
+.contract-doc .doc-subtitle { margin: 6px 0 16px; font-size: 16px; font-weight: 600; text-align: center; }
+.contract-doc .doc-heading { margin: 22px 0 10px; font-size: 17px; text-align: center; color: inherit; }
+.contract-doc .doc-right { text-align: right; }
+.contract-doc .doc-item { padding-left: 18px; }
+.doc-requisites { margin-top: 28px; }
+.doc-requisites > p:first-of-type { text-align: center; }
+.doc-sides { display: grid; grid-template-columns: 1fr 1fr; margin: 12px 0; border: 1px solid color-mix(in oklab, currentColor 30%, transparent); }
+.doc-sides > div { padding: 12px 14px; text-align: left; }
+.doc-sides > div + div { border-left: 1px solid color-mix(in oklab, currentColor 30%, transparent); }
+.doc-sides p { margin: 6px 0 0; }
+.doc-sign { margin-top: 14px !important; }
+.contract-sheet .contract-doc { font-size: 12.5px; line-height: 1.5; }
+.contract-sheet .doc-title { font-size: 16px; }
+.contract-sheet .doc-heading { font-size: 13.5px; margin: 14px 0 6px; }
+.print-hint { margin: -6px 0 14px; text-align: center; font-size: 13px; color: var(--muted); }
+@media (max-width: 1180px) { .doc-grid { grid-template-columns: 1fr; } .doc-card .doc-scroll { max-height: none; } }
+@media (max-width: 640px) { .doc-sides { grid-template-columns: 1fr; } .doc-sides > div + div { border-left: 0; border-top: 1px solid color-mix(in oklab, currentColor 30%, transparent); } .doc-card .doc-scroll { padding: 4px 16px 16px; } }
+/* Shablon tahrirlash: katta matn maydoni + yordam paneli */
+.template-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
+.template-editor { font-family: var(--font-mono); font-size: 13px; line-height: 1.55; min-height: 520px; }
+.template-help { position: sticky; top: calc(var(--topbar-h) + 16px); }
+.placeholder-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; max-height: 48vh; overflow-y: auto; }
+.placeholder-list li { display: grid; gap: 2px; }
+@media (max-width: 1024px) { .template-layout { grid-template-columns: 1fr; } .template-help { position: static; } }
+
+/* Dars jadvali: filtr, haftalik to'r (qatorlar — dars vaqtlari, ustunlar — kunlar), dars kartochkalari */
+.tt-filter { display: grid; gap: 14px; }
+.tt-filter .segmented { max-width: 420px; }
+.tt-filter-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 12px; align-items: end; }
+.tt-filter-fields .field { margin: 0; }
+.tt-card { overflow: hidden; }
+.tt-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.tt-head h3 { font-size: 17px; }
+.tt-week { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+.tt-grid { width: 100%; min-width: 860px; border-collapse: separate; border-spacing: 6px; table-layout: fixed; }
+.tt-grid thead th { padding: 6px 4px 2px; font-size: 13px; font-weight: 600; color: var(--text-2); text-align: center; }
+.tt-grid thead th small { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.tt-grid thead th.is-today { color: var(--accent); }
+.tt-grid thead th.is-today small { color: var(--accent); }
+.tt-time { width: 78px; text-align: center; vertical-align: middle; }
+.tt-time b { display: block; font-size: 15px; font-family: var(--font-rounded); color: var(--heading); }
+.tt-time small { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.tt-cell { position: relative; height: 72px; padding: 4px; vertical-align: top; border-radius: var(--radius-sm); background: var(--fill-2); }
+.tt-cell.is-today { background: color-mix(in oklab, var(--accent) 6%, var(--fill-2)); }
+.tt-lesson {
+  --av: var(--accent);
+  display: grid; gap: 1px; width: 100%; padding: 6px 8px; margin-bottom: 4px; border: 0; text-align: left; cursor: pointer;
+  border-radius: 8px; background: color-mix(in oklab, var(--av) 14%, var(--surface)); color: var(--text);
+  box-shadow: inset 3px 0 0 var(--av); font: inherit; transition: transform 0.15s var(--ease), background 0.15s;
+}
+.tt-lesson:hover { background: color-mix(in oklab, var(--av) 22%, var(--surface)); }
+.tt-lesson:active { transform: scale(0.98); }
+.tt-lesson b { font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-lesson small { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-lesson .tt-code { color: var(--av); font-weight: 600; }
+.tt-lesson.t0 { --av: var(--c-green); } .tt-lesson.t1 { --av: var(--c-blue); } .tt-lesson.t2 { --av: var(--c-orange); }
+.tt-lesson.t3 { --av: var(--c-purple); } .tt-lesson.t4 { --av: var(--c-red); } .tt-lesson.t5 { --av: var(--c-teal); }
+.tt-add {
+  display: grid; place-items: center; width: 100%; min-height: 28px; border: 1.5px dashed transparent; border-radius: 8px;
+  background: transparent; color: var(--faint); cursor: pointer; opacity: 0; transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.tt-cell:hover .tt-add, .tt-add:focus-visible { opacity: 1; border-color: var(--border-strong); }
+.tt-add:hover { color: var(--accent); border-color: var(--accent); }
+.tt-cell:not(:has(.tt-lesson)) .tt-add { min-height: 62px; }
+@media (hover: none) { .tt-add { opacity: 1; border-color: var(--border); } }
+/* Fan kartalari: yopishqoq ixcham panel (jadval aylantirilganda ham ko'rinadi) */
+.tt-palette {
+  position: sticky; top: calc(var(--topbar-h) + 8px); z-index: 15;
+  background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  box-shadow: 0 0 0 1px var(--glass-line), var(--shadow-float);
+}
+.tt-palette-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; padding: 12px 16px 8px; }
+.tt-palette-head h3 { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.tt-placing-bar { display: flex; align-items: center; gap: 10px; margin: 0; padding: 4px 4px 4px 12px; border-radius: var(--radius-pill);
+  background: var(--accent-soft); color: var(--accent); font-size: 13.5px; font-weight: 600; }
+.tt-placing-bar[hidden] { display: none; }
+.tt-cards { display: flex; flex-wrap: wrap; gap: 6px; max-height: 128px; overflow-y: auto; padding: 0 16px 14px; }
+.tt-chip {
+  --av: var(--accent);
+  display: grid; grid-template-columns: 1fr auto; column-gap: 10px; align-items: center; min-width: 160px; max-width: 260px;
+  padding: 7px 10px 7px 12px; border: 0; border-radius: var(--radius-sm); text-align: left; font: inherit; cursor: pointer;
+  background: color-mix(in oklab, var(--av) 12%, var(--surface)); color: var(--text); box-shadow: inset 3px 0 0 var(--av);
+  user-select: none; transition: transform 0.15s var(--ease), box-shadow 0.15s, opacity 0.2s;
+}
+.tt-chip:hover { box-shadow: inset 3px 0 0 var(--av), 0 0 0 1px color-mix(in oklab, var(--av) 40%, transparent); }
+.tt-chip[aria-pressed="true"] { background: var(--av); color: var(--on-color); box-shadow: 0 4px 14px -4px var(--av); }
+.tt-chip[aria-pressed="true"] small, .tt-chip[aria-pressed="true"] .tt-count { color: var(--on-color); background: rgb(255 255 255 / 0.22); }
+.tt-chip.is-dragging { opacity: 0.45; }
+.tt-chip.is-full { opacity: 0.45; cursor: default; }
+.tt-chip-name { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-chip small { grid-column: 1; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-chip .tt-count { grid-column: 2; grid-row: 1 / span 2; }
+.tt-count { padding: 1px 8px; border-radius: 99px; background: var(--fill); font-size: 12px; font-weight: 600; color: var(--text-2); }
+.tt-chip.t0 { --av: var(--c-green); } .tt-chip.t1 { --av: var(--c-blue); } .tt-chip.t2 { --av: var(--c-orange); }
+.tt-chip.t3 { --av: var(--c-purple); } .tt-chip.t4 { --av: var(--c-red); } .tt-chip.t5 { --av: var(--c-teal); }
+/* Qo'yish rejimi: katak bosiladigan ko'rinadi */
+.tt-card.is-placing [data-drop] { cursor: copy; }
+.tt-card.is-placing [data-drop]:hover { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.tt-card.is-placing .tt-add { opacity: 0; }
+.tt-cell.is-over { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.tt-cell.is-busy { opacity: 0.6; pointer-events: none; }
+.tt-break .tt-cell { height: 40px; background: repeating-linear-gradient(135deg, var(--fill-2) 0 8px, transparent 8px 16px); }
+.tt-break .tt-time b { font-size: 13px; color: var(--muted); }
+.tt-week { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tt-week b { margin-left: 6px; font-size: 16px; }
+.bells { display: grid; gap: 6px; }
+.bells-head, .bells-row { display: grid; grid-template-columns: 36px 1fr 1fr 50px; gap: 8px; align-items: center; }
+.bells-head { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.bells-row b { text-align: center; font-family: var(--font-rounded); font-size: 15px; }
+.sheet.sheet-landscape { width: 297mm; min-height: 210mm; padding: 12mm 14mm; }
+.tt-print th, .tt-print td { padding: 4px 6px; border: 1px solid #bbb; font-size: 11px; vertical-align: top; text-align: left; }
+.tt-print td:last-child { width: auto; text-align: left; }
+.tt-print-lesson + .tt-print-lesson { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #ccc; }
+@media print { .sheet.sheet-landscape { width: auto; } @page { size: A4 landscape; } }
+@media (max-width: 1024px) { .tt-filter-fields { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .tt-filter-fields { grid-template-columns: 1fr; } .tt-head { padding: 14px 16px; } }
+
+/* O'qituvchilar: fan teglari (rang — fan bo'yicha) va holat tanlagichi (rang — holat bo'yicha) */
+.tag-row { margin-top: 4px; gap: 4px; }
+.badge-tone { --av: var(--accent); background: color-mix(in oklab, var(--av) 13%, transparent); color: var(--av); }
+.badge-tone.t0 { --av: var(--c-green); } .badge-tone.t1 { --av: var(--c-blue); } .badge-tone.t2 { --av: var(--c-orange); }
+.badge-tone.t3 { --av: var(--c-purple); } .badge-tone.t4 { --av: var(--c-red); } .badge-tone.t5 { --av: var(--c-teal); }
+select.input.status-select { --tone: var(--muted); min-width: 140px; border-color: color-mix(in oklab, var(--tone) 45%, transparent);
+  background-color: color-mix(in oklab, var(--tone) 10%, var(--surface)); color: var(--tone); font-weight: 600; }
+select.input.status-select.status-active { --tone: var(--success); }
+select.input.status-select.status-vacation { --tone: var(--warning); }
+select.input.status-select.status-dismissed { --tone: var(--danger); }
+
+/* O'qituvchi formasi: pasport (seriya + raqam), dars tillari, fanlar ro'yxati */
+.passport-pair { display: grid; grid-template-columns: 76px 1fr; gap: 6px; }
+.check-item.inline { display: inline-flex; padding: 6px 8px; }
+.subject-checks { max-height: 220px; }
+.cert-box[hidden], .check-item[hidden] { display: none; }
 
 /* Zavuch dashboardi: sinflar bo'yicha o'quvchilar (nom · chiziq · son) */
 .class-bars { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
@@ -1681,3 +1851,302 @@ a.chip:hover { background: var(--danger-soft); color: var(--danger); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .sidebar, .dropdown-menu, .tabbar, .toast, .confirm-dialog, .chart-tip { background: var(--surface); }
 }
+
+/* ---------- O'qituvchi sahifasi: bo'limlar, haftalik darslar, fanlar ---------- */
+.segmented.seg-wide { margin-bottom: 20px; overflow-x: auto; scrollbar-width: none; }
+.segmented.seg-wide::-webkit-scrollbar { display: none; }
+.segmented.seg-wide a { white-space: nowrap; }
+.info-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 16px; }
+.info-grid .span-2 { grid-column: span 2; }
+.info-grid .status-select { max-width: 240px; margin-top: 4px; }
+@media (max-width: 900px) { .info-grid.cols-4, .info-grid.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .info-grid.cols-4, .info-grid.cols-3 { grid-template-columns: 1fr; } .info-grid .span-2 { grid-column: auto; } }
+.lesson-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; padding: 0 20px 20px; }
+.lesson-day h4 { margin: 0 0 8px; font-size: 15px; }
+.lesson-row {
+  --av: var(--accent); display: flex; gap: 10px; align-items: center; padding: 8px 10px; margin-bottom: 6px;
+  border-radius: var(--radius-sm); background: color-mix(in oklab, var(--av) 10%, transparent);
+  border-left: 3px solid var(--av); font-size: 14px;
+}
+.lesson-row.t0 { --av: var(--c-green); } .lesson-row.t1 { --av: var(--c-blue); } .lesson-row.t2 { --av: var(--c-orange); }
+.lesson-row.t3 { --av: var(--c-purple); } .lesson-row.t4 { --av: var(--c-red); } .lesson-row.t5 { --av: var(--c-teal); }
+.lesson-time { font-weight: 600; color: var(--av); min-width: 42px; }
+.teacher-subject { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.teacher-subject .link { margin-right: 6px; }
+
+/* ---------- Oylik hisob-kitob ---------- */
+.month-bar { justify-content: flex-start; }
+.month-bar .input[type="month"] { flex: 0 0 auto; width: 180px; }
+.payroll-table th, .payroll-table td { white-space: nowrap; }
+.payroll-table thead th.th-group { text-align: center; border-bottom: 1px solid var(--border); }
+.payroll-table tfoot th, .payroll-table tfoot td { font-weight: 600; color: var(--heading); border-top: 1px solid var(--border); }
+.penalty-list li { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.penalty-cancel { display: flex; gap: 6px; }
+.penalty-cancel .input { width: 170px; }
+.payroll-line { border-top: 1px solid var(--border); }
+.payroll-line > summary {
+  display: flex; align-items: center; gap: 14px; padding: 12px 20px; cursor: pointer; list-style: none;
+}
+.payroll-line > summary::-webkit-details-marker { display: none; }
+.payroll-line > summary:hover { background: var(--fill); }
+.payroll-line .fold-chevron { transform: rotate(-90deg); transition: transform 0.2s var(--ease); color: var(--muted); }
+.payroll-line[open] .fold-chevron { transform: none; }
+.payroll-line .table-wrap { padding: 0 8px 12px; }
+/* 3 ta statistika: telefonda birinchisi to'liq kenglikda, qolgan ikkitasi yonma-yon (yolg'iz karta qolmaydi) */
+@media (max-width: 820px) {
+  .stats-lead { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-lead > :first-child { grid-column: 1 / -1; }
+}
+
+/* O'qituvchi maosh tafsilotlari */
+.pay-summary-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; padding: 0 20px 20px; }
+.pay-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pay-tile { display: grid; justify-items: center; align-content: center; gap: 6px; padding: 18px 10px; border-radius: var(--radius); background: var(--fill); text-align: center; }
+.pay-tile .label { font-size: 13px; color: var(--muted); }
+.pay-tile b { font-family: var(--font-rounded); font-size: 24px; color: var(--heading); }
+.pay-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.pay-table th, .pay-table td { padding: 8px 0; border-bottom: 1px solid var(--border); text-align: left; font-weight: 500; }
+.pay-table td { text-align: right; padding-left: 12px; white-space: nowrap; }
+.pay-table thead th { font-size: 12.5px; color: var(--muted); }
+.pay-table tfoot th, .pay-table tfoot td { border-bottom: 0; font-size: 18px; font-weight: 700; color: var(--heading); padding-top: 12px; }
+.pay-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; align-items: start; }
+.pay-person { display: flex; align-items: center; gap: 16px; padding: 20px; }
+.pay-person .hero-avatar { width: 64px; height: 64px; font-size: 22px; }
+.pay-kv dd.pay-big { font-family: var(--font-rounded); font-size: 20px; font-weight: 700; }
+.pay-payments { padding: 4px 20px 16px; border-top: 1px solid var(--border); }
+.pay-payments-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; }
+.pay-payments-head h4 { margin: 0; font-size: 15px; }
+.pay-payments li { display: flex; align-items: center; gap: 10px; }
+.pay-amount { white-space: nowrap; text-align: right; }
+.pay-amount s { font-size: 13px; margin-right: 6px; }
+.pay-line-note { margin: 0; padding: 0 20px 10px; }
+@media (max-width: 900px) {
+  .pay-summary-body, .pay-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .pay-tile { padding: 14px 6px; }
+  .pay-tile b { font-size: 20px; }
+}
+
+/* ---------- Yotoqxona davomati ---------- */
+.att-filter { display: grid; gap: 12px; margin-bottom: 14px; }
+.att-filter-fields { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) repeat(2, minmax(0, 0.9fr)); gap: 10px; }
+.att-filter-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 1100px) { .att-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .att-filter-fields > :first-child { grid-column: 1 / -1; } }
+.att-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 4px 0 14px; font-size: 14px; color: var(--text-2); }
+.att-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.att-legend .att-cell { width: 22px; height: 22px; font-size: 11px; font-style: normal; }
+
+.att-cell {
+  --c: var(--muted); display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 30px; border: 0; border-radius: 8px; font: 600 12px/1 var(--font-rounded);
+  background: var(--c); color: var(--on-color); cursor: pointer; transition: transform 0.12s var(--ease), box-shadow 0.15s;
+}
+button.att-cell:hover { transform: scale(1.08); }
+button.att-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.att-B { --c: var(--c-green); } .att-Y { --c: var(--c-red); } .att-K { --c: var(--c-orange); } .att-S { --c: var(--c-blue); }
+.att-cell.att-empty { background: var(--fill); color: var(--faint); font-weight: 500; }
+.att-off { display: inline-block; width: 32px; text-align: center; color: var(--faint); }
+
+.att-table { border-collapse: separate; border-spacing: 4px 0; min-width: 100%; font-size: 14px; }
+.att-table th, .att-table td { padding: 6px 0; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.att-table thead th { padding: 10px 0; font-weight: 500; color: var(--muted); }
+.att-table .att-day b { display: block; color: var(--heading); font-size: 13px; }
+.att-table .att-day small, .att-table .att-sum small { display: block; font-size: 11px; color: var(--muted); }
+.att-table .att-day.is-weekend b, .att-table .att-day.is-weekend small { color: var(--danger); }
+.att-table .att-day.is-today b { color: var(--accent); }
+.att-table .att-name {
+  position: sticky; left: 0; z-index: 1; min-width: 210px; padding: 8px 12px 8px 20px; text-align: left;
+  background: var(--surface); font-weight: 500;
+}
+.att-table td.att-name, .att-table tbody .att-name b { color: var(--heading); }
+.att-table tbody .att-name small { display: block; font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.att-table .att-sum { min-width: 44px; font-weight: 700; }
+.att-table .att-sum:last-child { padding-right: 16px; }
+.att-sum.t-B { color: var(--c-green); } .att-sum.t-Y { color: var(--c-red); } .att-sum.t-K { color: var(--c-orange); } .att-sum.t-S { color: var(--c-blue); }
+.att-table tbody tr:hover td { background: var(--fill); }
+
+.att-pop {
+  position: absolute; z-index: 20; display: flex; gap: 6px; padding: 8px;
+  border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+}
+.att-pop[hidden] { display: none; }
+[data-att-board] { position: relative; }
+.att-cell.is-saving { opacity: 0.5; pointer-events: none; }
+
+.att-day-list { list-style: none; margin: 0; padding: 0; }
+.att-day-list li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 20px; border-top: 1px solid var(--border); }
+.att-choice { display: inline-flex; gap: 6px; }
+.att-choice .att-cell { width: 38px; height: 34px; opacity: 0.35; }
+.att-choice .att-cell.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c); }
+.att-choice .att-cell.att-empty.is-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--border-strong, var(--muted)); }
+.att-choice .att-cell:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.att-day-footer { margin-top: 0; position: sticky; bottom: 0; padding: 14px 20px; background: var(--surface); border-top: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); }
+
+/* ---------- O'qituvchi bosh sahifasi ---------- */
+.day-lessons { list-style: none; margin: 0; padding: 0 12px 12px; }
+.day-lessons li {
+  --av: var(--accent); display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: var(--radius-sm);
+}
+.day-lessons li + li { margin-top: 4px; }
+.day-lessons li.t0 { --av: var(--c-green); } .day-lessons li.t1 { --av: var(--c-blue); } .day-lessons li.t2 { --av: var(--c-orange); }
+.day-lessons li.t3 { --av: var(--c-purple); } .day-lessons li.t4 { --av: var(--c-red); } .day-lessons li.t5 { --av: var(--c-teal); }
+.day-time { min-width: 46px; font-weight: 600; color: var(--muted); }
+.day-bar { align-self: stretch; width: 3px; border-radius: 2px; background: var(--av); }
+.day-lessons b { color: var(--heading); }
+.day-lessons li.is-done { opacity: 0.55; }
+.day-lessons li.is-now { background: var(--warning-soft, color-mix(in oklab, var(--warning) 12%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--warning) 40%, transparent); }
+.day-lessons li.is-now .day-time { color: var(--heading); }
+.my-groups { padding: 0 16px 16px; gap: 12px; }
+.my-group { display: grid; gap: 10px; padding: 14px; border-radius: var(--radius); background: var(--fill); }
+.my-group-head { display: flex; align-items: center; gap: 12px; }
+.my-group-head b { color: var(--heading); }
+.preview-bar .input { flex: 0 1 340px; width: auto; }
+
+/* ---------- Mening jadvalim (o'qituvchi, faqat ko'rish) ---------- */
+.my-schedule .card-title { flex-wrap: wrap; gap: 10px; }
+.my-schedule .tt-week b { margin: 0 4px; font-size: 15px; }
+.my-schedule div.tt-lesson, .my-schedule div.tt-lesson:hover { cursor: default; transform: none; background: color-mix(in oklab, var(--av) 14%, var(--surface)); }
+.my-tt-list { display: none; }
+.lesson-day.is-today h4 { color: var(--accent); }
+@media (max-width: 768px) {
+  .my-tt-grid { display: none; }
+  .my-tt-list { display: grid; padding-top: 4px; }
+}
+
+/* ---------- Guruhlarim (o'qituvchi) ---------- */
+.my-subject { margin: 0; padding: 8px 10px; border-radius: var(--radius-sm); background: color-mix(in oklab, var(--success) 10%, transparent); color: var(--success); }
+.my-subject b { color: inherit; }
+.group-info { display: grid; gap: 14px; }
+.group-info .alert { margin: 0; }
+.mini-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mini-stats > div { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--fill); }
+.mini-stats .label { font-size: 12.5px; color: var(--muted); }
+.mini-stats b { font-family: var(--font-rounded); font-size: 22px; color: var(--heading); }
+@media (max-width: 560px) { .mini-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.member-split { align-items: start; }
+.card-pad-x { padding: 14px 16px 6px; }
+.member-list { max-height: 640px; overflow-y: auto; }
+.avatar.avatar-muted { background: var(--fill-strong); color: var(--muted); }
+/* Nomzod qatori — butun qator bosiladi */
+.member-list > li.candidate { padding: 0; }
+.member-list > li.candidate form { width: 100%; }
+.candidate-btn {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; border-radius: var(--radius);
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s;
+}
+.candidate-btn:hover:not(:disabled) { background: color-mix(in oklab, var(--success) 10%, transparent); }
+.candidate-btn:hover:not(:disabled) .icon-btn { background: var(--success); color: var(--on-color); }
+.candidate-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.candidate-btn:disabled { cursor: default; }
+.candidate-btn:disabled .icon-btn { opacity: 0.35; }
+.candidate-btn b { color: var(--heading); }
+
+/* ---------- Sinf rahbarlik (o'qituvchi) ---------- */
+.homeroom-row { padding: 0 !important; }
+.homeroom-link { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border-radius: var(--radius); color: inherit; }
+.homeroom-link:hover { background: var(--fill); }
+.homeroom-link b { color: var(--heading); }
+.hr-toolbar { flex-wrap: wrap; gap: 10px; }
+.hr-date { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.hr-date .input { width: auto; }
+.hr-table td { vertical-align: middle; }
+.hr-table .person { display: inline-flex; align-items: center; gap: 10px; }
+.hr-table .person b { color: var(--heading); font-weight: 600; }
+.hr-mark { width: 44px; height: 36px; font-size: 15px; }
+.hr-note { min-width: 160px; }
+.hr-legend, .hr-totals { padding: 12px 20px 16px; margin: 0; }
+.att-cell.att-sm { width: 24px; height: 24px; font-size: 11px; cursor: default; }
+.hr-hint { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 0 20px 12px; }
+
+/* Slayder (input[type=range]) */
+.range { width: 100%; accent-color: var(--accent); }
+
+/* ---------- Ish haqi qoidalari (o'qituvchi) ---------- */
+.rules { display: grid; gap: 20px; }
+.rules [hidden] { display: none !important; }
+.rules-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 19px; }
+.rules-title .icon { color: var(--accent); }
+.formula { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
+.formula-part {
+  padding: 10px 16px; border: 0; border-radius: 999px; font: 600 15px/1 var(--font-rounded); cursor: pointer;
+  background: color-mix(in oklab, var(--tone) 12%, transparent); color: var(--tone); transition: box-shadow 0.15s, background 0.15s;
+}
+.formula-part[aria-selected="true"] { background: var(--tone); color: var(--on-color); }
+.formula-part:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.formula-op { font: 600 20px/1 var(--font-rounded); color: var(--muted); }
+.formula-result { padding: 10px 16px; border-radius: 999px; background: var(--fill); font: 700 15px/1 var(--font-rounded); color: var(--heading); }
+.formula-panel { padding: 14px 16px; border-radius: var(--radius); background: var(--fill-2); color: var(--text-2); line-height: 1.55; }
+.formula-panel p, .formula-panel ul { margin: 0; }
+.formula-panel ul { padding-left: 18px; margin-top: 6px; }
+.formula-mini { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--heading); }
+.rules-rates { margin: 0; }
+.rules-mine { margin: 0 20px; width: calc(100% - 40px); }
+.rules-note { margin: 0; padding: 12px 20px 18px; display: flex; gap: 8px; }
+.rules-calcs { align-items: start; }
+.rules-calcs .card { display: grid; gap: 4px; }
+.rules-out { margin-top: 12px; }
+.rules-timeline { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; counter-reset: step; }
+.rules-timeline li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--fill-2); }
+.rules-timeline b { color: var(--heading); }
+.rules-timeline span { color: var(--text-2); }
+@media (max-width: 560px) { .rules-timeline li { grid-template-columns: 1fr; gap: 2px; } }
+.rules-faq { display: grid; gap: 8px; margin-top: 12px; }
+.rules-faq details { border-radius: var(--radius-sm); background: var(--fill-2); }
+.rules-faq summary { padding: 12px 14px; cursor: pointer; font-weight: 600; color: var(--heading); }
+.rules-faq p { margin: 0; padding: 0 14px 14px; color: var(--text-2); }
+
+/* ---------- Oyligim (o'qituvchi) ---------- */
+.salary-top { display: grid; gap: 16px; margin-bottom: 20px; }
+.salary-total {
+  display: grid; gap: 10px; justify-items: start; padding: 26px;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--c-green) 24%, var(--surface)), color-mix(in oklab, var(--c-teal) 12%, var(--surface)));
+}
+.salary-total .label { color: var(--text-2); }
+.salary-total > b { font-family: var(--font-rounded); font-size: clamp(34px, 6vw, 48px); line-height: 1; color: var(--heading); }
+.salary-total > b small { font-size: 16px; color: var(--c-orange); }
+.salary-now .note { margin: 0; padding: 0 20px 16px; }
+.salary-month { margin-bottom: 16px; }
+.salary-month h3 .num { margin-left: 8px; color: var(--muted); font-weight: 600; }
+.salary-list .ico { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; background: color-mix(in oklab, var(--tone, var(--accent)) 15%, transparent); color: var(--tone, var(--accent)); }
+.salary-list b { color: var(--heading); margin-right: 6px; }
+
+/* ---------- Direktor: nazorat roli — o'zgartirish tugmalari ko'rinmaydi ----------
+   Server himoyasi asosiy (role_required: direktor POST'i faqat @director_can_write view'larda);
+   bu — interfeysni toza saqlash uchun. Ruxsat etilgan forma — [data-readonly-ok]. */
+[data-role="director"] main.content [data-write],
+[data-role="director"] main.content form[method="post"]:not([data-readonly-ok]),
+[data-role="director"] main.content dialog.modal form[method="post"]:not([data-readonly-ok]) { display: none !important; }
+.ro-only { display: none !important; }
+[data-role="director"] main.content .ro-only { display: inline-flex !important; }
+
+/* ---------- Direktor paneli ---------- */
+.legend-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.legend-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c-green); }
+.legend-dot.is-expense::before { background: var(--danger); }
+.money-bars { list-style: none; margin: 0; padding: 4px 20px 18px; display: grid; gap: 12px; }
+.money-bars li { display: grid; grid-template-columns: 76px minmax(0, 1fr) 90px; gap: 12px; align-items: center; }
+.mb-label { font-size: 13.5px; font-weight: 600; color: var(--heading); }
+.mb-bars { display: grid; gap: 4px; }
+.mb-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: 8px; align-items: center; font-size: 12.5px; }
+.mb-row b { text-align: right; font-weight: 600; }
+.mb-net { text-align: right; font-weight: 700; font-size: 13.5px; }
+@media (max-width: 560px) { .money-bars li { grid-template-columns: 1fr; gap: 6px; } .mb-net { text-align: left; } }
+.status-chips { padding: 12px 20px 18px; }
+.budget-mini { list-style: none; margin: 12px 0 0; padding: 0 0 16px; display: grid; gap: 10px; }
+.budget-mini li { display: grid; grid-template-columns: 150px minmax(0, 1fr) 80px; gap: 10px; align-items: center; font-size: 13.5px; }
+.budget-mini b { text-align: right; }
+@media (max-width: 560px) { .budget-mini li { grid-template-columns: 1fr 70px; } .budget-mini .bar { grid-column: 1 / -1; grid-row: 2; } }
+.report-rows { list-style: none; margin: 0; padding: 4px 20px 16px; display: grid; gap: 12px; }
+.report-rows li { display: grid; grid-template-columns: 170px minmax(0, 1fr) 130px; gap: 12px; align-items: center; font-size: 14px; }
+.report-rows b { text-align: right; color: var(--heading); }
+@media (max-width: 560px) { .report-rows li { grid-template-columns: 1fr auto; } .report-rows .bar { grid-column: 1 / -1; grid-row: 2; } }
+.table tr.row-active td { background: var(--accent-soft); }
+.staff-list li { flex-wrap: wrap; }
+.staff-roles { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-role { display: inline-flex; align-items: center; gap: 6px; }
+.staff-role.is-off .badge { text-decoration: line-through; }
+.switch-btn { position: relative; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 99px; background: var(--fill-strong); cursor: pointer; transition: background 0.2s; }
+.switch-btn span { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--on-color); box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); transition: transform 0.2s var(--ease); }
+.switch-btn.is-on { background: var(--c-green); }
+.switch-btn.is-on span { transform: translateX(18px); }

@@ -1,0 +1,72 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Ish haqim{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Ish haqim</h1>
+    <p class="sub">{{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }}{% if teacher %} · {{ teacher.user.short_name }}{% endif %}</p>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'academics:my_salary_guide' %}">{% include "partials/icon.html" with name="info" class="sm" %} Ish haqi qoidalari</a>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+{% if not teacher %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="wallet" class="lg" %}</span>
+    {% if preview_teachers is not None %}<h3>Qaysi o'qituvchi ish haqini ko'rmoqchisiz?</h3><p>Yuqoridagi ro'yxatdan o'qituvchini tanlang.</p>
+    {% else %}<h3>O'qituvchi profili topilmadi</h3><p>Bu filialda sizning o'qituvchi kartangiz yo'q.</p>{% endif %}
+  </div>
+{% else %}
+  <div class="salary-top">
+    <section class="card salary-total">
+      <span class="label">Jami olingan</span>
+      <b class="num">{{ history.total|money }} <small>so'm</small></b>
+      <span class="badge badge-success">● {{ history.count }} ta to'lov</span>
+    </section>
+
+    {% if pay %}
+      <section class="card salary-now">
+        <div class="card-title">
+          <h3>{{ month_label }} — hisob</h3>
+          <span class="badge {% if status.key == 'paid' %}badge-success{% elif status.key == 'partial' %}badge-info{% elif status.key == 'over' %}badge-danger{% else %}badge-warning{% endif %}">{{ status.label }}</span>
+        </div>
+        <dl class="kv pay-kv">
+          <dt>Hisoblangan <small class="muted">to'lovlar bo'yicha</small></dt><dd class="num">{{ status.accrued|money }}</dd>
+          <dt>100% bo'lsa</dt><dd class="num muted">{{ pay.total.max|money }}</dd>
+          <dt>Berilgan</dt><dd class="num text-success">{{ status.paid|money }}</dd>
+          <dt><b>Qoldiq</b></dt><dd class="num pay-big {% if status.left > 0 %}text-warning{% endif %}">{{ status.left|money }}</dd>
+        </dl>
+        <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Hisob jonli — o'quvchilar to'lagan sari oshadi.</p>
+      </section>
+    {% endif %}
+  </div>
+
+  {% for m in history.months %}
+    <section class="card salary-month">
+      <div class="card-title"><h3>{{ m.month|date:"F Y" }} <span class="num">{{ m.total|money }} so'm</span></h3></div>
+      <ul class="entity-list salary-list">
+        {% for p in m.items %}
+          <li>
+            <span class="ico {% if p.kind == 'advance' %}tone-warning{% else %}tone-success{% endif %}">{% if p.kind == 'advance' %}{% include "partials/icon.html" with name="wallet" class="sm" %}{% else %}{% include "partials/icon.html" with name="check" class="sm" %}{% endif %}</span>
+            <span class="grow">
+              <b class="num">{{ p.amount|money }} so'm</b>
+              <span class="badge {% if p.kind == 'advance' %}badge-warning{% else %}badge-success{% endif %}">{{ p.get_kind_display }}</span>
+              <small><span class="num">{{ p.paid_on|date:"d.m.Y" }}</span> · {{ p.expense.account.get_kind_display }} · {{ p.branch.name }}{% if p.note %} · {{ p.note }}{% endif %}</small>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% empty %}
+    <div class="card empty">
+      <span class="ico">{% include "partials/icon.html" with name="receipt" class="lg" %}</span>
+      <h3>Hali to'lov yo'q</h3>
+      <p>Avans yoki ish haqi berilganda shu yerda oylar bo'yicha ko'rinadi.</p>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

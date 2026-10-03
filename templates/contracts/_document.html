@@ -1,0 +1,50 @@
+{% comment %}
+  Shartnoma matni: doc.blocks (shablondan, contracts.domain.document) + rekvizitlar (doc.data).
+  Ranglar meros olinadi — ilova kartasida ham, oq qog'ozda (chop etish) ham to'g'ri ko'rinadi.
+{% endcomment %}
+<div class="contract-doc">
+  {% for b in doc.blocks %}
+    {% if b.kind == "title" %}<h2 class="doc-title">{{ b.html }}</h2>
+    {% elif b.kind == "subtitle" %}<p class="doc-subtitle">{{ b.html }}</p>
+    {% elif b.kind == "heading" %}<h3 class="doc-heading">{{ b.html }}</h3>
+    {% elif b.kind == "right" %}<p class="doc-right">{{ b.html }}</p>
+    {% elif b.kind == "item" %}<p class="doc-item">{{ b.html }}</p>
+    {% else %}<p>{{ b.html }}</p>{% endif %}
+  {% empty %}
+    <p class="muted">Shablon matni bo'sh — «Shablonlar» bo'limida to'ldiring.</p>
+  {% endfor %}
+
+  {% with d=doc.data %}
+  <section class="doc-requisites">
+    <h3 class="doc-heading">TOMONLARNING REKVIZITLARI VA IMZOLARI</h3>
+    <p>Shartnoma raqami: <b>{{ d.raqam }}</b> · Sana: <b>{{ d.sana }}</b> · O'quv yili: <b>{{ d.oquv_yili }}</b></p>
+    <div class="doc-sides">
+      <div>
+        <b>BAJARUVCHI (MAKTAB)</b>
+        <p>{{ d.yuridik_nomi|default:"________" }}</p>
+        <p>«{{ d.filial }}»</p>
+        <p>Manzil: {{ d.filial_manzili|default:"________" }}</p>
+        <p>H/R: {{ d.bank_hisob|default:"________" }}</p>
+        <p>{{ d.bank_nomi|default:"Bank: ________" }}</p>
+        <p>MFO: {{ d.mfo|default:"________" }} · STIR: {{ d.stir|default:"________" }}</p>
+        <p>Tel: {{ d.maktab_telefon|default:"________" }}</p>
+        <p>Direktor: {{ d.direktor|default:"________" }}</p>
+        <p class="doc-sign">Imzo: ____________________ M.O'.</p>
+      </div>
+      <div>
+        <b>BUYURTMACHI (VASIY)</b>
+        <p>F.I.Sh.: <b>{{ d.vasiy }}</b></p>
+        <p>Telefon: {{ d.vasiy_telefon }}</p>
+        <p>O'quvchi: <b>{{ d.oquvchi }}</b></p>
+        <p>O'quvchi kodi: {{ d.oquvchi_kodi }}</p>
+        <p>Sinf: {{ d.sinf_darajasi|default:d.sinf }}</p>
+        <p>O'quv muddati: {{ d.boshlanish }} — {{ d.tugash }}</p>
+        <p>Oylik to'lov: <b>{{ d.oylik_tolov }} so'm</b></p>
+        <p class="doc-sign">Imzo: ____________________</p>
+      </div>
+    </div>
+    <p>Ushbu shartnoma Buyurtmachi tomonidan telefon raqamiga yuborilgan bir martalik SMS-kod (OTP) orqali elektron
+      tasdiqlanadi va imzolangan hisoblanadi. Elektron imzo qo'lda qo'yilgan imzoga teng kuchga ega.</p>
+  </section>
+  {% endwith %}
+</div>

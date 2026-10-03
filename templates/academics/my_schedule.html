@@ -1,0 +1,79 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Mening jadvalim{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Mening jadvalim</h1>
+    <p class="sub">{{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }}{% if teacher %} · {{ teacher.user.short_name }}{% endif %}</p>
+  </div>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+{% if not teacher %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="calendar" class="lg" %}</span>
+    {% if preview_teachers is not None %}<h3>Qaysi o'qituvchi jadvalini ko'rmoqchisiz?</h3><p>Yuqoridagi ro'yxatdan o'qituvchini tanlang.</p>
+    {% else %}<h3>O'qituvchi profili topilmadi</h3><p>Bu filialda sizning o'qituvchi kartangiz yo'q. Zavuchga murojaat qiling.</p>{% endif %}
+  </div>
+{% else %}
+<section class="card tt-card my-schedule">
+  <div class="card-title">
+    <h3>Haftalik jadvalim <small class="muted">— {{ grid.total }} soat/hafta</small></h3>
+    <nav class="tt-week" aria-label="Hafta">
+      <a class="btn btn-secondary btn-sm" href="?week={{ prev_week|date:'Y-m-d' }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Oldingi</a>
+      <b class="num">{{ grid.monday|date:"d.m" }} – {{ grid.saturday|date:"d.m.Y" }}</b>
+      <a class="btn btn-secondary btn-sm" href="?week={{ next_week|date:'Y-m-d' }}">Keyingi {% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+      {% if monday != this_week %}<a class="btn btn-ghost btn-sm" href="?">Shu hafta</a>{% endif %}
+    </nav>
+  </div>
+
+  {% if grid.rows %}
+    {# Katta ekran: haftalik to'r #}
+    <div class="table-wrap my-tt-grid">
+      <table class="tt-grid">
+        <thead><tr><th class="tt-time">Soat</th>{% for d in grid.days %}<th class="{% if d.date == today %}is-today{% endif %}">{{ d.label }}<small class="num">{{ d.date|date:"j-M" }}</small></th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in grid.rows %}
+            <tr class="{% if row.slot.is_break %}tt-break{% endif %}">
+              <th class="tt-time" scope="row"><b>{% if row.slot.is_break %}OBED{% else %}{{ row.slot.start|time:"H:i" }}{% endif %}</b><small class="num">{% if row.slot.is_break %}{{ row.slot.start|time:"H:i" }}–{% else %}{{ row.slot.number }}-dars · {% endif %}{{ row.slot.end|time:"H:i" }}</small></th>
+              {% for cell in row.cells %}
+                <td class="tt-cell{% if cell.date == today %} is-today{% endif %}">
+                  {% for l in cell.lessons %}
+                    <div class="tt-lesson t{{ l.subject_id|tone }}">
+                      <b>{{ l.group.school_class.name }}</b>
+                      <small>{{ l.subject.name }}{% if l.room %} · {{ l.room.name }}{% endif %}</small>
+                      {% if l.group.kind == "subset" %}<small class="tt-code">{{ l.group.code }}</small>{% endif %}
+                    </div>
+                  {% endfor %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# Telefon: kunlar bo'yicha ro'yxat #}
+    <div class="lesson-days my-tt-list">
+      {% for d in week_days %}
+        <div class="lesson-day{% if d.date == today %} is-today{% endif %}">
+          <h4>{{ d.label }} <small class="muted num">{{ d.date|date:"d.m" }}</small>{% if d.date == today %} <span class="badge badge-accent">bugun</span>{% endif %}</h4>
+          {% for slot, l in d.lessons %}
+            <div class="lesson-row t{{ l.subject_id|tone }}">
+              <span class="num lesson-time">{{ slot.start|time:"H:i" }}</span>
+              <span class="grow"><b>{{ l.group.school_class.name }} · {{ l.subject.name }}</b><small class="muted block">{% if l.room %}{{ l.room.name }}{% else %}xona yo'q{% endif %}{% if l.group.kind == "subset" %} · {{ l.group.code }}{% endif %}</small></span>
+            </div>
+          {% empty %}<p class="muted small">Dars yo'q</p>{% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-line">Qo'ng'iroq vaqtlari hali kiritilmagan.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

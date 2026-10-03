@@ -9,7 +9,7 @@ to'lovlar va kassa, o'qituvchilar oyligi, yotoqxona.
 
 - Ro'yxatdan o'tish yo'q — akkauntlarni administrator yaratadi
 - Kirish: telefon + parol yoki bir martalik kod (SMS / Telegram bot)
-- Rollar: O'qituvchi, Zavuch, Reception — bitta foydalanuvchida bir nechta rol, paneldan almashtiriladi
+- Rollar: O'qituvchi, Zavuch, Reception, Direktor — bitta foydalanuvchida bir nechta rol, paneldan almashtiriladi
 - Yorug'/qorong'i mavzu, mobil moslashuv
 
 ## Ishga tushirish
@@ -50,6 +50,9 @@ uv run ruff check .    # jumladan Bandit xavfsizlik qoidalari
 
 ## Production
 
+To'liq yo'riqnoma (Contabo/Ubuntu, IP bilan sinov yoki domen + HTTPS, cron, zaxira): [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ```bash
+sh deploy/make-env.sh                                                   # .env.prod (tasodifiy kalitlar)
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```

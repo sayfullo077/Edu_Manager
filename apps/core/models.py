@@ -18,6 +18,8 @@ class SchoolSettings(TimeStampedModel):
     name = models.CharField("maktab nomi", max_length=120, default="Maktab")
     short_name = models.CharField("qisqa nom", max_length=40, default="Maktab")
     tagline = models.CharField("shior", max_length=160, blank=True)
+    legal_name = models.CharField("yuridik nomi", max_length=160, blank=True,
+                                  help_text="Shartnomada: masalan, «...» MCHJ")
     logo = models.ImageField("logo", upload_to="branding/", blank=True)
     # Qiymat <style> ichiga yoziladi — faqat qat'iy HEX formatga ruxsat (CSS injection bo'lmasin).
     brand_color = models.CharField("asosiy rang (HEX)", max_length=7, default="#08915E",
@@ -53,6 +55,12 @@ class Branch(TimeStampedModel):
     name = models.CharField("nomi", max_length=120, unique=True)
     address = models.CharField("manzil", max_length=255, blank=True)
     phone = models.CharField("telefon", max_length=20, blank=True)
+    # Shartnoma rekvizitlari (filial kesimida)
+    director_name = models.CharField("direktor (F.I.Sh.)", max_length=120, blank=True)
+    bank_account = models.CharField("hisob raqami (H/R)", max_length=30, blank=True)
+    bank_name = models.CharField("bank nomi", max_length=120, blank=True)
+    bank_mfo = models.CharField("MFO", max_length=10, blank=True)
+    inn = models.CharField("STIR (INN)", max_length=12, blank=True)
     is_active = models.BooleanField("faol", default=True)
 
     class Meta:

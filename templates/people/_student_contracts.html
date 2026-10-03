@@ -3,7 +3,7 @@
   <div class="card-title">
     <h3 class="with-count">{% include "partials/icon.html" with name="file" class="sm" %} Shartnomalar <span class="badge badge-muted">{{ contracts|length }} ta</span></h3>
     {% if not contract and student.status == "active" %}
-      <a class="btn btn-primary btn-sm" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma tuzish</a>
+      <a data-write class="btn btn-primary btn-sm" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma tuzish</a>
     {% endif %}
   </div>
   {% if contracts %}

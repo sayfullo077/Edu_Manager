@@ -214,8 +214,23 @@ class Teacher(IdentityDocsMixin, TimeStampedModel):
 
     class Status(models.TextChoices):
         ACTIVE = "active", "Faol"
+        INACTIVE = "inactive", "Nofaol"
         VACATION = "vacation", "Ta'tilda"
         DISMISSED = "dismissed", "Bo'shatilgan"
+
+    class Kind(models.TextChoices):
+        TEACHER = "teacher", "O'qituvchi"
+        COORDINATOR = "coordinator", "Koordinator"
+        ASSISTANT = "assistant", "Yordamchi o'qituvchi"
+
+    class Category(models.TextChoices):
+        FIRST = "first", "1-toifa"
+        SECOND = "second", "2-toifa"
+        SPECIALIST = "specialist", "Mutaxassis"
+        HIGHEST = "highest", "Oliy toifa"
+
+    # Jadvalga qo'yib, guruhga biriktirib bo'lmaydigan holatlar
+    NOT_WORKING = (Status.INACTIVE, Status.DISMISSED)
 
     class Education(models.TextChoices):
         SECONDARY = "secondary", "O'rta"
@@ -238,12 +253,20 @@ class Teacher(IdentityDocsMixin, TimeStampedModel):
     education = models.CharField("ma'lumoti", max_length=12, choices=Education.choices, blank=True)
     specialty = models.CharField("mutaxassisligi", max_length=160, blank=True)
     experience_years = models.PositiveSmallIntegerField("ish staji (yil)", default=0)
-    category = models.CharField("toifasi", max_length=40, blank=True)
+    kind = models.CharField("turi", max_length=12, choices=Kind.choices, default=Kind.TEACHER, db_index=True)
+    category = models.CharField("toifasi", max_length=12, choices=Category.choices, blank=True)
     hired_at = models.DateField("ishga qabul", null=True, blank=True)
     contract_start = models.DateField("shartnoma boshlanishi", null=True, blank=True)
     contract_end = models.DateField("shartnoma tugashi", null=True, blank=True)
     status = models.CharField("holati", max_length=10, choices=Status.choices, default=Status.ACTIVE, db_index=True)
     subjects = models.ManyToManyField(Subject, related_name="teachers", blank=True, verbose_name="o'qitish fanlari")
+    email = models.EmailField("email", blank=True)
+    card_number = EncryptedCharField("karta raqami (oylik uchun)", max_length=16, blank=True,
+                                     validators=[RegexValidator(r"^\d{16}$", "Karta raqami 16 ta raqam.")])
+    official_employment = models.BooleanField("ish staji yoziladi (mehnat daftarchasi)", default=False)
+    fixed_salary = models.DecimalField("belgilangan oylik (so'm)", max_digits=12, decimal_places=2, default=0,
+                                       help_text="Darsbay/o'quvchibay hisobdan tashqari qat'iy oylik. 0 — yo'q")
+    notes = models.TextField("izoh", blank=True)
     teaching_languages = ArrayField(models.CharField(max_length=2, choices=Language.choices), default=list,
                                     blank=True, verbose_name="o'qitish tillari")
 
@@ -259,3 +282,38 @@ class Teacher(IdentityDocsMixin, TimeStampedModel):
         if not self.code:
             self.code = CodeSequence.next_code("TCH", (self.hired_at or date.today()).year)
         super().save(*args, **kwargs)
+
+
+class Certificate(TimeStampedModel):
+    """O'qituvchi sertifikati (milliy, IELTS, CEFR ...) — ustama hisobi va HR uchun."""
+
+    class Kind(models.TextChoices):
+        NATIONAL = "national", "Milliy sertifikat"
+        IELTS = "ielts", "IELTS"
+        CEFR = "cefr", "CEFR"
+        TOEFL = "toefl", "TOEFL"
+        OTHER = "other", "Boshqa"
+
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name="certificates",
+                                verbose_name="o'qituvchi")
+    kind = models.CharField("sertifikat turi", max_length=10, choices=Kind.choices)
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, null=True, blank=True, verbose_name="fan")
+    number = models.CharField("sertifikat raqami / darajasi", max_length=40, blank=True)
+    issued_on = models.DateField("boshlanish sanasi")
+    expires_on = models.DateField("tugash sanasi")
+    score = models.DecimalField("ball", max_digits=6, decimal_places=2, null=True, blank=True)
+    issued_by = models.CharField("kim tomonidan berilgan", max_length=160, blank=True)
+
+    class Meta:
+        verbose_name = "sertifikat"
+        verbose_name_plural = "sertifikatlar"
+        ordering = ["-expires_on"]
+        constraints = [models.CheckConstraint(condition=models.Q(expires_on__gte=models.F("issued_on")),
+                                              name="certificate_dates_order")]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} · {self.teacher}"
+
+    @property
+    def is_valid(self) -> bool:
+        return self.expires_on >= date.today()

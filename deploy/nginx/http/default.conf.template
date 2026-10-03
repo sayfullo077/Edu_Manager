@@ -1,0 +1,68 @@
+# Edu Manager — nginx (teskari proksi). DDoS va brute-force'ga qarshi BIRINCHI himoya chizig'i.
+# Bu fayl shablon: ${DOMAIN} konteyner ishga tushganda .env.prod'dan qo'yiladi (nginx rasmiy image envsubst).
+
+# ---- Rate limit zonalari (IP bo'yicha) ----
+limit_req_zone  $binary_remote_addr zone=general:20m rate=20r/s;
+limit_req_zone  $binary_remote_addr zone=auth:10m    rate=10r/m;   # login / kod so'rash
+limit_conn_zone $binary_remote_addr zone=perip:10m;
+limit_req_status  429;
+limit_conn_status 429;
+
+# ---- Slowloris va katta so'rovlarga qarshi ----
+client_body_timeout        10s;
+client_header_timeout      10s;
+send_timeout               10s;
+client_max_body_size       5m;
+client_body_buffer_size    16k;
+large_client_header_buffers 4 8k;
+server_tokens off;
+
+upstream django {
+    server web:8000;
+    keepalive 32;
+}
+
+# ===== HTTP rejimi: (1) domensiz IP bilan sinov (HTTPS=false), (2) Let's Encrypt sertifikatini olish bosqichi =====
+server {
+    listen 80 default_server;
+    server_name _;
+
+    # Let's Encrypt tekshiruvi (certbot webroot)
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+
+    limit_conn perip 30;
+
+    # Faqat kerakli HTTP metodlar
+    if ($request_method !~ ^(GET|HEAD|POST)$) { return 405; }
+
+    # Yashirin va maxfiy fayllar hech qachon berilmaydi
+    location ~ /\.(?!well-known) { deny all; return 404; }
+    location ~* \.(env|git|sql|bak|py|pyc|log|ini|sh)$ { deny all; return 404; }
+
+    # Static fayllarni WhiteNoise beradi (siqilgan, hash'li nomlar, 1 yillik kesh sarlavhalari bilan).
+    location /static/ {
+        proxy_pass http://django;
+        include /etc/nginx/proxy_params.conf;
+        access_log off;
+    }
+
+    location /media/ {
+        alias /app/media/;
+        add_header X-Content-Type-Options nosniff;
+        # Yuklangan fayllar hech qachon skript sifatida bajarilmasin
+        location ~* \.(html?|svg|js|php)$ { add_header Content-Disposition attachment; }
+    }
+
+    # Kirish sahifalari — qattiq limit (SMS bombing, brute force)
+    location ~ ^/login/ {
+        limit_req zone=auth burst=5 nodelay;
+        proxy_pass http://django;
+        include /etc/nginx/proxy_params.conf;
+    }
+
+    location / {
+        limit_req zone=general burst=40 nodelay;
+        proxy_pass http://django;
+        include /etc/nginx/proxy_params.conf;
+    }
+}

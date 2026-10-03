@@ -8,12 +8,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.academics import selectors as academic_selectors
 from apps.accounts.domain.phone import format_phone
 from apps.accounts.models import Role
 from apps.accounts.permissions import role_required
 from apps.common import excel
 from apps.common.charts import donut, dual_line_chart
 from apps.common.forms import apply_errors, filter_menu
+from apps.common.http import safe_next
 from apps.contracts import selectors as contract_selectors
 from apps.contracts.forms import AdmissionContractForm
 from apps.core.models import AcademicYear
@@ -24,17 +26,22 @@ from . import selectors
 from .forms import (
     AdmissionForm,
     AdmissionGuardianForm,
+    CertificateFormSet,
     GuardianFilterForm,
     GuardianForm,
     RelationForm,
     StudentFilterForm,
     StudentForm,
+    TeacherFilterForm,
+    TeacherForm,
 )
-from .models import Guardian, Student, StudentGuardian
+from .models import Guardian, Student, StudentGuardian, Teacher
 from .services import admission
 from .services import students as student_service
+from .services import teachers as teacher_service
 
 STAFF_ROLES = (Role.HEAD_TEACHER, Role.RECEPTION)
+STAFF_VIEW_ROLES = (*STAFF_ROLES, Role.DIRECTOR)  # direktor — faqat ko'radi
 PAGE_SIZE = 25
 
 
@@ -53,7 +60,7 @@ def _student_filter(request):
     return filter_form, params, selectors.students(request.branch, filter_form.to_filters())
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def student_list(request):
     filter_form, params, qs = _student_filter(request)
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
@@ -71,7 +78,7 @@ def student_list(request):
     })
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def student_export(request):
     """Joriy filtr bo'yicha ro'yxat — Excel."""
     _, _, qs = _student_filter(request)
@@ -97,7 +104,7 @@ def head_dashboard(request):
 PRINT_LIMIT = 2000
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def student_print(request):
     """"Ro'yxat": joriy filtr bo'yicha o'quvchilar — chop etish uchun (A4, sinf bo'yicha guruhlangan)."""
     filter_form, _, qs = _student_filter(request)
@@ -135,7 +142,7 @@ def student_delete(request, pk):
     return redirect(f"{reverse('people:student_list')}?{request.POST.get('qs', '')}")
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def student_detail(request, pk):
     """O'quvchi kartasi: "Akademik" (profil, hujjatlar, vasiylar, guruhlar) va "To'lov" (faqat Reception)."""
     try:
@@ -151,7 +158,7 @@ def student_detail(request, pk):
         "student": student, "view": view, "finance_allowed": finance_allowed, "finance_edit": finance_edit,
         "withdrawal": getattr(student, "withdrawal", None),
         "contract": contract_selectors.active_contract_for(student), "contracts": contracts,
-        "guardians": list(student.guardian_links.all()), "groups": list(student.groups.all()),
+        "guardians": list(student.guardian_links.all()), "groups": academic_selectors.student_groups(student),
     }
     if view == "payment":
         ctx.update(finance_selectors.student_finance(student))
@@ -326,7 +333,7 @@ def student_set_primary_guardian(request, pk, link_pk):
 
 # ---------- Ota-onalar ----------
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def guardian_list(request):
     filter_form = GuardianFilterForm(request.GET or None)
     qs = selectors.guardians(request.branch, **filter_form.values())
@@ -348,7 +355,7 @@ GUARDIAN_EXPORT_HEADERS = ["#", "Familiya", "Ism", "Otasining ismi", "Telefon", 
                            "Farzandlar soni", "Ish joyi", "Lavozimi", "Holati"]
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def guardian_export(request):
     """Joriy filtr bo'yicha ota-onalar — Excel. JSHSHIR/passport (shifrlangan) eksport qilinmaydi."""
     filter_form = GuardianFilterForm(request.GET or None)
@@ -361,7 +368,7 @@ def guardian_export(request):
     return excel.xlsx_response(f"ota-onalar-{date.today():%Y-%m-%d}.xlsx", content)
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def guardian_detail(request, pk):
     """Ota-ona kartasi: farzandlar; Reception uchun qarzdorliklar va to'lovlar tarixi ham. Tahrirlash yo'q —
     vasiy ma'lumotlari o'quvchini tahrirlash sahifasida o'zgartiriladi."""
@@ -393,3 +400,101 @@ def address_mahallas(request):
     """Manzil formasi: tanlangan tumandagi mahallalar (ma'lumotnomadan) — JSON."""
     region, district = request.GET.get("region", "")[:80], request.GET.get("district", "")[:80]
     return JsonResponse({"mahallas": selectors.mahalla_names(region, district)})
+
+
+# ---------- Xodimlar (HR): o'qituvchilar ----------
+
+HR_ROLES = (Role.HEAD_TEACHER,)
+HR_VIEW_ROLES = (*HR_ROLES, Role.DIRECTOR)
+
+
+@role_required(*HR_VIEW_ROLES)
+def teacher_list(request):
+    form = TeacherFilterForm(request.GET or None, branch=request.branch)
+    qs = selectors.teachers(request.branch, form.to_filters())
+    page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    query = request.GET.copy()
+    query.pop("page", None)
+    active = form.active_filters()
+    q = form.data.get("q", "")
+    return render(request, "people/teacher_list.html", {
+        "form": form, "page": page, "q": q, "querystring": query.urlencode(),
+        "page_range": page.paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1),
+        "stats": selectors.teacher_stats(request.branch),
+        "filter_menu": filter_menu(form, active), "active_filters": active, "has_filters": bool(active or q),
+        "statuses": Teacher.Status.choices,
+    })
+
+
+@role_required(*HR_VIEW_ROLES)
+def teacher_detail(request, pk):
+    try:
+        teacher = selectors.teacher_detail(request.branch, pk)
+    except Teacher.DoesNotExist as e:
+        raise Http404 from e
+    tab = request.GET.get("tab", "info")
+    if tab not in TEACHER_TABS:
+        tab = "info"
+    ctx = {"teacher": teacher, "tab": tab, "statuses": Teacher.Status.choices,
+           "group_subjects": selectors.teacher_group_subjects(teacher),
+           "certificates": list(teacher.certificates.select_related("subject"))}
+    if tab in ("lessons", "finance"):
+        week = academic_selectors.timetable_grid(request.branch, week=date.today(), teacher=teacher.pk)
+        ctx.update(week=week, week_days=academic_selectors.week_day_lessons(week))
+    return render(request, "people/teacher_detail.html", ctx)
+
+
+TEACHER_TABS = ("info", "finance", "lessons", "subjects", "certificates")
+
+
+@role_required(*HR_ROLES)
+@require_POST
+def teacher_set_status(request, pk):
+    teacher = get_object_or_404(Teacher.objects.select_related("user"), branch=request.branch, pk=pk)
+    back = safe_next(request, request.POST.get("next"), reverse("people:teacher_list"))
+    try:
+        teacher_service.set_status(teacher, status=request.POST.get("status", ""), by=request.user)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    else:
+        messages.success(request, f"{teacher.user.short_name}: holati «{teacher.get_status_display()}».")
+    return redirect(back)
+
+
+def _teacher_form(request, instance=None):
+    data = request.POST or None
+    form = TeacherForm(data, instance=instance, initial=None if instance else {
+        "kind": Teacher.Kind.TEACHER, "status": Teacher.Status.ACTIVE, "hired_at": date.today(),
+        "teaching_languages": ["uz"]})
+    certs = CertificateFormSet(data, instance=instance or Teacher(), prefix="cert")
+    if data is not None and form.is_valid() and certs.is_valid():
+        items = [teacher_service.CertificateData(pk=f.instance.pk, delete=bool(f.cleaned_data.get("DELETE")),
+                                                 data=f.cleaned_data)
+                 for f in certs.forms if f.has_changed() or f.instance.pk]
+        try:
+            result = teacher_service.save_teacher(
+                instance, branch=request.branch, by=request.user, user_data=form.user_data(),
+                teacher_data=form.teacher_data(), subjects=form.cleaned_data["subjects"], certificates=items)
+        except ValidationError as e:
+            apply_errors(form, e)
+        else:
+            t = result.teacher
+            if result.temp_password:
+                messages.success(request, f"{t.user.short_name} qo'shildi ({t.code}). Kirish: telefon "
+                                          f"{t.user.phone_display}, vaqtinchalik parol: {result.temp_password} — "
+                                          "o'qituvchiga bering, birinchi kirishda almashtirsin.")
+            else:
+                messages.success(request, f"{t.user.short_name} ma'lumotlari saqlandi.")
+            return redirect("people:teacher_detail", pk=t.pk)
+    return render(request, "people/teacher_form.html", {"form": form, "certs": certs, "teacher": instance})
+
+
+@role_required(*HR_ROLES)
+def teacher_create(request):
+    return _teacher_form(request)
+
+
+@role_required(*HR_ROLES)
+def teacher_update(request, pk):
+    return _teacher_form(request, get_object_or_404(Teacher.objects.select_related("user"), branch=request.branch,
+                                                    pk=pk))

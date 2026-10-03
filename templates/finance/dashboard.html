@@ -127,7 +127,7 @@
             <span>Sarflangan: <b class="num text-danger">{{ r.spent|money }}</b></span>
             <span>Qoldiq: <b class="num {% if r.remaining >= 0 %}text-success{% else %}text-danger{% endif %}">{{ r.remaining|money }}</b></span>
           </div>
-          <a class="round-btn" href="{% url 'finance:expense_create' %}?category={{ r.category.pk }}"
+          <a data-write class="round-btn" href="{% url 'finance:expense_create' %}?category={{ r.category.pk }}"
              data-expense data-category="{{ r.category.pk }}" data-name="{{ r.category.name }}" data-icon="{{ r.category.icon }}"
              data-limit="{{ r.limit|money }}" data-remaining="{{ r.remaining|money }}" data-over="{{ r.over|yesno:'1,' }}"
              title="Xarajat qo'shish" aria-label="{{ r.category.name }}: xarajat qo'shish" aria-haspopup="dialog">{% include "partials/icon.html" with name="plus" class="sm" %}</a>

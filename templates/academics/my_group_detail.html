@@ -1,0 +1,75 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ g.code }} · Guruhlarim{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'academics:my_groups' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Guruhlar</a>
+    <h1 class="mt-12">{{ g.code }}</h1>
+    <p class="sub">{{ g.school_class.name }} · {% for s in g.my_subjects %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %} · <b class="num">{{ g.n_members }}/{{ g.capacity }}</b> o'rin</p>
+  </div>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+<section class="card card-pad group-info">
+  <div class="chip-row">
+    {% if g.level %}<span class="badge badge-success">{{ g.level }}</span>{% endif %}
+    <span class="badge badge-warning">{% if g.pay_scheme == 'per_student' %}Belgilangan summa{% else %}Darsbay{% endif %}</span>
+    {% if g.all_subjects|length > 1 %}<span class="badge badge-accent">Birlashma: {% for s in g.all_subjects %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+  </div>
+  <div class="mini-stats">
+    <div><span class="label">Sinfda</span><b class="num">{{ stats.total }}</b></div>
+    <div><span class="label">Biriktirilgan</span><b class="num text-success">{{ stats.assigned }}</b></div>
+    <div><span class="label">Nomzodlar</span><b class="num text-warning">{{ stats.free }}</b></div>
+    <div><span class="label">Bo'sh o'rin</span><b class="num">{{ stats.seats }}</b></div>
+  </div>
+  <p class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %} <span>Har bir o'quvchi bu fan bo'yicha faqat <b>bitta guruhga</b> biriktiriladi. Guruhdan chiqarganingizda o'quvchi yana nomzodlar ro'yxatiga qaytadi.</span></p>
+</section>
+
+<div class="grid grid-2 member-split mt-20">
+  <section class="card">
+    <div class="card-title"><h3>Guruh a'zolari <small class="muted">— {{ g.n_members }} nafar</small></h3></div>
+    {% if members %}
+      <ul class="entity-list member-list">
+        {% for m in members %}
+          <li>
+            <span class="avatar t{{ m.student.code|tone }}">{{ m.student.initials }}</span>
+            <span class="grow"><b>{{ m.student.full_name }}</b><small class="muted block"><span class="num">{{ m.student.code }}</span> · <span class="text-success">qo'shilgan: {{ m.joined_at|date:"d.m.Y" }}</span></small></span>
+            {% if can_edit %}
+              <form method="post" action="{% url 'academics:my_group_remove' g.pk m.pk %}" data-confirm="{{ m.student.short_name }} guruhdan chiqarilsinmi?">
+                {% csrf_token %}
+                <button class="icon-btn tone-danger" type="submit" title="Guruhdan chiqarish" aria-label="{{ m.student.short_name }} — guruhdan chiqarish">{% include "partials/icon.html" with name="x" class="sm" %}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="empty-line">Guruhda hali o'quvchi yo'q — o'ngdagi ro'yxatdan biriktiring.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-title"><h3>O'quvchi biriktirish <small class="muted">— {{ candidates|length }} ta nomzod</small></h3></div>
+    {% if candidates %}
+      <div class="card-pad-x"><input class="input" type="search" placeholder="Ism bo'yicha qidirish…" aria-label="Nomzodni qidirish" data-search-for="candidate-list" autocomplete="off"></div>
+      <ul class="entity-list member-list" id="candidate-list">
+        {% for s in candidates %}
+          <li class="candidate" data-search-item>
+            <form method="post" action="{% url 'academics:my_group_add' g.pk %}">
+              {% csrf_token %}<input type="hidden" name="student" value="{{ s.pk }}">
+              <button class="candidate-btn" type="submit" title="Guruhga biriktirish" aria-label="{{ s.short_name }} — guruhga biriktirish" {% if not can_edit or g.n_members >= g.capacity %}disabled{% endif %}>
+                <span class="avatar avatar-muted">{{ s.initials }}</span>
+                <span class="grow"><b>{{ s.full_name }}</b> <span class="badge badge-info">{{ s.school_class.name }}</span><small class="muted block num">{{ s.code }}</small></span>
+                <span class="icon-btn tone-success" aria-hidden="true">{% include "partials/icon.html" with name="plus" class="sm" %}</span>
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+      {% if g.n_members >= g.capacity %}<p class="note">{% include "partials/icon.html" with name="alert" class="sm" %} Guruh to'lgan ({{ g.capacity }} o'rin) — sig'imni Zavuch o'zgartiradi.</p>{% endif %}
+    {% else %}<p class="empty-line">Nomzod qolmagan — sinfdagi hamma o'quvchi bu fan bo'yicha guruhga biriktirilgan.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Davomat hisoboti{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Davomat hisoboti</h1>
+    <p class="sub">{{ request.branch.name }} · {{ day|date:"l" }}, {{ day|date:"j-F Y"|lower }}</p>
+  </div>
+</div>
+
+<form class="card toolbar month-bar" method="get">
+  <a class="btn btn-secondary btn-sm btn-icon" href="?date={{ prev_day|date:'Y-m-d' }}" aria-label="Oldingi kun">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+  <input class="input input-sm" type="date" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" aria-label="Sana" data-autosubmit>
+  {% if day < today %}<a class="btn btn-secondary btn-sm btn-icon" href="?date={{ next_day|date:'Y-m-d' }}" aria-label="Keyingi kun">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+  <a class="btn btn-ghost btn-sm" href="?">Bugun</a>{% endif %}
+</form>
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Kelish foizi</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value">{% if total.percent is not None %}{{ total.percent }}<span class="unit">%</span>{% else %}—{% endif %}</div><div class="foot">keldi + kechikdi / belgilangan</div></div>
+  <div class="card stat"><div class="top"><span class="label">Kelmadi</span><span class="ico tone-danger">{% include "partials/icon.html" with name="x" class="sm" %}</span></div><div class="value text-danger">{{ total.absent }}</div><div class="foot">sababli: {{ total.excused }} · kechikdi: {{ total.late }}</div></div>
+  <div class="card stat"><div class="top"><span class="label">Kiritilmagan sinflar</span><span class="ico tone-warning">{% include "partials/icon.html" with name="alert" class="sm" %}</span></div><div class="value text-warning">{{ not_marked|length }}</div><div class="foot">{{ rows|length }} ta sinfdan</div></div>
+  <div class="card stat"><div class="top"><span class="label">Yotoqxona</span><span class="ico">{% include "partials/icon.html" with name="bed" class="sm" %}</span></div><div class="value">{{ dorm.present }}<span class="unit">/{{ dorm.residents }}</span></div><div class="foot">yo'q: {{ dorm.absent }} · belgilanmagan: {{ dorm.unmarked }}</div></div>
+</div>
+
+<section class="card">
+  <div class="card-title"><h3>{% include "partials/icon.html" with name="school" class="sm" %} Sinflar bo'yicha</h3><span class="muted small">Sinf rahbarlari kiritadi</span></div>
+  <div class="table-wrap">
+    <table class="table table-dense">
+      <thead><tr><th>Sinf</th><th class="hide-sm">Sinf rahbari</th><th class="text-right">O'quvchi</th><th class="text-right">✓</th><th class="text-right">K</th><th class="text-right">✗</th><th class="text-right">S</th><th>Holat</th><th class="text-right">Kelish</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td><b>{{ r.c.name }}</b></td>
+            <td class="hide-sm">{{ r.c.homeroom_teacher.user.short_name|default:"—" }}</td>
+            <td class="text-right num">{{ r.students }}</td>
+            <td class="text-right num text-success">{{ r.came }}</td>
+            <td class="text-right num text-warning">{{ r.late }}</td>
+            <td class="text-right num text-danger">{{ r.absent }}</td>
+            <td class="text-right num text-info">{{ r.excused }}</td>
+            <td>{% if r.state == "full" %}<span class="badge badge-success">Kiritilgan</span>{% elif r.state == "partial" %}<span class="badge badge-warning">Qisman · {{ r.total }}/{{ r.students }}</span>{% elif r.students %}<span class="badge badge-muted">Kiritilmagan</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="text-right num">{% if r.percent is not None %}<b>{{ r.percent }}%</b>{% else %}—{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9" class="empty-line">Joriy o'quv yilida faol sinf yo'q.</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}<tfoot><tr><th>Jami</th><td class="hide-sm"></td><td class="text-right num">{{ total.students }}</td><td class="text-right num">{{ total.came }}</td><td class="text-right num">{{ total.late }}</td><td class="text-right num">{{ total.absent }}</td><td class="text-right num">{{ total.excused }}</td><td></td><td class="text-right num"><b>{% if total.percent is not None %}{{ total.percent }}%{% else %}—{% endif %}</b></td></tr></tfoot>{% endif %}
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Bosh sahifa{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bosh sahifa</h1>
+    <p class="sub">{{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }}{% if teacher %} · {{ teacher.user.short_name }}{% endif %}</p>
+  </div>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+{% if not teacher and preview_teachers is not None %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="eye" class="lg" %}</span>
+    <h3>Qaysi o'qituvchi panelini ko'rmoqchisiz?</h3>
+    <p>Siz superadmin sifatida o'qituvchi rolidasiz. Yuqoridagi ro'yxatdan o'qituvchini tanlang.</p>
+  </div>
+{% elif not teacher %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="briefcase" class="lg" %}</span>
+    <h3>O'qituvchi profili topilmadi</h3>
+    <p>Bu filialda sizning o'qituvchi kartangiz yo'q. Zavuchga murojaat qiling.</p>
+  </div>
+{% else %}
+<div class="grid grid-4 stats-row">
+  <div class="card stat">
+    <div class="top"><span class="label">Bugungi darslar</span><span class="ico tone-success">{% include "partials/icon.html" with name="calendar" class="sm" %}</span></div>
+    <div class="value">{{ today_lessons|length }}</div>
+    <div class="foot">{% if next_lesson %}Keyingi: <b class="num">{{ next_lesson.slot.start|time:"H:i" }}</b>{% elif today_lessons %}bugungi darslar tugadi{% else %}bugun dars yo'q{% endif %}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">O'quvchilarim</span><span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span></div>
+    <div class="value">{{ students }}</div>
+    <div class="foot">{{ groups|length }} guruh</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Haftalik darslar</span><span class="ico tone-warning">{% include "partials/icon.html" with name="chart" class="sm" %}</span></div>
+    <div class="value">{{ week_lessons }}</div>
+    <div class="foot">shu hafta (Du–Sha)</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Guruhlarim</span><span class="ico">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div>
+    <div class="value">{{ groups|length }}</div>
+    <div class="foot">faol guruhlar</div>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <section class="card">
+    <div class="card-title"><h3>Bugungi darslar <small class="muted num">{{ today|date:"d.m.Y" }}</small></h3></div>
+    {% if today_lessons %}
+      <ol class="day-lessons">
+        {% for item in today_lessons %}
+          {% with l=item.lesson %}
+          <li class="is-{{ item.state }} t{{ l.subject_id|tone }}">
+            <span class="day-time num">{{ l.slot.start|time:"H:i" }}</span>
+            <span class="day-bar" aria-hidden="true"></span>
+            <span class="grow">
+              <b>{{ l.group.school_class.name }} · {{ l.subject.name }}</b>
+              <small class="muted block">{% if l.room %}{{ l.room.name }}{% else %}xona yo'q{% endif %}{% if l.group.kind == "subset" %} · {{ l.group.code }}{% endif %} · {{ l.slot.start|time:"H:i" }}–{{ l.slot.end|time:"H:i" }}</small>
+            </span>
+            {% if item.state == "done" %}<span class="badge badge-muted">O'tdi</span>
+            {% elif item.state == "now" %}<span class="badge badge-warning">● Hozir</span>
+            {% else %}<span class="badge badge-info">Kutilmoqda</span>{% endif %}
+          </li>
+          {% endwith %}
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="empty-line">{% if today.isoweekday == 7 %}Bugun yakshanba — dam olish kuni.{% else %}Bugun jadvalda darsingiz yo'q.{% endif %}</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-title"><h3>Guruhlarim <small class="muted">{{ groups|length }} ta faol</small></h3></div>
+    {% if groups %}
+      <div class="stack my-groups">
+        {% for g in groups %}
+          {% with first=g.my_subjects.0 %}
+          <article class="my-group">
+            <div class="my-group-head">
+              <span class="avatar t{{ first.pk|tone }}">{{ first.name|slice:":2"|upper }}</span>
+              <div class="grow"><a class="entity-name" href="{% url 'academics:my_group_detail' g.pk %}">{{ g.code }}</a><small class="muted block">{% for s in g.my_subjects %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</small></div>
+            </div>
+            <div class="split small"><span>O'quvchi: <b class="num">{{ g.n_members }}</b></span><span>Sig'im: <b class="num">{{ g.capacity }}</b></span></div>
+            {% bar g.percent "info" %}
+          </article>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-line">Tanlov guruhlaringiz yo'q.</p>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}

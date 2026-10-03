@@ -26,16 +26,28 @@ if not REDIS_URL:
 DEBUG = False
 
 # ---------- HTTPS ----------
+# HTTPS=false — FAQAT domensiz, IP orqali qisqa MVP sinovi uchun (parollar shifrsiz uzatiladi!).
+# Haqiqiy foydalanishda domen + Let's Encrypt bilan HTTPS=true (docs/DEPLOY.md).
+HTTPS = env.bool("HTTPS", default=True)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
 SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
-SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_NAME = "__Host-edu_sid"   # __Host- prefiksi: faqat HTTPS, subdomen o'g'irlay olmaydi
-CSRF_COOKIE_NAME = "__Host-csrftoken"
+if HTTPS:
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_NAME = "__Host-edu_sid"   # __Host- prefiksi: faqat HTTPS, subdomen o'g'irlay olmaydi
+    CSRF_COOKIE_NAME = "__Host-csrftoken"
+else:
+    import warnings
+
+    warnings.warn("HTTPS=false: sayt shifrsiz HTTP orqali ishlayapti — faqat qisqa sinov uchun!", stacklevel=1)
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # ---------- Unumdorlik ----------
 # psycopg3 connection pool: har so'rovda yangi ulanish ochilmaydi.

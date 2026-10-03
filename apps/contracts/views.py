@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Count
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -14,15 +15,27 @@ from apps.accounts.models import Role
 from apps.accounts.permissions import role_required
 from apps.common import excel
 from apps.common.forms import apply_errors, filter_menu
-from apps.common.http import safe_next
+from apps.common.http import int_param, safe_next
+from apps.core.models import AcademicYear
 from apps.people.models import Student
 
 from . import selectors
-from .forms import CancelForm, CodeForm, ContractFilterForm, ContractForm, ScanForm
-from .models import Contract
+from .domain.document import PLACEHOLDERS
+from .forms import (
+    CancelForm,
+    CodeForm,
+    ContractFilterForm,
+    ContractForm,
+    ContractTemplateForm,
+    NewContractForm,
+    ScanForm,
+)
+from .models import Contract, ContractTemplate
 from .services import contracts as service
+from .services import document
 
 STAFF_ROLES = (Role.HEAD_TEACHER, Role.RECEPTION)
+STAFF_VIEW_ROLES = (*STAFF_ROLES, Role.DIRECTOR)  # direktor — faqat ko'radi
 PAGE_SIZE = 25
 
 
@@ -44,7 +57,7 @@ def _get(request, pk) -> Contract:
         raise Http404 from e
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def contract_list(request):
     form = ContractFilterForm(request.GET or None, branch=request.branch)
     values = form.values()
@@ -61,27 +74,51 @@ def contract_list(request):
     })
 
 
-@role_required(*STAFF_ROLES)
-def contract_create(request, student_pk):
-    student = get_object_or_404(Student.objects.select_related("school_class"), branch=request.branch,
-                                pk=student_pk)
-    existing = selectors.active_contract_for(student)
-    if existing:
-        messages.info(request, f"Bu o'quvchida amaldagi shartnoma bor: {existing.number}.")
-        return redirect("contracts:contract_detail", pk=existing.pk)
-
-    d = service.defaults_for(student)
-    form = ContractForm(request.POST or None, initial={
-        "full_tariff": d.full_tariff, "start_date": d.start_date, "end_date": d.end_date, "discount_percent": 0})
+def _new_contract(request, student=None):
+    """"Yangi shartnoma": o'quvchi (ro'yxatdan yoki o'quvchi kartasidan), vasiy, shablon, o'quv yili, tarif."""
+    year = AcademicYear.current()
+    if student is None and request.GET.get("student"):
+        student = Student.objects.filter(branch=request.branch, pk=int_param(request.GET["student"], 0)).first()
+    if student:
+        existing = selectors.active_contract_for(student)
+        if existing:
+            messages.info(request, f"Bu o'quvchida amaldagi shartnoma bor: {existing.number}.")
+            return redirect("contracts:contract_detail", pk=existing.pk)
+    candidates = selectors.contract_candidates(request.branch, year)
+    initial = {"academic_year": year, "discount_percent": 0}
+    if student:
+        d = service.defaults_for(student)
+        initial.update(full_tariff=d.full_tariff, start_date=d.start_date)
+    form = NewContractForm(request.POST or None, candidates=candidates, fixed_student=student, initial=initial)
     if request.method == "POST" and form.is_valid():
+        data = dict(form.cleaned_data)
+        chosen = student or data.pop("student")
+        data.pop("student", None)
         try:
-            contract = service.create_contract(student=student, by=request.user, **form.cleaned_data)
+            contract = service.create_contract(student=chosen, by=request.user,
+                                               academic_year=data.pop("academic_year") or year, **data)
         except ValidationError as e:
             apply_errors(form, e)
         else:
-            messages.success(request, f"{contract.number} shartnoma qoralamasi tuzildi.")
+            messages.success(request, f"{contract.number} shartnoma qoralamasi tuzildi. Endi vasiyga SMS kod yuboring.")
             return redirect("contracts:contract_detail", pk=contract.pk)
-    return render(request, "contracts/contract_form.html", {"form": form, "student": student})
+    return render(request, "contracts/contract_new.html", {
+        "form": form, "student": student,
+        "candidate_map": {} if student else selectors.candidate_map(candidates),
+        "back_url": safe_next(request, request.GET.get("next"), reverse("contracts:contract_list"))})
+
+
+@role_required(*STAFF_ROLES)
+def contract_new(request):
+    return _new_contract(request)
+
+
+@role_required(*STAFF_ROLES)
+def contract_create(request, student_pk):
+    """O'quvchi kartasidan: o'quvchi tanlangan holda."""
+    student = get_object_or_404(Student.objects.select_related("school_class"), branch=request.branch,
+                                pk=student_pk)
+    return _new_contract(request, student)
 
 
 @role_required(*STAFF_ROLES)
@@ -103,11 +140,11 @@ def contract_update(request, pk):
                   {"form": form, "student": contract.student, "contract": contract})
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def contract_detail(request, pk, code_form=None, cancel_form=None, scan_form=None):
     contract = _get(request, pk)
     return render(request, "contracts/contract_detail.html", {
-        "contract": contract, "back_url": _next(request),
+        "contract": contract, "back_url": _next(request), "doc": document.contract_document(contract),
         "has_next": bool(request.POST.get("next") or request.GET.get("next")),
         "code_form": code_form or CodeForm(),
         "cancel_form": cancel_form or CancelForm(),
@@ -179,7 +216,7 @@ def contract_upload_scan(request, pk):
     return contract_detail(request, pk, scan_form=form)
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def contract_scan(request, pk):
     """Skaner faqat ruxsati bor xodimga, shu view orqali beriladi (to'g'ridan-to'g'ri URL yo'q)."""
     contract = _get(request, pk)
@@ -192,9 +229,12 @@ def contract_scan(request, pk):
     return response
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def contract_print(request, pk):
-    return render(request, "contracts/contract_print.html", {"contract": _get(request, pk)})
+    contract = _get(request, pk)
+    return render(request, "contracts/contract_print.html", {
+        "contract": contract, "doc": document.contract_document(contract),
+        "back_url": reverse("contracts:contract_detail", args=[contract.pk])})
 
 
 EXPORT_HEADERS = ["#", "Raqami", "O'quvchi", "O'quvchi kodi", "Sinf", "Ota-ona", "Telefon", "O'quv yili",
@@ -203,7 +243,7 @@ EXPORT_HEADERS = ["#", "Raqami", "O'quvchi", "O'quvchi kodi", "Sinf", "Ota-ona",
 EXPORT_LIMIT = 10_000
 
 
-@role_required(*STAFF_ROLES)
+@role_required(*STAFF_VIEW_ROLES)
 def contract_export(request):
     """Joriy filtr bo'yicha shartnomalar — Excel."""
     form = ContractFilterForm(request.GET or None, branch=request.branch)
@@ -216,3 +256,35 @@ def contract_export(request):
             for n, c in enumerate(qs, start=1))
     content = excel.build_workbook("Shartnomalar", EXPORT_HEADERS, rows)
     return excel.xlsx_response(f"shartnomalar-{timezone.localdate():%Y-%m-%d}.xlsx", content)
+
+
+# ---------- Shartnoma shablonlari ----------
+
+@role_required(*STAFF_VIEW_ROLES)
+def template_list(request):
+    templates = ContractTemplate.objects.annotate(n=Count("contracts")).order_by("-is_default", "-is_active", "name")
+    return render(request, "contracts/template_list.html", {"templates": templates})
+
+
+def _template_form(request, instance=None):
+    form = ContractTemplateForm(request.POST or None, instance=instance)
+    if request.method == "POST" and form.is_valid():
+        try:
+            t = document.save_template(instance, by=request.user, **form.cleaned_data)
+        except ValidationError as e:
+            apply_errors(form, e)
+        else:
+            messages.success(request, f"«{t.name}» shabloni saqlandi. Imzolangan shartnomalar matni o'zgarmaydi.")
+            return redirect("contracts:template_list")
+    return render(request, "contracts/template_form.html", {
+        "form": form, "t": instance, "placeholders": PLACEHOLDERS.items()})
+
+
+@role_required(*STAFF_ROLES)
+def template_create(request):
+    return _template_form(request)
+
+
+@role_required(*STAFF_ROLES)
+def template_update(request, pk):
+    return _template_form(request, get_object_or_404(ContractTemplate, pk=pk))

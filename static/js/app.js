@@ -313,6 +313,250 @@
     else if (e.target.matches("dialog.modal")) e.target.close();  // fon bosilganda
   });
 
+  // --- URL'da oyna langari bo'lsa (#add-members) — sahifa ochilganda shu oyna ochiladi ---
+  if (location.hash.length > 1) document.querySelector(`dialog.modal#${CSS.escape(location.hash.slice(1))}`)?.showModal();
+
+  // --- Guruh formasi: tur o'zgarsa, stavka sukut qiymatlari (foydalanuvchi o'zgartirmagan bo'lsa) ---
+  document.querySelectorAll("[data-group-form]").forEach((form) => {
+    const DEFAULTS = { whole_class: ["per_lesson", "2400", "0"], subset: ["per_student", "120000", "15"] };
+    const rate = form.querySelector("[data-group-rate]");
+    const deduction = form.querySelector("[name=deduction_percent]");
+    form.addEventListener("change", (e) => {
+      if (!e.target.matches("[data-group-kind] input, input[data-group-kind]")) return;
+      const other = Object.entries(DEFAULTS).find(([k]) => k !== e.target.value)[1];
+      if (rate.value && rate.value !== other[1] && Number(rate.value) !== Number(other[1])) return;
+      const [scheme, r, d] = DEFAULTS[e.target.value];
+      form.querySelector(`[name=pay_scheme][value=${scheme}]`).checked = true;
+      rate.value = r;
+      deduction.value = d;
+    });
+  });
+
+  // --- Qidiruvli ro'yxat: <input data-search-for="select-id"> mos kelmagan variantlarni yashiradi ---
+  document.querySelectorAll("[data-search-for]").forEach((input) => {
+    const select = document.getElementById(input.dataset.searchFor);
+    if (!select) return;
+    if (select.tagName !== "SELECT") {  // belgilash ro'yxati (.check-item) — mos kelmaganlar yashiriladi
+      input.addEventListener("input", () => {
+        const terms = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+        select.querySelectorAll(".check-item, [data-search-item]").forEach((item) => {
+          const text = item.textContent.toLowerCase();
+          item.hidden = !terms.every((t) => text.includes(t)) && !item.querySelector("input:checked");
+        });
+      });
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
+      return;
+    }
+    input.addEventListener("input", () => {
+      const terms = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+      [...select.options].forEach((o) => {
+        if (!o.value) { o.hidden = terms.length > 0; return; }
+        const text = o.textContent.toLowerCase();
+        o.hidden = !terms.every((t) => text.includes(t));
+      });
+    });
+    input.addEventListener("keydown", (e) => {  // Enter — birinchi mos variantni tanlaydi
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const first = [...select.options].find((o) => o.value && !o.hidden);
+      if (first) { select.value = first.value; select.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+  });
+
+  // --- Yangi shartnoma: o'quvchi tanlanganda — uning vasiylari va sinf tarifi ---
+  document.querySelectorAll("[data-contract-new]").forEach((form) => {
+    const dataEl = document.getElementById("contract-candidates");
+    const student = form.querySelector("[data-contract-student]");
+    const guardian = form.querySelector("[data-contract-guardian]");
+    const tariff = form.querySelector("[data-tariff-input]");
+    if (!dataEl || !student || !guardian) return;
+    const map = JSON.parse(dataEl.textContent);
+    const opt = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; return o; };
+    const sync = (initial) => {
+      const info = map[student.value];
+      const keep = guardian.value;
+      if (!info) { guardian.replaceChildren(opt("", "Avval o'quvchini tanlang")); return; }
+      guardian.replaceChildren(opt("", "— Asosiy vasiy —"),
+        ...info.guardians.map(([id, name, primary]) => opt(id, primary ? `${name} (asosiy)` : name)));
+      if (initial && keep) guardian.value = keep;
+      if (!initial && info.tariff && tariff) {
+        tariff.value = info.tariff;
+        form.dispatchEvent(new Event("fee:recalc"));
+      }
+    };
+    student.addEventListener("change", () => sync(false));
+    sync(true);
+  });
+
+  // --- Dars qo'shish paneli (fragment yuklanadi — hodisalar hujjat darajasida): guruh → fanlari va xonasi ---
+  document.addEventListener("change", (e) => {
+    const groupSel = e.target.closest("[data-lesson-group]");
+    if (!groupSel) return;
+    const form = groupSel.closest("form");
+    const map = JSON.parse(form.querySelector("#lesson-subjects")?.textContent || "{}");
+    const info = map[groupSel.value];
+    const subject = form.querySelector("[data-lesson-subject]");
+    const opt = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; return o; };
+    subject.replaceChildren(opt("", "— Fan —"), ...(info?.subjects || []).map(([id, label]) => opt(id, label)));
+    if (info?.subjects.length === 1) subject.value = info.subjects[0][0];
+    const room = form.querySelector("[name=room]");
+    if (room && info?.room) room.value = info.room;
+  });
+
+  // --- Xabar (toast) — JS'dan (masalan, sudrab qo'yishdagi xato) ---
+  const toast = (text, isError) => {
+    let box = document.querySelector(".toasts");
+    if (!box) { box = document.createElement("div"); box.className = "toasts"; box.setAttribute("role", "status"); document.body.append(box); }
+    const el = document.createElement("div");
+    el.className = `toast${isError ? " error" : ""}`;
+    el.textContent = text;
+    box.append(el);
+    setTimeout(() => el.remove(), 9000);
+  };
+
+  // --- Dars jadvali: karta/darsni katakka qo'yish — (1) bosib tanlash → katakni bosish, (2) sudrash.
+  //     Qo'yilgach sahifa yangilanadi; aylantirish joyi va tanlangan karta saqlanib qoladi. ---
+  document.querySelectorAll("[data-tt-board]").forEach((board) => {
+    const csrf = board.querySelector("[name=csrfmiddlewaretoken]")?.value;
+    const bar = document.querySelector("[data-placing-bar]");
+    const hint = document.querySelector("[data-placing-hint]");
+    const STATE = "tt:state";
+    let picked = null;   // {url, groups?, subject?, name, el?} — bosib tanlangan karta yoki ko'chirilayotgan dars
+    let dragged = null;  // sudralayotgan
+
+    const setPicked = (next) => {
+      document.querySelectorAll("[data-drag-card][aria-pressed=true]").forEach((c) => c.setAttribute("aria-pressed", "false"));
+      picked = next;
+      board.classList.toggle("is-placing", !!picked);
+      if (bar) bar.hidden = !picked;
+      if (hint) hint.hidden = !!picked;
+      if (picked) {
+        picked.el?.setAttribute("aria-pressed", "true");
+        bar.querySelector("[data-placing-text]").textContent =
+          `${picked.move ? "Ko'chirish" : "Qo'yish"}: «${picked.name}» — endi jadvaldagi katakni bosing`;
+      }
+    };
+    const cardPayload = (card) => ({ url: board.dataset.placeUrl, groups: card.dataset.groups,
+      subject: card.dataset.subject, name: card.dataset.name, el: card });
+
+    const place = async (cell, what) => {
+      cell.classList.add("is-busy");
+      const body = new FormData();
+      body.append("weekday", cell.dataset.weekday);
+      body.append("slot", cell.dataset.slot);
+      body.append("on", board.dataset.effective);
+      if (what.groups) { body.append("groups", what.groups); body.append("subject", what.subject); }
+      try {
+        const resp = await fetch(what.url, { method: "POST", body, headers: { "X-CSRFToken": csrf, "X-Requested-With": "fetch" } });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.ok) {
+          // Yangilangach: shu joyga qaytamiz va (kartani qo'ygan bo'lsak) tanlovni davom ettiramiz
+          try { sessionStorage.setItem(STATE, JSON.stringify({ y: scrollY, subject: what.groups ? what.subject : null })); } catch {}
+          location.reload();
+          return;
+        }
+        (data.errors || ["Saqlanmadi."]).forEach((m) => toast(m, true));
+      } catch { toast("Server bilan aloqa yo'q. Qayta urinib ko'ring.", true); }
+      cell.classList.remove("is-busy");
+    };
+
+    // Avvalgi holatni tiklash (qo'yishdan keyingi yangilanish)
+    try {
+      const st = JSON.parse(sessionStorage.getItem(STATE) || "null");
+      sessionStorage.removeItem(STATE);
+      if (st) {
+        scrollTo(0, st.y || 0);
+        const card = st.subject && document.querySelector(`[data-drag-card][data-subject="${st.subject}"]:not([disabled])`);
+        if (card) setPicked(cardPayload(card));
+      }
+    } catch {}
+
+    // (1) Bosib tanlash
+    document.addEventListener("click", (e) => {
+      const card = e.target.closest("[data-drag-card]");
+      if (card && !card.disabled) { setPicked(picked?.el === card ? null : cardPayload(card)); return; }
+      const mover = e.target.closest("[data-move-start]");
+      if (mover) {
+        mover.closest("dialog")?.close();
+        setPicked({ url: mover.dataset.moveStart, name: mover.dataset.name, move: true });
+        return;
+      }
+      if (e.target.closest("[data-placing-cancel]")) setPicked(null);
+    });
+    board.addEventListener("click", (e) => {
+      if (!picked) return;
+      const cell = e.target.closest("[data-drop]");
+      if (!cell) return;
+      e.preventDefault();
+      e.stopPropagation();  // "+" yoki dars paneli ochilmasin — tanlangan karta qo'yiladi
+      place(cell, picked);
+      if (picked.move) setPicked(null);
+    }, true);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && picked) setPicked(null); });
+
+    // (2) Sudrash (+ ekran chetida avtomatik aylantirish)
+    document.addEventListener("dragstart", (e) => {
+      const card = e.target.closest("[data-drag-card][draggable=true]");
+      const lesson = e.target.closest("[data-move-url]");
+      if (card) dragged = cardPayload(card);
+      else if (lesson) dragged = { url: lesson.dataset.moveUrl, el: lesson };
+      else return;
+      dragged.el.classList.add("is-dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "lesson");
+    });
+    document.addEventListener("dragend", () => {
+      dragged?.el.classList.remove("is-dragging");
+      board.querySelectorAll(".is-over").forEach((c) => c.classList.remove("is-over"));
+    });
+    document.addEventListener("dragover", (e) => {
+      if (!dragged) return;
+      const edge = 90;
+      if (e.clientY > innerHeight - edge) scrollBy(0, 18);
+      else if (e.clientY < edge) scrollBy(0, -18);
+    });
+    board.addEventListener("dragover", (e) => {
+      const cell = e.target.closest("[data-drop]");
+      if (!cell || !dragged) return;
+      e.preventDefault();
+      board.querySelectorAll(".is-over").forEach((c) => { if (c !== cell) c.classList.remove("is-over"); });
+      cell.classList.add("is-over");
+    });
+    board.addEventListener("dragleave", (e) => { e.target.closest("[data-drop]")?.classList.remove("is-over"); });
+    board.addEventListener("drop", (e) => {
+      const cell = e.target.closest("[data-drop]");
+      if (!cell || !dragged) return;
+      e.preventDefault();
+      cell.classList.remove("is-over");
+      const what = dragged;
+      dragged = null;
+      place(cell, what);
+    });
+  });
+
+  // --- Formset: "qo'shish" — <template id="{prefix}-empty"> dan yangi qator; "olib tashlash" — DELETE belgisi ---
+  document.addEventListener("click", (e) => {
+    const add = e.target.closest("[data-formset-add]");
+    if (add) {
+      const prefix = add.dataset.formsetAdd;
+      const total = document.querySelector(`[name=${prefix}-TOTAL_FORMS]`);
+      const tpl = document.getElementById(`${prefix}-empty`);
+      const list = document.querySelector(`[data-formset-list="${prefix}"]`);
+      const n = Number(total.value);
+      list.insertAdjacentHTML("beforeend", tpl.innerHTML.replaceAll("__prefix__", n));
+      total.value = n + 1;
+      list.lastElementChild.querySelector("select, input:not([type=hidden])")?.focus();
+      return;
+    }
+    const del = e.target.closest("[data-formset-delete]");
+    if (del) {
+      const item = del.closest("[data-formset-item]");
+      const box = item.querySelector("input[name$=DELETE]");
+      if (box) box.checked = true;
+      item.hidden = true;
+    }
+  });
+
   // --- Ko'p tanlovli filtr: tanlanganlar yozuvi ("Barchasi" yoki "Naqd, Bank") ---
   document.querySelectorAll("[data-multiselect]").forEach((box) => {
     const label = box.querySelector("[data-multiselect-label]");
@@ -339,6 +583,7 @@
         const resp = await fetch(opener.dataset.panelUrl, { headers: { "X-Requested-With": "fetch" } });
         if (!resp.ok) throw new Error(resp.status);
         body.innerHTML = await resp.text();  // o'z serverimizdagi shablon (skriptsiz)
+        body.querySelector("[data-lesson-group]")?.dispatchEvent(new Event("change", { bubbles: true }));
         body.querySelector("input:not([type=hidden]), select")?.focus();
       } catch {
         body.innerHTML = '<p class="empty-line">Yuklab bo\'lmadi. Sahifani yangilab qayta urinib ko\'ring.</p>';
@@ -479,6 +724,173 @@
       arc.addEventListener("blur", hide);
       arc.addEventListener("mouseleave", hide);
     });
+  });
+
+  // --- Yotoqxona davomati: katak → kichik menyu (B/Y/K/S/O) → saqlash, qator jamilari yangilanadi ---
+  document.querySelectorAll("[data-att-board]").forEach((board) => {
+    const pop = board.querySelector("[data-att-pop]");
+    const csrf = board.querySelector("[name=csrfmiddlewaretoken]")?.value;
+    let current = null;
+    const close = () => { pop.hidden = true; current?.setAttribute("aria-expanded", "false"); current = null; };
+    const recount = (row) => {
+      row.querySelectorAll("[data-total]").forEach((td) => {
+        td.textContent = row.querySelectorAll(`.att-cell[data-status="${td.dataset.total}"]`).length;
+      });
+    };
+    board.addEventListener("click", async (e) => {
+      const choice = e.target.closest("[data-set]");
+      if (choice && current) {
+        const cell = current, status = choice.dataset.set;
+        close();
+        const body = new FormData();
+        body.append("student", cell.dataset.student); body.append("date", cell.dataset.date); body.append("status", status);
+        cell.classList.add("is-saving");
+        try {
+          const resp = await fetch(board.dataset.markUrl, { method: "POST", body, headers: { "X-CSRFToken": csrf, "X-Requested-With": "fetch" } });
+          const data = await resp.json();
+          if (!resp.ok || !data.ok) throw new Error((data.errors || ["Saqlanmadi."]).join(" "));
+          cell.dataset.status = status;
+          cell.className = "att-cell " + (status ? "att-" + status : "att-empty");
+          cell.textContent = status || "O";
+          recount(cell.closest("[data-att-row]"));
+        } catch (err) {
+          toast(err.message || "Saqlanmadi.", true);
+        } finally {
+          cell.classList.remove("is-saving");
+          cell.focus();
+        }
+        return;
+      }
+      const cell = e.target.closest("button.att-cell[data-student]");
+      if (!cell) { if (!e.target.closest("[data-att-pop]")) close(); return; }
+      if (current === cell) { close(); return; }
+      close();
+      current = cell;
+      cell.setAttribute("aria-expanded", "true");
+      pop.hidden = false;
+      const b = board.getBoundingClientRect(), c = cell.getBoundingClientRect();
+      const left = Math.min(Math.max(8, c.left - b.left + c.width / 2 - pop.offsetWidth / 2), b.width - pop.offsetWidth - 8);
+      pop.style.left = left + "px";
+      pop.style.top = (c.bottom - b.top + 6) + "px";
+      pop.querySelector(`[data-set="${cell.dataset.status}"]`)?.focus();
+    });
+    // Eng so'nggi kunlar (bugun) ko'rinsin: keng jadval o'ngga surilgan holda ochiladi
+    const wrap = board.querySelector(".table-wrap");
+    if (wrap) {
+      wrap.scrollLeft = wrap.scrollWidth;
+      wrap.addEventListener("scroll", close, { passive: true });
+    }
+    document.addEventListener("click", (e) => { if (!board.contains(e.target)) close(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current) { const c = current; close(); c.focus(); } });
+  });
+
+  // --- Kunlik belgilash: tanlangan belgini ajratib ko'rsatish, "belgilanmaganlar — Bor" ---
+  document.querySelectorAll("[data-att-day]").forEach((form) => {
+    const sync = (group) => group.querySelectorAll("label").forEach((l) => l.classList.toggle("is-on", l.querySelector("input").checked));
+    form.addEventListener("change", (e) => { const g = e.target.closest(".att-choice"); if (g) sync(g); });
+    form.querySelector("[data-att-all]")?.addEventListener("click", (e) => {
+      const value = e.currentTarget.dataset.attAll;
+      form.querySelectorAll(".att-choice").forEach((g) => {
+        const empty = g.querySelector('input[value=""]');
+        if (empty.checked) { g.querySelector(`input[value="${value}"]`).checked = true; sync(g); }
+      });
+    });
+  });
+
+  // --- Sinf rahbarlik: katak bosilganda holat aylanadi (bo'sh → ✓ → ✗ → K → S), «Hammasi keldi» ---
+  document.querySelectorAll("[data-homeroom-day]").forEach((form) => {
+    const order = ["", "B", "Y", "K", "S"];
+    const symbol = { "": "–", B: "✓", Y: "✗", K: "K", S: "S" };
+    const label = { "": "belgilanmagan", B: "Keldi", Y: "Kelmadi", K: "Kechikdi", S: "Sababli" };
+    const set = (btn, value) => {
+      const input = btn.parentElement.querySelector("input[type=hidden]");
+      input.value = value;
+      btn.className = "att-cell hr-mark " + (value ? "att-" + value : "att-empty");
+      btn.textContent = symbol[value];
+      btn.setAttribute("aria-label", btn.getAttribute("aria-label").replace(/: .*$/, ": " + label[value]));
+    };
+    form.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-hr-mark]");
+      if (btn) {
+        const current = btn.parentElement.querySelector("input[type=hidden]").value;
+        set(btn, order[(order.indexOf(current) + 1) % order.length]);
+        return;
+      }
+      if (e.target.closest("[data-hr-all]")) {
+        form.querySelectorAll("[data-hr-mark]").forEach((b) => {
+          if (!b.parentElement.querySelector("input[type=hidden]").value) set(b, "B");
+        });
+      }
+    });
+  });
+  document.querySelectorAll("[data-date-nav]").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.value) window.location.href = `${input.dataset.dateNav}?date=${input.value}`;
+    });
+  });
+
+  // --- Ish haqi qoidalari: formula bo'laklari, o'quvchi ulushi va avans kalkulyatorlari ---
+  document.querySelectorAll("[data-rules]").forEach((root) => {
+    const fmt = (n) => `${Math.round(n).toLocaleString("ru-RU").replace(/\u00a0/g, " ")} so'm`;
+    const num = (el) => Number(String(el.value).replace(/\D/g, "")) || 0;
+
+    root.querySelectorAll("[data-formula]").forEach((btn) => btn.addEventListener("click", () => {
+      root.querySelectorAll("[data-formula]").forEach((b) => {
+        const on = b === btn;
+        b.setAttribute("aria-selected", on ? "true" : "false");
+        document.getElementById(b.dataset.formula).hidden = !on;
+      });
+    }));
+
+    const share = root.querySelector("[data-share-calc]");
+    if (share) {
+      const q = (sel) => share.querySelector(sel);
+      const run = () => {
+        const scheme = q("[data-share-scheme]:checked").value;
+        share.querySelectorAll("[data-only]").forEach((el) => (el.hidden = el.dataset.only !== scheme));
+        const tariff = num(q("[data-share-tariff]"));
+        const due = tariff * (1 - Math.min(100, num(q("[data-share-discount]"))) / 100);
+        const paidPct = Number(q("[data-share-paid]").value);
+        const paid = (due * paidPct) / 100;
+        const ratio = tariff ? paid / tariff : 0;
+        const maxRatio = tariff ? due / tariff : 0;
+        let k;
+        if (scheme === "lesson") k = num(q("[data-share-lessons]")) * num(q("[data-share-rate-lesson]"));
+        else k = num(q("[data-share-rate-student]")) * (1 - Math.min(100, num(q("[data-share-cut]"))) / 100);
+        q("[data-share-paid-out]").textContent = paidPct + "%";
+        q("[data-share-due]").textContent = fmt(due);
+        q("[data-share-paid-sum]").textContent = fmt(paid);
+        q("[data-share-ratio]").textContent = (ratio * 100).toFixed(1).replace(".0", "") + "%";
+        q("[data-share-you]").textContent = fmt(k * ratio);
+        q("[data-share-max]").textContent = fmt(k * maxRatio);
+      };
+      share.addEventListener("input", run);
+      share.addEventListener("change", run);
+      run();
+    }
+
+    const adv = root.querySelector("[data-advance-calc]");
+    if (adv) {
+      const total = adv.querySelector("[data-adv-total]");
+      const pct = adv.querySelector("[data-adv-pct]");
+      const run = () => {
+        const t = num(total);
+        const a = Math.floor((t * Number(pct.value)) / 100 / 1000) * 1000;
+        const rest = t - a;
+        const final = Math.floor(rest / 1000) * 1000;
+        adv.querySelector("[data-adv-pct-out]").textContent = pct.value + "%";
+        adv.querySelector("[data-adv-sum]").textContent = fmt(a);
+        adv.querySelector("[data-adv-final]").textContent = fmt(final);
+        adv.querySelector("[data-adv-carry]").textContent = fmt(rest - final);
+      };
+      total.addEventListener("input", () => {
+        const d = total.value.replace(/\D/g, "").slice(0, 12);
+        total.value = d ? Number(d).toLocaleString("ru-RU").replace(/\u00a0/g, " ") : "";
+        run();
+      });
+      pct.addEventListener("input", run);
+      run();
+    }
   });
 
   // --- Toastlar avtomatik yo'qoladi ---

@@ -70,7 +70,9 @@ def seed(branch, year, teacher_users, students_per_class=6) -> dict:
                 last, first, middle = _student_name(rng, female)
                 grade = sc.grade or rng.choice([7, 8, 9])
                 born = date(2026 - grade - 6, 1, 1) + timedelta(days=rng.randrange(365))
-                status = rng.choices(list(Student.Status.values), weights=[90, 3, 5, 2])[0]
+                # Faqat ketgan sana (left_at) talab qilmaydigan holatlar — ketganlar demo'da yaratilmaydi
+                status = rng.choices([Student.Status.ACTIVE, Student.Status.FROZEN, Student.Status.INACTIVE],
+                                     weights=[92, 5, 3])[0]
                 student = Student.objects.create(
                     branch=branch, last_name=last, first_name=first, middle_name=middle, birth_date=born,
                     gender="F" if female else "M", phone=f"99890{rng.randrange(10**7):07d}", grade=grade,

@@ -1,0 +1,66 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Moliyaviy hisobot{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Moliyaviy hisobot</h1>
+    <p class="sub">{{ request.branch.name }} · {{ month_label }}</p>
+  </div>
+</div>
+
+<form class="card toolbar month-bar" method="get">
+  <a class="btn btn-secondary btn-sm btn-icon" href="?month={{ prev_month|date:'Y-m' }}" aria-label="Oldingi oy">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+  <input class="input input-sm" type="month" name="month" value="{{ month|date:'Y-m' }}" aria-label="Oy" data-autosubmit>
+  {% if month < this_month %}<a class="btn btn-secondary btn-sm btn-icon" href="?month={{ next_month|date:'Y-m' }}" aria-label="Keyingi oy">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>{% endif %}
+  {% if month != this_month %}<a class="btn btn-ghost btn-sm" href="?">Joriy oy</a>{% endif %}
+</form>
+
+<div class="grid grid-3 stats-row stats-lead">
+  <div class="card stat"><div class="top"><span class="label">Kirim</span><span class="ico tone-success">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value value-sm num text-success">{{ income|money }} <span class="unit">so'm</span></div><div class="foot">qabul qilingan to'lovlar</div></div>
+  <div class="card stat"><div class="top"><span class="label">Chiqim</span><span class="ico tone-danger">{% include "partials/icon.html" with name="receipt" class="sm" %}</span></div><div class="value value-sm num text-danger">{{ expense|money }} <span class="unit">so'm</span></div><div class="foot">xarajatlar va oyliklar</div></div>
+  <div class="card stat"><div class="top"><span class="label">Sof natija</span><span class="ico tone-info">{% include "partials/icon.html" with name="chart" class="sm" %}</span></div><div class="value value-sm num {% if net < 0 %}text-danger{% else %}text-success{% endif %}">{% if net >= 0 %}+{% endif %}{{ net|money }} <span class="unit">so'm</span></div><div class="foot">kirim − chiqim</div></div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-title"><h3>{% include "partials/icon.html" with name="wallet" class="sm" %} Kirim turlari</h3></div>
+    <ul class="report-rows">
+      {% for r in income_rows %}<li><span>{{ r.label }}</span>{% bar r.pct "success" %}<b class="num">{{ r.value|money }}</b></li>{% endfor %}
+    </ul>
+    <dl class="kv pay-kv">
+      <dt>O'qish to'lovi rejasi (shu oy)</dt><dd class="num">{{ summary.expected|money }}</dd>
+      <dt>Shu oy uchun to'langan</dt><dd class="num">{{ summary.collected_for_month|money }} <small class="muted">({{ summary.paid_percent }}%)</small></dd>
+    </dl>
+  </section>
+  <section class="card">
+    <div class="card-title"><h3>{% include "partials/icon.html" with name="receipt" class="sm" %} Chiqim kategoriyalari</h3></div>
+    {% if expense_rows %}
+      <ul class="report-rows">
+        {% for r in expense_rows %}<li><span>{{ r.label }}</span>{% bar r.pct "danger" %}<b class="num">{{ r.value|money }}</b></li>{% endfor %}
+      </ul>
+    {% else %}<p class="empty-line">Bu oy xarajat yo'q.</p>{% endif %}
+  </section>
+</div>
+
+<section class="card mt-20">
+  <div class="card-title"><h3>{% include "partials/icon.html" with name="calendar" class="sm" %} 12 oylik ko'rinish</h3></div>
+  <div class="table-wrap">
+    <table class="table table-dense">
+      <thead><tr><th>Oy</th><th class="text-right">Kirim</th><th class="text-right">Chiqim</th><th class="text-right">Sof natija</th></tr></thead>
+      <tbody>
+        {% for r in year %}
+          <tr class="{% if r.month == month %}row-active{% endif %}">
+            <td><a class="link" href="?month={{ r.month|date:'Y-m' }}">{{ r.label }} {{ r.month|date:"Y" }}</a></td>
+            <td class="text-right num text-success">{{ r.income|money }}</td>
+            <td class="text-right num text-danger">{{ r.expense|money }}</td>
+            <td class="text-right num"><b class="{% if r.net < 0 %}text-danger{% endif %}">{% if r.net >= 0 %}+{% endif %}{{ r.net|money }}</b></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

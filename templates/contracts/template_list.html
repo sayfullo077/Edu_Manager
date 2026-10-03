@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Shartnoma shablonlari{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'contracts:contract_list' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Shartnomalar</a>
+    <h1 class="mt-12">Shartnoma shablonlari</h1>
+    <p class="sub">Shartnoma matni shu yerdan olinadi. Imzolangan shartnomalar matni muhrlangan — shablon o'zgarsa ham ular o'zgarmaydi.</p>
+  </div>
+  <div class="page-actions">
+    <a data-write class="btn btn-primary" href="{% url 'contracts:template_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shablon qo'shish</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="table table-dense">
+      <thead><tr><th>Nomi</th><th>Holati</th><th class="hide-sm">Shartnomalar</th><th class="hide-sm">O'zgartirilgan</th><th class="actions">Amallar</th></tr></thead>
+      <tbody>
+        {% for t in templates %}
+          <tr class="{% if not t.is_active %}row-muted{% endif %}">
+            <td><b>{{ t.name }}</b>{% if t.is_default %} <span class="badge badge-accent">Sukut bo'yicha</span>{% endif %}</td>
+            <td><span class="badge {% if t.is_active %}badge-success{% else %}badge-muted{% endif %}">{% if t.is_active %}Faol{% else %}Faol emas{% endif %}</span></td>
+            <td class="hide-sm num">{{ t.n }}</td>
+            <td class="hide-sm num">{{ t.updated_at|date:"d.m.Y H:i" }}</td>
+            <td class="actions"><a data-write class="icon-btn tone-warning" href="{% url 'contracts:template_update' t.pk %}" title="Tahrirlash" aria-label="Tahrirlash">{% include "partials/icon.html" with name="pencil" class="sm" %}</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty-line">Shablon yo'q — birinchisini qo'shing.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

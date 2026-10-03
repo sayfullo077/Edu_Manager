@@ -1,0 +1,22 @@
+{# Bitta sertifikat (formset qatori). n — tartib raqami (bo'sh shablonda JS qo'yadi). #}
+<div class="guardian-box cert-box" data-formset-item>
+  {{ f.id }}
+  <div class="guardian-head">
+    <b>Sertifikat{% if n %} #{{ n }}{% endif %}</b>
+    <span class="grow"></span>
+    <span class="sr-only">{{ f.DELETE }}</span>
+    <button class="icon-btn tone-danger" type="button" data-formset-delete title="Olib tashlash" aria-label="Sertifikatni olib tashlash">{% include "partials/icon.html" with name="trash" class="sm" %}</button>
+  </div>
+  {% if f.non_field_errors %}<p class="field-error">{{ f.non_field_errors|join:" " }}</p>{% endif %}
+  <div class="form-grid cols-3">
+    {% include "partials/field.html" with field=f.kind %}
+    {% include "partials/field.html" with field=f.subject %}
+    {% include "partials/field.html" with field=f.number %}
+  </div>
+  <div class="form-grid cols-4 mt-12">
+    {% include "partials/field.html" with field=f.issued_on %}
+    {% include "partials/field.html" with field=f.expires_on %}
+    {% include "partials/field.html" with field=f.score %}
+    {% include "partials/field.html" with field=f.issued_by %}
+  </div>
+</div>

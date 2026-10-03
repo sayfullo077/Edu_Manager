@@ -1,0 +1,133 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Direktor paneli{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bosh sahifa</h1>
+    <p class="sub">{{ request.branch.name }} · {{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }} · {{ month_label }} ko'rsatkichlari</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'director:attendance_report' %}">{% include "partials/icon.html" with name="check" class="sm" %} Davomat</a>
+    <a class="btn btn-primary" href="{% url 'director:finance_report' %}">{% include "partials/icon.html" with name="chart" class="sm" %} Moliyaviy hisobot</a>
+  </div>
+</div>
+
+{# ---------- Asosiy ko'rsatkichlar ---------- #}
+<div class="grid grid-4 stats-row">
+  <a class="card stat" href="{% url 'people:student_list' %}">
+    <div class="top"><span class="label">O'quvchilar</span><span class="ico">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div>
+    <div class="value">{{ students.active }}</div>
+    <div class="foot"><span class="trend-up">+{{ students.new }}</span> keldi · <span class="text-danger">−{{ students.left }}</span> ketdi (shu oy)</div>
+  </a>
+  <a class="card stat" href="{% url 'finance:payment_list' %}">
+    <div class="top"><span class="label">Shu oy tushum</span><span class="ico tone-success">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div>
+    <div class="value value-sm num">{{ summary.received|short_money }}</div>
+    <div class="foot">{% if summary.change_percent is not None %}<span class="{% if summary.change_percent >= 0 %}trend-up{% else %}text-danger{% endif %}">{% if summary.change_percent >= 0 %}↑{% else %}↓{% endif %} {{ summary.change_percent }}%</span> o'tgan oyga nisbatan{% else %}o'tgan oy ma'lumoti yo'q{% endif %}</div>
+  </a>
+  <a class="card stat" href="{% url 'finance:debtor_list' %}">
+    <div class="top"><span class="label">Muddati o'tgan qarz</span><span class="ico tone-danger">{% include "partials/icon.html" with name="alert" class="sm" %}</span></div>
+    <div class="value value-sm num text-danger">{{ debt.total|short_money }}</div>
+    <div class="foot">{{ debt.students }} ta o'quvchi (o'qish + yotoqxona)</div>
+  </a>
+  <a class="card stat" href="{% url 'director:finance_report' %}">
+    <div class="top"><span class="label">Sof natija (shu oy)</span><span class="ico tone-info">{% include "partials/icon.html" with name="chart" class="sm" %}</span></div>
+    <div class="value value-sm num {% if net_month < 0 %}text-danger{% else %}text-success{% endif %}">{{ net_month|short_money }}</div>
+    <div class="foot">kirim − chiqim (oyliklar bilan)</div>
+  </a>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <a class="card stat" href="{% url 'people:teacher_list' %}">
+    <div class="top"><span class="label">O'qituvchilar</span><span class="ico tone-info">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div>
+    <div class="value">{{ teachers.total }}</div>
+    <div class="foot">{{ teachers.vacation }} ta ta'tilda</div>
+  </a>
+  <a class="card stat" href="{% url 'payroll:list' %}">
+    <div class="top"><span class="label">Ish haqi fondi</span><span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div>
+    <div class="value value-sm num">{{ payroll.real|short_money }}</div>
+    <div class="foot">100%: {{ payroll.max|short_money }} · berilgan {{ payroll.paid|short_money }}</div>
+  </a>
+  <a class="card stat" href="{% url 'director:attendance_report' %}">
+    <div class="top"><span class="label">Bugungi davomat</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div>
+    <div class="value">{% if attendance.percent is not None %}{{ attendance.percent }}<span class="unit">%</span>{% else %}—{% endif %}</div>
+    <div class="foot">{{ attendance.classes }}/{{ attendance.all_classes }} sinf kiritdi · {{ attendance.absent }} kelmadi</div>
+  </a>
+  <a class="card stat" href="{% url 'dorm:dashboard' %}">
+    <div class="top"><span class="label">Yotoqxona</span><span class="ico">{% include "partials/icon.html" with name="bed" class="sm" %}</span></div>
+    <div class="value">{{ dorm.percent }}<span class="unit">%</span></div>
+    <div class="foot">{{ dorm.occupied }}/{{ dorm.capacity }} o'rin · bugun yo'q: {{ dorm_today.absent }}</div>
+  </a>
+</div>
+
+<div class="detail-grid">
+  {# ---------- Kirim / chiqim ---------- #}
+  <section class="card">
+    <div class="card-title">
+      <h3>{% include "partials/icon.html" with name="chart" class="sm" %} Kirim va chiqim — 6 oy</h3>
+      <span class="chip-row"><span class="legend-dot is-income">Kirim</span><span class="legend-dot is-expense">Chiqim</span></span>
+    </div>
+    <ul class="money-bars">
+      {% for r in money_trend %}
+        <li>
+          <span class="mb-label">{{ r.label }}</span>
+          <span class="mb-bars">
+            <span class="mb-row">{% bar r.income_pct "success" %}<b class="num">{{ r.income|short_money }}</b></span>
+            <span class="mb-row">{% bar r.expense_pct "danger" %}<b class="num muted">{{ r.expense|short_money }}</b></span>
+          </span>
+          <span class="mb-net num {% if r.net < 0 %}text-danger{% else %}text-success{% endif %}">{% if r.net >= 0 %}+{% endif %}{{ r.net|short_money }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-title"><h3>{% include "partials/icon.html" with name="bank" class="sm" %} Pul qoldiqlari</h3></div>
+      <dl class="kv pay-kv">
+        <dt>Naqd kassa</dt><dd class="num">{{ balances.cash|money }}</dd>
+        <dt>Bank hisobi</dt><dd class="num">{{ balances.bank|money }}</dd>
+        <dt>Terminal</dt><dd class="num">{{ balances.terminal|money }}</dd>
+        <dt><b>Jami</b></dt><dd class="num pay-big">{{ balance_total|money }}</dd>
+      </dl>
+    </section>
+    <section class="card">
+      <div class="card-title"><h3>{% include "partials/icon.html" with name="receipt" class="sm" %} {{ month_label }} — o'qish to'lovi</h3><span class="badge badge-info">{{ summary.paid_percent }}%</span></div>
+      <div class="card-pad-x">
+        {% bar summary.paid_percent "success" %}
+        <div class="split small muted mt-12"><span>To'landi: <b class="num">{{ summary.collected_for_month|money }}</b></span><span>Reja: <b class="num">{{ summary.expected|money }}</b></span></div>
+      </div>
+      <div class="chip-row status-chips">
+        <span class="badge badge-success">To'langan {{ summary.statuses.paid }}</span>
+        <span class="badge badge-info">Qisman {{ summary.statuses.partial }}</span>
+        <span class="badge badge-muted">Kutilmoqda {{ summary.statuses.pending }}</span>
+        <span class="badge badge-danger">Muddati o'tgan {{ summary.statuses.overdue }}</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="grid grid-2 mt-20">
+  <section class="card">
+    <div class="card-title"><h3>{% include "partials/icon.html" with name="users" class="sm" %} O'quvchilar soni</h3><span class="chip-row"><span class="legend-dot is-income">Jami</span><span class="legend-dot is-expense">Ketganlar</span></span></div>
+    <div class="card-pad-x">{% include "partials/trend_chart.html" %}</div>
+  </section>
+  <section class="card">
+    <div class="card-title">
+      <h3>{% include "partials/icon.html" with name="chart" class="sm" %} Byudjet — {{ month_label }}</h3>
+      <span class="badge {% if budget.percent > 100 %}badge-danger{% else %}badge-muted{% endif %}">{{ budget.percent }}%</span>
+    </div>
+    <div class="card-pad-x">
+      <div class="split small muted"><span>Sarflandi: <b class="num">{{ budget.spent|money }}</b></span><span>Limit: <b class="num">{{ budget.limit|money }}</b></span></div>
+      <ul class="budget-mini">
+        {% for r in budget.fixed %}{% if r.limit or r.spent %}<li><span>{{ r.category.name }}</span>{% if r.over %}{% bar r.percent "danger" %}{% else %}{% bar r.percent %}{% endif %}<b class="num">{{ r.spent|short_money }}</b></li>{% endif %}{% endfor %}
+        {% for r in budget.normative %}{% if r.limit or r.spent %}<li><span>{{ r.category.name }}</span>{% if r.over %}{% bar r.percent "danger" %}{% else %}{% bar r.percent %}{% endif %}<b class="num">{{ r.spent|short_money }}</b></li>{% endif %}{% endfor %}
+      </ul>
+      {% if not budget.limit and not budget.spent %}<p class="empty-line">Bu oy uchun limit va xarajat yo'q.</p>{% endif %}
+    </div>
+  </section>
+</div>
+<p class="note">{% include "partials/icon.html" with name="shield" class="sm" %} Direktor paneli — nazorat uchun. Kundalik amallarni Reception va Zavuch bajaradi; siz byudjet limitlari, ish haqi sozlamalari va xodimlar kirishini boshqarasiz.</p>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Yangi shartnoma{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% if student %}{% url 'people:student_detail' student.pk %}{% else %}{{ back_url }}{% endif %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+    <h1 class="mt-12">Yangi shartnoma</h1>
+    <p class="sub">{% if student %}{{ student.full_name }} · {{ student.code }}{% if student.school_class %} · {{ student.school_class.name }}{% endif %}{% else %}O'quvchi — maktab shartnomasi{% endif %}</p>
+  </div>
+</div>
+
+<form class="edit-form narrow" method="post" novalidate data-fee-calc data-contract-new>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <p class="alert alert-info">{% include "partials/icon.html" with name="info" class="sm" %} Vasiy tanlanmasa — asosiy vasiy olinadi. Matn shablondan to'ldiriladi va imzolanganda muhrlanadi.</p>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="file" class="sm" %} Shartnoma tomonlari</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% if form.student %}
+        <div class="field">
+          <label class="label" for="{{ form.student.id_for_label }}">{{ form.student.label }} *</label>
+          <input class="input" type="search" placeholder="Ism, familiya yoki kod bo'yicha qidirish…" aria-label="O'quvchini qidirish" data-search-for="{{ form.student.id_for_label }}" autocomplete="off">
+          {{ form.student }}
+          {% for e in form.student.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          <span class="hint">Faqat bu o'quv yilida shartnomasi yo'q faol o'quvchilar.</span>
+        </div>
+      {% else %}
+        <div class="field"><span class="label">O'quvchi</span><div class="input input-static">{{ student.full_name }}</div></div>
+      {% endif %}
+      {% include "partials/field.html" with field=form.guardian %}
+      {% include "partials/field.html" with field=form.template %}
+      {% include "partials/field.html" with field=form.academic_year %}
+    </div>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="wallet" class="sm" %} Tarif va chegirma</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.full_tariff %}
+      {% include "partials/field.html" with field=form.start_date %}
+      {% include "partials/field.html" with field=form.discount_percent %}
+      {% include "partials/field.html" with field=form.discount_reason %}
+      {% include "partials/field.html" with field=form.notes class="span-all" %}
+    </div>
+    <div class="fee-summary">
+      <span>Chegirma: <b class="num"><span data-discount-output>0</span> so'm</b></span>
+      <span>Oylik to'lov <strong class="num"><span data-fee-output>—</span> so'm</strong></span>
+    </div>
+  </details>
+
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% if student %}{% url 'people:student_detail' student.pk %}{% else %}{{ back_url }}{% endif %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Shartnoma yaratish</button>
+  </div>
+</form>
+{% if candidate_map %}{{ candidate_map|json_script:"contract-candidates" }}{% endif %}
+{% endblock %}

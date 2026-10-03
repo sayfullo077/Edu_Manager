@@ -1,0 +1,25 @@
+{% load ui %}
+<header class="drawer-head">
+  <div><h2>{{ lesson.subject.name }}</h2><p class="muted small">{{ lesson.group.code }} · {{ lesson.group.school_class.name }}</p></div>
+  <button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button>
+</header>
+<div class="drawer-body">
+  <dl class="kv-plain">
+    <dt>Vaqt</dt><dd>{{ lesson.get_weekday_display }}, {{ lesson.slot.number }}-dars<small class="muted block num">{{ lesson.slot.start|time:"H:i" }}–{{ lesson.slot.end|time:"H:i" }}</small></dd>
+    <dt>O'qituvchi</dt><dd>{{ lesson.teacher.user.full_name }}</dd>
+    <dt>Xona</dt><dd>{{ lesson.room.name|default:"—" }}</dd>
+    <dt>Guruh</dt><dd><a class="link" href="{% url 'academics:group_detail' lesson.group_id %}">{{ lesson.group.code }}</a><small class="muted block">{{ lesson.group.get_kind_display }}</small></dd>
+    <dt>Amal qiladi</dt><dd class="num">{{ lesson.valid_from|date:"d.m.Y" }} — {% if lesson.valid_to %}{{ lesson.valid_to|date:"d.m.Y" }}{% else %}hozirgacha{% endif %}</dd>
+    <dt>Kiritgan</dt><dd>{{ lesson.created_by.short_name }}<small class="muted block num">{{ lesson.created_at|date:"d.m.Y H:i" }}</small></dd>
+  </dl>
+  {% if not lesson.valid_to %}
+    <button class="btn btn-secondary btn-block" type="button" data-move-start="{% url 'academics:lesson_move' lesson.pk %}" data-name="{{ lesson.subject.name }}">{% include "partials/icon.html" with name="arrows" class="sm" %} Boshqa katakka ko'chirish</button>
+    <form method="post" action="{% url 'academics:lesson_remove' lesson.pk %}" novalidate data-confirm="Dars tanlangan sanadan boshlab jadvaldan olib tashlansinmi? Oldingi haftalar saqlanadi." data-confirm-ok="Olib tashlash">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      {% include "partials/field.html" with field=form.on %}
+      <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Shu sanadan oldingi haftalar (va o'qituvchi oyligi) o'zgarmaydi. Darsni boshqa vaqtga ko'chirish — olib tashlab, yangi katakka qo'shish.</p>
+      <button class="btn btn-danger-soft btn-block mt-12" type="submit">{% include "partials/icon.html" with name="trash" class="sm" %} Jadvaldan olib tashlash</button>
+    </form>
+  {% endif %}
+</div>

@@ -1,0 +1,88 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Yotoqxona davomati{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Yotoqxona davomati</h1>
+    <p class="sub">{{ start|date:"d.m" }} — {{ end|date:"d.m.Y" }} · {{ days|length }} kun · {{ total }} o'quvchi</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-excel" href="{% url 'dorm:attendance_export' %}?{{ querystring }}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+    <a class="btn btn-primary" data-write href="{% url 'dorm:attendance_day' %}">{% include "partials/icon.html" with name="check" class="sm" %} Kunlik belgilash</a>
+  </div>
+</div>
+
+<div class="grid grid-3x2 stats-row">
+  <div class="card stat"><div class="top"><span class="label">Jami o'quvchi</span><span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.total }} <span class="unit">ta</span></div><div class="foot">hozir yashayapti</div></div>
+  <div class="card stat"><div class="top"><span class="label">O'g'il bolalar</span><span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.male }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Qiz bolalar</span><span class="ico">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.female }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Bugun bor</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value text-success">{{ stats.present }} <span class="unit">ta</span></div><div class="foot">kechikkanlar bilan</div></div>
+  <div class="card stat"><div class="top"><span class="label">Bugun yo'q</span><span class="ico tone-danger">{% include "partials/icon.html" with name="x" class="sm" %}</span></div><div class="value text-danger">{{ stats.absent }} <span class="unit">ta</span></div><div class="foot">sababli bilan</div></div>
+  <a class="card stat" {% if can_mark %}href="{% url 'dorm:attendance_day' %}"{% endif %}><div class="top"><span class="label">Belgilanmagan</span><span class="ico tone-warning">{% include "partials/icon.html" with name="alert" class="sm" %}</span></div><div class="value text-warning">{{ stats.unmarked }} <span class="unit">ta</span></div><div class="foot">bugun · belgilash →</div></a>
+</div>
+
+<form class="card card-pad att-filter" method="get" role="search">
+  <div class="att-filter-fields">
+    {{ form.q }}{{ form.gender }}{{ form.room }}{{ form.school_class }}
+    <label class="att-date"><span class="sr-only">Sanadan</span>{{ form.date_from }}</label>
+    <label class="att-date"><span class="sr-only">Sanagacha</span>{{ form.date_to }}</label>
+  </div>
+  <div class="att-filter-actions">
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="search" class="sm" %} Ko'rish</button>
+    <a class="btn btn-secondary btn-icon" href="{% url 'dorm:attendance' %}" aria-label="Filtrni tozalash" title="Filtrni tozalash">{% include "partials/icon.html" with name="rotate" class="sm" %}</a>
+  </div>
+</form>
+
+<div class="att-legend">
+  <b>Belgilar:</b>
+  <span><i class="att-cell att-empty">O</i> Belgilanmagan</span>
+  <span><i class="att-cell att-B">B</i> Bor</span>
+  <span><i class="att-cell att-Y">Y</i> Yo'q</span>
+  <span><i class="att-cell att-K">K</i> Kechikdi</span>
+  <span><i class="att-cell att-S">S</i> Sababli</span>
+  {% if can_mark %}<small class="muted">· katakni bosing — belgini tanlang</small>{% endif %}
+</div>
+
+<section class="card" {% if can_mark %}data-att-board data-mark-url="{% url 'dorm:attendance_mark' %}"{% endif %}>
+  {% csrf_token %}
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="att-table">
+        <thead>
+          <tr>
+            <th class="att-name" scope="col">O'quvchi · xona</th>
+            {% for d in days %}<th class="att-day{% if d.weekend %} is-weekend{% endif %}{% if d.today %} is-today{% endif %}" scope="col"><b class="num">{{ d.date|date:"d" }}</b><small>{{ d.label }}</small></th>{% endfor %}
+            <th class="att-sum t-B" scope="col">B<small>Jami</small></th><th class="att-sum t-Y" scope="col">Y<small>Jami</small></th>
+            <th class="att-sum t-K" scope="col">K<small>Jami</small></th><th class="att-sum t-S" scope="col">S<small>Jami</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in page.object_list %}
+            <tr data-att-row>
+              <th class="att-name" scope="row"><b>{{ r.student.full_name }}</b><small>{{ r.stay.room.name }}</small></th>
+              {% for c in r.cells %}
+                <td>{% if c.active %}<button class="att-cell {% if c.status %}att-{{ c.status }}{% else %}att-empty{% endif %}" type="button" data-student="{{ r.student.pk }}" data-date="{{ c.date|date:'Y-m-d' }}" data-status="{{ c.status }}" aria-label="{{ r.student.short_name }}, {{ c.date|date:'d.m' }}">{{ c.status|default:"O" }}</button>{% else %}<span class="att-off" title="Yotoqxonada yashamagan">·</span>{% endif %}</td>
+              {% endfor %}
+              {% for key, n in r.totals.items %}<td class="att-sum t-{{ key }} num" data-total="{{ key }}">{{ n }}</td>{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="bed" class="lg" %}</span>
+      <h3>O'quvchi topilmadi</h3>
+      <p>Bu davrda yotoqxonada yashagan o'quvchi yo'q yoki filtrga mos kelmadi.</p>
+    </div>
+  {% endif %}
+  <div class="att-pop" role="menu" aria-label="Belgini tanlash" hidden data-att-pop>
+    {% for value, label in statuses %}<button class="att-cell att-{{ value }}" type="button" role="menuitem" data-set="{{ value }}" title="{{ label }}">{{ value }}</button>{% endfor %}
+    <button class="att-cell att-empty" type="button" role="menuitem" data-set="" title="Belgini olib tashlash">O</button>
+  </div>
+</section>
+{% endblock %}

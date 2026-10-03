@@ -1,0 +1,11 @@
+# Serverda tizim nginx'i ALLAQACHON bor bo'lsa (boshqa saytlar bilan): bizning nginx konteyneri ishlatilmaydi,
+# ilova faqat 127.0.0.1:8001 da tinglaydi, tizim nginx'i unga proksi qiladi (deploy/host-nginx/edu.conf).
+#   docker compose -f docker-compose.prod.yml -f docker-compose.hostnginx.yml --env-file .env.prod up -d --build
+services:
+  web:
+    ports: ["127.0.0.1:8001:8000"]          # faqat server ichidan — tashqaridan to'g'ridan-to'g'ri kirib bo'lmaydi
+    volumes:
+      - ./media:/app/media                  # tizim nginx'i /media/ ni shu papkadan beradi
+      - private_media:/app/private_media
+  nginx:
+    profiles: [disabled]                     # ishga tushirilmaydi

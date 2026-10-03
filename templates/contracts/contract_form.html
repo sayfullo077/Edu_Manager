@@ -24,6 +24,7 @@
   {% csrf_token %}
   {% include "partials/form_errors.html" %}
   <div class="form-grid">
+    {% include "partials/field.html" with field=form.template class="span-2" %}
     {% include "partials/field.html" with field=form.full_tariff %}
     {% include "partials/field.html" with field=form.discount_percent %}
     {% include "partials/field.html" with field=form.discount_reason class="span-2" %}

@@ -39,7 +39,7 @@
         {% if contract.discount_reason %}<div><dt>Chegirma sababi</dt><dd>{{ contract.discount_reason }}</dd></div>{% endif %}
       </dl>
       {% if contract.is_editable %}
-        <a class="btn btn-secondary btn-sm mt-12" href="{% url 'contracts:contract_update' contract.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Shartnomani tahrirlash</a>
+        <a data-write class="btn btn-secondary btn-sm mt-12" href="{% url 'contracts:contract_update' contract.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Shartnomani tahrirlash</a>
       {% endif %}
     {% else %}
       <p class="muted">Tarif shartnoma tuzilganda belgilanadi — hozircha shartnoma yo'q.</p>
@@ -132,7 +132,7 @@
       {% endfor %}
     </ul>
     {% if not contract and student.status == "active" %}
-      <div class="text-right mt-12"><a class="btn btn-outline btn-sm" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma yaratish</a></div>
+      <div class="text-right mt-12"><a data-write class="btn btn-outline btn-sm" href="{% url 'contracts:contract_create' student.pk %}">{% include "partials/icon.html" with name="plus" class="sm" %} Shartnoma yaratish</a></div>
     {% endif %}
   </details>
 

@@ -192,7 +192,7 @@ def reception_dashboard(branch, month: date | None = None) -> dict:
     students = Student.objects.filter(branch=branch).aggregate(
         active=Count("id", filter=Q(status=Student.Status.ACTIVE)),
         new=Count("id", filter=Q(joined_at__gte=month_start, status=Student.Status.ACTIVE)))
-    teachers = Teacher.objects.filter(branch=branch).exclude(status=Teacher.Status.DISMISSED).aggregate(
+    teachers = Teacher.objects.filter(branch=branch).exclude(status__in=Teacher.NOT_WORKING).aggregate(
         total=Count("id"), vacation=Count("id", filter=Q(status=Teacher.Status.VACATION)))
     today_flow = day_flow(branch, today)
     yesterday_flow = day_flow(branch, today - timedelta(days=1))

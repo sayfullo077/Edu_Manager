@@ -1,0 +1,84 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}O'qituvchilar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>O'qituvchilar</h1>
+    <p class="sub">{{ request.branch.name }} · {{ page.paginator.count }} ta topildi</p>
+  </div>
+  <div class="page-actions">
+    <a data-write class="btn btn-primary" href="{% url 'people:teacher_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Yangi o'qituvchi</a>
+  </div>
+</div>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ page.paginator.count }} ta topildi</span>
+    <a class="chip" href="{% url 'people:teacher_list' %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-4 stats-row">
+  <a class="card stat" href="{% url 'people:teacher_list' %}"><div class="top"><span class="label">Jami</span><span class="ico">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ stats.total }} <span class="unit">ta</span></div></a>
+  <a class="card stat" href="?status=active"><div class="top"><span class="label">Faol</span><span class="ico tone-success">{% include "partials/icon.html" with name="check" class="sm" %}</span></div><div class="value">{{ stats.active }} <span class="unit">ta</span></div></a>
+  <a class="card stat" href="?status=vacation"><div class="top"><span class="label">Ta'tilda</span><span class="ico tone-warning">{% include "partials/icon.html" with name="clock" class="sm" %}</span></div><div class="value">{{ stats.vacation }} <span class="unit">ta</span></div></a>
+  <a class="card stat" href="?status=dismissed"><div class="top"><span class="label">Bo'shatilgan</span><span class="ico tone-danger">{% include "partials/icon.html" with name="x" class="sm" %}</span></div><div class="value">{{ stats.dismissed }} <span class="unit">ta</span></div></a>
+</div>
+
+{% url 'people:teacher_list' as reset_url %}
+{% include "partials/filter_bar.html" with placeholder="Ism, kod yoki telefon bo'yicha qidirish…" show_labels=True %}
+
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr>
+          <th class="num-col">#</th><th>F.I.Sh.</th><th class="hide-sm">Turi</th><th class="hide-sm">Telefon</th>
+          <th>Status</th><th class="actions">Amallar</th>
+        </tr></thead>
+        <tbody>
+          {% for t in page.object_list %}
+            <tr class="{% if t.status == 'dismissed' %}row-muted{% endif %}">
+              <td class="num-col">{{ page.start_index|add:forloop.counter0 }}</td>
+              <td>
+                <a class="person" href="{% url 'people:teacher_detail' t.pk %}">
+                  <span class="avatar t{{ t.code|tone }}">{% if t.user.avatar %}<img src="{{ t.user.avatar.url }}" alt="">{% else %}{{ t.user.initials }}{% endif %}</span>
+                  <span><b>{{ t.user.full_name }}</b><small>{{ t.code }}</small>
+                    {% with subs=t.subjects.all %}{% if subs %}<span class="chip-row tag-row">{% for sub in subs|slice:":3" %}<span class="badge t{{ sub.pk|tone }} badge-tone">{{ sub.name }}</span>{% endfor %}{% if subs|length > 3 %}<span class="badge badge-muted">+{{ subs|length|add:"-3" }}</span>{% endif %}</span>{% endif %}{% endwith %}
+                  </span>
+                </a>
+              </td>
+              <td class="hide-sm"><span class="badge {% if t.kind == 'coordinator' %}badge-accent{% elif t.kind == 'assistant' %}badge-muted{% else %}badge-info{% endif %}">{{ t.get_kind_display }}</span></td>
+              <td class="hide-sm num nowrap">{{ t.user.phone|phone }}</td>
+              <td>
+                <form class="inline-form" method="post" action="{% url 'people:teacher_set_status' t.pk %}">
+                  {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <select class="input input-sm status-select status-{{ t.status }}" name="status" aria-label="Holat" data-autosubmit>
+                    {% for value, label in statuses %}<option value="{{ value }}" {% if value == t.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                  </select>
+                </form>
+                <span class="badge ro-only {% if t.status == 'active' %}badge-success{% elif t.status == 'vacation' %}badge-warning{% elif t.status == 'dismissed' %}badge-danger{% else %}badge-muted{% endif %}">{{ t.get_status_display }}</span>
+              </td>
+              <td class="actions"><div class="row-actions">
+                <a class="icon-btn tone-info" href="{% url 'people:teacher_detail' t.pk %}" title="Ko'rish" aria-label="Ko'rish">{% include "partials/icon.html" with name="eye" class="sm" %}</a>
+                <a data-write class="icon-btn tone-warning" href="{% url 'people:teacher_update' t.pk %}" title="Tahrirlash" aria-label="Tahrirlash">{% include "partials/icon.html" with name="pencil" class="sm" %}</a>
+                <a class="icon-btn tone-success" href="{% url 'academics:timetable' %}?by=teacher&amp;teacher={{ t.pk }}" title="Dars jadvali" aria-label="Dars jadvali">{% include "partials/icon.html" with name="calendar" class="sm" %}</a>
+              </div></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="briefcase" class="lg" %}</span>
+      <h3>O'qituvchi topilmadi</h3>
+      <p>Tanlangan filtr bo'yicha o'qituvchi yo'q.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

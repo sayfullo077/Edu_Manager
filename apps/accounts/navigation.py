@@ -41,13 +41,13 @@ NAVIGATION: dict[str, list[tuple[str | None, list[NavItem]]]] = {
     Role.TEACHER: [
         (None, [
             NavItem("Bosh sahifa", "home"),
-            NavItem("Mening jadvalim", "calendar", "my-schedule"),
-            NavItem("Guruhlarim", "users", "my-groups"),
-            NavItem("Sinf rahbarlik", "school", "homeroom"),
+            NavItem("Mening jadvalim", "calendar", "my-schedule", "academics:my_schedule"),
+            NavItem("Guruhlarim", "users", "my-groups", "academics:my_groups"),
+            NavItem("Sinf rahbarlik", "school", "homeroom", "academics:my_homeroom"),
         ]),
-        ("Oylik", [
-            NavItem("Oyligim", "wallet", "my-salary"),
-            NavItem("Oylik qanday hisoblanadi", "info", "salary-guide"),
+        ("Ish haqi", [
+            NavItem("Ish haqim", "wallet", "my-salary", "payroll:my_salary"),
+            NavItem("Ish haqi qoidalari", "info", "salary-guide", "academics:my_salary_guide"),
         ]),
     ],
     Role.HEAD_TEACHER: [
@@ -55,13 +55,13 @@ NAVIGATION: dict[str, list[tuple[str | None, list[NavItem]]]] = {
         ("Ta'lim bo'limi", [
             STUDENTS,
             GUARDIANS,
-            NavItem("Sinflar va guruhlar", "school", "classes"),
+            NavItem("Sinflar va guruhlar", "school", "classes", "academics:class_list"),
             CONTRACTS,
-            NavItem("Dars jadvali", "calendar", "timetable"),
+            NavItem("Dars jadvali", "calendar", "timetable", "academics:timetable"),
         ]),
-        ("Xodimlar", [NavItem("O'qituvchilar", "briefcase", "teachers")]),
-        ("Oyliklar", [NavItem("Oylik hisob-kitob", "wallet", "payroll")]),
-        ("Yotoqxona", [NavItem("Davomat", "bed", "dorm-attendance")]),
+        ("Xodimlar", [NavItem("O'qituvchilar", "briefcase", "teachers", "people:teacher_list")]),
+        ("Ish haqi", [NavItem("Ish haqi hisobi", "wallet", "payroll", "payroll:list")]),
+        ("Yotoqxona", [NavItem("Yotoqxona davomati", "calendar", "dorm-attendance", "dorm:attendance")]),
     ],
     Role.RECEPTION: [
         (None, [NavItem("Bosh sahifa", "home")]),
@@ -70,7 +70,7 @@ NAVIGATION: dict[str, list[tuple[str | None, list[NavItem]]]] = {
             GUARDIANS,
             CONTRACTS,
         ]),
-        ("Kirim", [
+        ("Moliya", [
             NavItem("Kassa", "wallet", "cashbox", "finance:cashbox"),
             NavItem("To'lovlar", "receipt", "payments", "finance:payment_list"),
             NavItem("Tranzaksiyalar", "arrows", "transactions", "finance:transaction_list"),
@@ -85,6 +85,41 @@ NAVIGATION: dict[str, list[tuple[str | None, list[NavItem]]]] = {
             NavItem("To'lov grafiklari", "calendar", "dorm-invoices", "dorm:invoice_list"),
             NavItem("Qarzdorlar", "alert", "dorm-debtors", "dorm:debtor_list"),
             NavItem("Mulkdor to'lovlari", "wallet", "dorm-landlord"),
+        ]),
+    ],
+    # Direktor — nazorat: hamma bo'limlarni ko'radi; o'zgartiradi faqat byudjet limiti, oylik sozlamalari, xodimlar
+    Role.DIRECTOR: [
+        (None, [NavItem("Bosh sahifa", "home")]),
+        ("Hisobotlar", [
+            NavItem("Moliyaviy hisobot", "chart", "director-finance", "director:finance_report"),
+            NavItem("Davomat hisoboti", "check", "director-attendance", "director:attendance_report"),
+        ]),
+        ("Moliya", [
+            NavItem("Kassa", "wallet", "cashbox", "finance:cashbox"),
+            NavItem("To'lovlar", "receipt", "payments", "finance:payment_list"),
+            NavItem("Tranzaksiyalar", "arrows", "transactions", "finance:transaction_list"),
+            NavItem("Bank hisobi", "bank", "bank", "finance:bank_account"),
+            NavItem("To'lov grafiklari", "calendar", "invoices", "finance:invoice_list"),
+            NavItem("Qarzdorlar", "alert", "debtors", "finance:debtor_list"),
+            BUDGET,
+        ]),
+        ("Ta'lim bo'limi", [
+            STUDENTS,
+            GUARDIANS,
+            CONTRACTS,
+            NavItem("Sinflar va guruhlar", "school", "classes", "academics:class_list"),
+            NavItem("Dars jadvali", "calendar", "timetable", "academics:timetable"),
+        ]),
+        ("Xodimlar", [
+            NavItem("O'qituvchilar", "briefcase", "teachers", "people:teacher_list"),
+            NavItem("Xodimlar va kirish", "shield", "staff", "director:staff"),
+        ]),
+        ("Ish haqi", [NavItem("Ish haqi hisobi", "wallet", "payroll", "payroll:list")]),
+        ("Yotoqxona", [
+            NavItem("Boshqaruv paneli", "chart", "dorm", "dorm:dashboard"),
+            NavItem("Xonalar", "bed", "dorm-rooms", "dorm:room_list"),
+            NavItem("Qarzdorlar", "alert", "dorm-debtors", "dorm:debtor_list"),
+            NavItem("Davomat", "calendar", "dorm-attendance", "dorm:attendance"),
         ]),
     ],
 }
@@ -106,9 +141,10 @@ GROUP_ICONS = {
     "Ta'lim bo'limi": "graduation",
     "Kirim": "wallet",
     "Yotoqxona": "home",
-    "Oylik": "wallet",
-    "Oyliklar": "wallet",
+    "Ish haqi": "wallet",
     "Xodimlar": "briefcase",
+    "Hisobotlar": "chart",
+    "Moliya": "bank",
 }
 
 
@@ -133,11 +169,13 @@ def build_menu(role: str | None, path: str) -> list[dict]:
 # Telefondagi pastki tab bar: har bir rol uchun eng ko'p ishlatiladigan 4 ta bo'lim (5-chisi — "Menyu").
 # Kalit — NavItem.slug ("home" — bosh sahifa); qiymat — tab bar uchun qisqa nom.
 TAB_BAR: dict[str, list[tuple[str, str]]] = {
-    Role.TEACHER: [("home", "Asosiy"), ("my-schedule", "Jadval"), ("my-groups", "Guruhlar"), ("my-salary", "Oylik")],
+    Role.TEACHER: [("home", "Asosiy"), ("my-schedule", "Jadval"), ("my-groups", "Guruhlar"), ("my-salary", "Maosh")],
     Role.HEAD_TEACHER: [("home", "Asosiy"), ("students", "O'quvchilar"), ("timetable", "Jadval"),
                         ("teachers", "O'qituvchilar")],
     Role.RECEPTION: [("home", "Asosiy"), ("students", "O'quvchilar"), ("cashbox", "Kassa"),
                      ("debtors", "Qarzdorlar")],
+    Role.DIRECTOR: [("home", "Asosiy"), ("director-finance", "Moliya"), ("director-attendance", "Davomat"),
+                    ("payroll", "Maosh")],
 }
 
 

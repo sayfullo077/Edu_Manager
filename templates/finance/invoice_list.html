@@ -58,7 +58,7 @@
               <td class="actions">
                 <div class="row-actions">
                   <a class="icon-btn tone-info" href="{% url 'people:student_detail' s.pk %}?view=payment#grafik" title="O'quvchi grafigi" aria-label="O'quvchi grafigi">{% include "partials/icon.html" with name="eye" class="sm" %}</a>
-                  {% if i.remaining %}<a class="icon-btn tone-success" href="{% url 'finance:payment_create' s.pk %}" title="To'lov qabul qilish" aria-label="To'lov qabul qilish">{% include "partials/icon.html" with name="wallet" class="sm" %}</a>{% endif %}
+                  {% if i.remaining %}<a data-write class="icon-btn tone-success" href="{% url 'finance:payment_create' s.pk %}" title="To'lov qabul qilish" aria-label="To'lov qabul qilish">{% include "partials/icon.html" with name="wallet" class="sm" %}</a>{% endif %}
                 </div>
               </td>
             </tr>

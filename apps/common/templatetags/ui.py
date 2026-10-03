@@ -150,7 +150,7 @@ def tojson(value):
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
-ROLE_ICONS = {"reception": "building", "head_teacher": "building", "teacher": "book"}
+ROLE_ICONS = {"reception": "building", "head_teacher": "building", "teacher": "book", "director": "shield"}
 
 
 @register.filter

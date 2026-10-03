@@ -16,9 +16,14 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(Branch)
 class BranchAdmin(admin.ModelAdmin):
-    list_display = ["name", "phone", "is_active"]
+    list_display = ["name", "phone", "director_name", "is_active"]
     list_filter = ["is_active"]
     search_fields = ["name"]
+    fieldsets = [
+        (None, {"fields": ["name", "address", "phone", "is_active"]}),
+        ("Shartnoma rekvizitlari", {"fields": ["director_name", "bank_account", "bank_name", "bank_mfo", "inn"],
+                                    "description": "Shartnoma matni va rekvizitlar blokida ko'rsatiladi."}),
+    ]
 
 
 @admin.register(AcademicYear)

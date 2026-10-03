@@ -1,9 +1,11 @@
 {% comment %}
   Ro'yxat filtri: qidiruv + "Filtr qo'shish" menyusi + Qidirish/Excel/Tozalash + ochilgan filtr maydonlari.
   Parametrlar: filter_menu (common.forms.filter_menu), active_filters, has_filters, q, placeholder,
-  reset_url, export_url (ixtiyoriy), print_url (ixtiyoriy — chop etish ro'yxati), menu_title (ixtiyoriy), show_labels (ixtiyoriy). JS: app.js [data-filter-form].
+  reset_url, export_url (ixtiyoriy), print_url (ixtiyoriy — chop etish ro'yxati), keep_view (ixtiyoriy —
+  sahifadagi ko'rinish/segment, qidiruvda saqlanadi), menu_title (ixtiyoriy), show_labels (ixtiyoriy). JS: app.js [data-filter-form].
 {% endcomment %}
 <form class="card toolbar filter-bar" method="get" role="search" data-filter-form>
+  {% if keep_view %}<input type="hidden" name="view" value="{{ keep_view }}">{% endif %}
   <div class="filter-main">
     <label class="search-input">
       <span class="sr-only">Qidirish</span>

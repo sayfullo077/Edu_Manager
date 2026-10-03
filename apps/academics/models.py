@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -136,6 +137,9 @@ class GroupSubject(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, verbose_name="fan")
     teacher = models.ForeignKey("people.Teacher", on_delete=models.PROTECT, related_name="group_subjects",
                                 verbose_name="o'qituvchi")
+    hours_per_week = models.PositiveSmallIntegerField("haftalik soat", default=0,
+                                                      validators=[MaxValueValidator(20)],
+                                                      help_text="Dars jadvalidagi limit. 0 — belgilanmagan")
 
     class Meta:
         verbose_name = "guruh fani"
@@ -159,3 +163,104 @@ class GroupMembership(models.Model):
 
     def __str__(self):
         return f"{self.student} → {self.group}"
+
+
+class TimeSlot(models.Model):
+    """Qo'ng'iroq jadvali: dars raqami va vaqti (filial bo'yicha). Zavuch "Qo'ng'iroqlar" oynasida o'zgartiradi."""
+
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="time_slots", verbose_name="filial")
+    number = models.PositiveSmallIntegerField("dars raqami", validators=[MinValueValidator(1), MaxValueValidator(12)])
+    start = models.TimeField("boshlanishi")
+    end = models.TimeField("tugashi")
+    is_break = models.BooleanField("tanaffus (obed)", default=False, help_text="Bu vaqtga dars qo'yilmaydi")
+
+    class Meta:
+        verbose_name = "dars vaqti"
+        verbose_name_plural = "dars vaqtlari (qo'ng'iroqlar)"
+        ordering = ["number"]
+        constraints = [
+            models.UniqueConstraint(fields=["branch", "number"], name="unique_slot_number"),
+            models.CheckConstraint(condition=models.Q(end__gt=models.F("start")), name="slot_end_after_start"),
+        ]
+
+    def __str__(self):
+        return f"{self.number}-dars ({self.start:%H:%M}–{self.end:%H:%M})"
+
+
+class Weekday(models.IntegerChoices):
+    MONDAY = 1, "Dushanba"
+    TUESDAY = 2, "Seshanba"
+    WEDNESDAY = 3, "Chorshanba"
+    THURSDAY = 4, "Payshanba"
+    FRIDAY = 5, "Juma"
+    SATURDAY = 6, "Shanba"
+
+
+class Lesson(TimeStampedModel):
+    """Haftalik jadvaldagi dars: guruh + fan + o'qituvchi, kun va dars raqami, xona.
+
+    Tarix saqlanadi: dars `valid_from`–`valid_to` oralig'ida amal qiladi (`valid_to` bo'sh — hozir ham).
+    Jadval o'zgarsa eski yozuv yopiladi, yangisi ochiladi — o'tgan haftalar va darsbay oylik o'zgarmaydi.
+    O'qituvchi yozuvning o'zida saqlanadi: guruhda o'qituvchi almashsa, darslar o'sha kundan bo'linadi.
+    """
+
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="lessons", verbose_name="filial")
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.PROTECT, related_name="lessons",
+                                      verbose_name="o'quv yili")
+    group = models.ForeignKey(Group, on_delete=models.PROTECT, related_name="lessons", verbose_name="guruh")
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="lessons", verbose_name="fan")
+    teacher = models.ForeignKey("people.Teacher", on_delete=models.PROTECT, related_name="lessons",
+                                verbose_name="o'qituvchi")
+    weekday = models.PositiveSmallIntegerField("hafta kuni", choices=Weekday.choices)
+    slot = models.ForeignKey(TimeSlot, on_delete=models.PROTECT, related_name="lessons", verbose_name="dars vaqti")
+    room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="xona")
+    valid_from = models.DateField("amal qila boshlagan")
+    valid_to = models.DateField("amal qilgan oxirgi kun", null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+",
+                                   verbose_name="kiritgan")
+
+    class Meta:
+        verbose_name = "dars"
+        verbose_name_plural = "darslar (jadval)"
+        ordering = ["weekday", "slot__number"]
+        indexes = [models.Index(fields=["branch", "weekday", "slot"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=models.F("valid_from")),
+                name="lesson_validity_order"),
+        ]
+
+    def __str__(self):
+        return f"{self.group} · {self.subject} · {self.get_weekday_display()} {self.slot.number}-dars"
+
+    def active_on(self, day) -> bool:
+        return self.valid_from <= day and (self.valid_to is None or self.valid_to >= day)
+
+
+class ClassAttendance(models.Model):
+    """Sinf davomati (sinf rahbari kiritadi): bir o'quvchi — bir kun — bitta belgi va izoh (sabab)."""
+
+    class Status(models.TextChoices):
+        PRESENT = "B", "Keldi"
+        ABSENT = "Y", "Kelmadi"
+        LATE = "K", "Kechikdi"
+        EXCUSED = "S", "Sababli"
+
+    school_class = models.ForeignKey(SchoolClass, on_delete=models.PROTECT, related_name="attendance",
+                                     verbose_name="sinf")
+    student = models.ForeignKey("people.Student", on_delete=models.PROTECT, related_name="class_attendance",
+                                verbose_name="o'quvchi")
+    date = models.DateField("sana")
+    status = models.CharField("belgi", max_length=1, choices=Status.choices)
+    note = models.CharField("izoh", max_length=255, blank=True)
+    marked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    updated_at = models.DateTimeField("belgilangan", auto_now=True)
+
+    class Meta:
+        verbose_name = "sinf davomati"
+        verbose_name_plural = "sinf davomati"
+        constraints = [models.UniqueConstraint(fields=["student", "date"], name="one_class_mark_per_day")]
+        indexes = [models.Index(fields=["school_class", "date"])]
+
+    def __str__(self):
+        return f"{self.student} · {self.date} · {self.status}"

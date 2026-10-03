@@ -1,0 +1,113 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Sinflar va guruhlar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Sinflar va guruhlar</h1>
+    <p class="sub">{{ request.branch.name }} · {{ count }} ta {% if view == "groups" %}guruh{% else %}sinf{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    {% if view == "groups" %}
+      <a data-write class="btn btn-primary" href="{% url 'academics:group_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Guruh qo'shish</a>
+    {% else %}
+      <a data-write class="btn btn-primary" href="{% url 'academics:class_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Sinf qo'shish</a>
+    {% endif %}
+  </div>
+</div>
+
+<nav class="segmented view-switch stats-row" aria-label="Ko'rinish">
+  <a href="?{{ querystring }}" {% if view == "classes" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="school" class="sm" %} Sinflar <small>{{ stats.classes }}</small></a>
+  <a href="?{{ querystring }}&amp;view=groups" {% if view == "groups" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" class="sm" %} Guruhlar <small>{{ stats.groups }}</small></a>
+</nav>
+
+{% if has_filters %}
+  <div class="chip-row result-chips">
+    <span class="chip chip-accent">{% include "partials/icon.html" with name="filter" class="sm" %} {{ count }} ta topildi</span>
+    <a class="chip" href="{% url 'academics:class_list' %}{% if view == 'groups' %}?view=groups{% endif %}">{% include "partials/icon.html" with name="x" class="sm" %} Filtrni tozalash</a>
+  </div>
+{% endif %}
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat">
+    <div class="top"><span class="label">Sinflar</span><span class="ico">{% include "partials/icon.html" with name="school" class="sm" %}</span></div>
+    <div class="value">{{ stats.classes }}</div>
+    <div class="foot">{% if stats.no_homeroom %}{{ stats.no_homeroom }} tasida sinf rahbari yo'q{% else %}Hammasida sinf rahbari bor{% endif %}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Guruhlar</span><span class="ico tone-info">{% include "partials/icon.html" with name="users" class="sm" %}</span></div>
+    <div class="value">{{ stats.groups }}</div>
+    <div class="foot">{{ stats.subset_groups }} ta tanlov guruhi</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Sinflardagi o'quvchilar</span><span class="ico tone-success">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div>
+    <div class="value">{{ stats.students }}</div>
+    <div class="foot">faol o'quvchilar</div>
+  </div>
+  <a class="card stat" href="{% url 'people:student_list' %}">
+    <div class="top"><span class="label">Sinfsiz o'quvchilar</span><span class="ico tone-warning">{% include "partials/icon.html" with name="alert" class="sm" %}</span></div>
+    <div class="value">{{ stats.without_class }}</div>
+    <div class="foot">sinfga biriktirilmagan</div>
+  </a>
+</div>
+
+{% url 'academics:class_list' as reset_url %}
+{% include "partials/filter_bar.html" with placeholder="Sinf, guruh kodi, fan yoki o'qituvchi…" show_labels=True keep_view=view %}
+
+{% if view == "groups" %}
+  {% if groups %}
+    <div class="group-grid">{% for g in groups %}{% include "academics/_group_card.html" %}{% endfor %}</div>
+  {% else %}
+    <div class="card empty">
+      <span class="ico">{% include "partials/icon.html" with name="users" class="lg" %}</span>
+      <h3>Guruh topilmadi</h3>
+      <p>Guruh — o'qitish birligi: fan, o'qituvchi va o'quvchilar. O'qituvchi oyligi shu bo'yicha hisoblanadi.</p>
+      <a data-write class="btn btn-primary" href="{% url 'academics:group_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Guruh qo'shish</a>
+    </div>
+  {% endif %}
+{% else %}
+  <div class="card">
+    {% if classes %}
+      <div class="table-wrap">
+        <table class="table table-dense">
+          <thead><tr>
+            <th>Sinf</th><th class="hide-sm hide-lg">Turi va til</th><th>Sinf rahbari</th><th class="hide-sm hide-xl">Xona</th>
+            <th>O'quvchilar</th><th class="hide-xs">Guruhlar</th><th class="text-right hide-lg">Tarif</th><th class="actions">Amallar</th>
+          </tr></thead>
+          <tbody>
+            {% for c in classes %}
+              <tr class="{% if not c.is_active %}row-muted{% endif %}">
+                <td><a class="person" href="{% url 'academics:class_detail' c.pk %}">
+                  <span class="avatar class-avatar t{{ c.name|tone }}">{{ c.name|class_short }}</span>
+                  <span><b>{{ c.name }}</b><small>{% if c.grade %}{{ c.grade }}-sinf · {% endif %}{{ c.academic_year.name }}{% if not c.is_active %} · faol emas{% endif %}</small></span></a></td>
+                <td class="hide-sm hide-lg"><span class="badge {% if c.kind == 'direction' %}badge-accent{% else %}badge-muted{% endif %}">{{ c.get_kind_display }}</span> <small class="muted">{{ c.get_language_display }}</small></td>
+                <td class="nowrap">{% if c.homeroom_teacher %}{{ c.homeroom_teacher.user.short_name }}{% else %}<span class="badge badge-warning">Biriktirilmagan</span>{% endif %}</td>
+                <td class="hide-sm hide-xl nowrap">{{ c.room.name|default:"—" }}</td>
+                <td><div class="occupancy-cell"><b class="num">{{ c.n_students }}/{{ c.capacity }}</b>{% widthratio c.n_students c.capacity 100 as pct %}{% bar pct "success" %}</div></td>
+                <td class="hide-xs num">{{ c.n_groups }}</td>
+                <td class="text-right num hide-lg">{{ c.monthly_tariff|money }}</td>
+                <td class="actions"><div class="row-actions">
+                  <a class="icon-btn tone-info" href="{% url 'academics:class_detail' c.pk %}" title="Ko'rish" aria-label="Ko'rish">{% include "partials/icon.html" with name="eye" class="sm" %}</a>
+                  <a data-write class="icon-btn tone-warning" href="{% url 'academics:class_update' c.pk %}" title="Tahrirlash" aria-label="Tahrirlash">{% include "partials/icon.html" with name="pencil" class="sm" %}</a>
+                  <form class="inline-form" method="post" action="{% url 'academics:class_delete' c.pk %}" data-confirm="«{{ c.name }}» sinfi o'chirilsinmi? O'quvchi yoki guruh tarixi bo'lsa, o'chirilmaydi — faolsizlantiriladi." data-confirm-ok="O'chirish">
+                    {% csrf_token %}<button class="icon-btn tone-danger" type="submit" title="O'chirish" aria-label="O'chirish">{% include "partials/icon.html" with name="trash" class="sm" %}</button>
+                  </form>
+                </div></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <span class="ico">{% include "partials/icon.html" with name="school" class="lg" %}</span>
+        <h3>Sinf topilmadi</h3>
+        <p>Tanlangan o'quv yili uchun sinflar yaratilmagan.</p>
+        <a data-write class="btn btn-primary" href="{% url 'academics:class_create' %}">{% include "partials/icon.html" with name="plus" class="sm" %} Sinf qo'shish</a>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

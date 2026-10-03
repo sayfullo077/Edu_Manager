@@ -2,6 +2,7 @@ import dataclasses
 
 from django import forms
 
+from apps.academics.models import SchoolClass
 from apps.common.forms import StyledFormMixin
 from apps.finance.forms import DebtorFilterForm, InvoiceFilterForm
 from apps.finance.models import Invoice
@@ -112,3 +113,34 @@ class DormDebtorFilterForm(DebtorFilterForm):
 
     def to_filters(self):
         return dataclasses.replace(super().to_filters(), category=Invoice.Category.DORM)
+
+
+class AttendanceFilterForm(forms.Form):
+    """Davomat filtri (asl tizimdagidek bitta qatorda): ism/kod, jinsi, xona, sinf, sanalar."""
+
+    q = forms.CharField(required=False, max_length=100, widget=forms.TextInput(attrs={
+        "placeholder": "O'quvchi ismi yoki kodi…", "type": "search", "aria-label": "Qidiruv"}))
+    gender = forms.ChoiceField(required=False, choices=[("", "Jinsi"), *Gender.choices])
+    room = forms.ModelChoiceField(required=False, queryset=None, empty_label="Barcha xonalar")
+    school_class = forms.ModelChoiceField(required=False, queryset=None, empty_label="Barcha sinflar")
+    date_from = forms.DateField(required=False, widget=DateInput(attrs={"aria-label": "Sanadan"}))
+    date_to = forms.DateField(required=False, widget=DateInput(attrs={"aria-label": "Sanagacha"}))
+
+    def __init__(self, *args, branch, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["room"].queryset = selectors.room_choices(branch)
+        self.fields["school_class"].queryset = SchoolClass.objects.filter(
+            branch=branch, is_active=True, academic_year__is_current=True).order_by("grade", "name")
+        labels = {"gender": "Jinsi", "room": "Xona", "school_class": "Sinf"}
+        for name, field in self.fields.items():
+            field.widget.attrs["class"] = "input"
+            if name in labels:
+                field.widget.attrs["aria-label"] = labels[name]
+
+    def to_filters(self) -> selectors.AttendanceFilters:
+        d = self.cleaned_data if self.is_bound and self.is_valid() else {}
+        return selectors.AttendanceFilters(
+            q=(d.get("q") or "").strip(), gender=d.get("gender", ""),
+            room=d["room"].pk if d.get("room") else None,
+            school_class=d["school_class"].pk if d.get("school_class") else None,
+            date_from=d.get("date_from"), date_to=d.get("date_to"))

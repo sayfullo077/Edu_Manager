@@ -1,0 +1,133 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ c.name }} · Sinf rahbarlik{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'academics:my_homeroom' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Sinflar</a>
+    <h1 class="mt-12">{{ c.name }} <small class="muted">({{ n_students }})</small></h1>
+    <p class="sub">{{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-excel" href="{% url 'academics:my_homeroom_export' c.pk %}?month={% if stats %}{{ stats.month|date:'Y-m' }}{% else %}{{ day|date:'Y-m' }}{% endif %}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+  </div>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+<nav class="segmented seg-wide" aria-label="Bo'limlar">
+  <a href="?tab=day" {% if tab == "day" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="check" class="sm" %} Kunlik davomat</a>
+  <a href="?tab=week" {% if tab == "week" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="calendar" class="sm" %} Haftalik jadval</a>
+  <a href="?tab=month" {% if tab == "month" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="chart" class="sm" %} Oylik statistika</a>
+</nav>
+
+{% if tab == "day" %}
+  <form class="card" method="post" data-homeroom-day>
+    {% csrf_token %}
+    <div class="card-title hr-toolbar">
+      <label class="hr-date"><span>Sana:</span>
+        <input class="input input-sm" type="date" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" data-date-nav="{% url 'academics:my_homeroom_class' c.pk %}"></label>
+      <button class="btn btn-secondary btn-sm" type="button" data-hr-all>{% include "partials/icon.html" with name="check" class="sm" %} Hammasi keldi</button>
+      <button class="btn btn-primary btn-sm" type="submit">Saqlash</button>
+    </div>
+    <p class="small muted hr-hint">{% include "partials/icon.html" with name="info" class="sm" %} <span>Katakni bosing — holat almashadi: bo'sh → keldi ✓ → kelmadi ✗ → kechikdi K → sababli S{% if unmarked %} · belgilanmagan: <b>{{ unmarked }}</b>{% endif %}</span></p>
+    {% if sheet %}
+      <div class="table-wrap">
+        <table class="table table-dense hr-table">
+          <thead><tr><th class="num-col">#</th><th>O'quvchi</th><th class="text-center">Davomat</th><th class="hide-sm">Ota-ona</th><th>Izoh</th></tr></thead>
+          <tbody>
+            {% for item in sheet %}
+              {% with s=item.student m=item.mark %}
+              <tr>
+                <td class="num-col">{{ forloop.counter }}</td>
+                <td><span class="person"><span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span><b>{{ s.full_name }}</b></span></td>
+                <td class="text-center">
+                  <input type="hidden" name="s{{ s.pk }}" value="{{ m.status|default:'' }}">
+                  <button class="att-cell hr-mark {% if m %}att-{{ m.status }}{% else %}att-empty{% endif %}" type="button" data-hr-mark aria-label="{{ s.short_name }} — davomat: {% if m %}{{ m.get_status_display }}{% else %}belgilanmagan{% endif %}">{% if not m %}–{% elif m.status == "B" %}✓{% elif m.status == "Y" %}✗{% else %}{{ m.status }}{% endif %}</button>
+                </td>
+                <td class="hide-sm small muted">{% if item.guardian %}{{ item.guardian.full_name }} · <span class="num">{{ item.guardian.phone|phone }}</span>{% else %}—{% endif %}</td>
+                <td><input class="input input-sm hr-note" name="n{{ s.pk }}" value="{{ m.note|default:'' }}" maxlength="255" placeholder="Sabab…" aria-label="{{ s.short_name }} — izoh"></td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="att-legend hr-legend">
+        <span><i class="att-cell att-B">✓</i> Keldi</span><span><i class="att-cell att-Y">✗</i> Kelmadi</span>
+        <span><i class="att-cell att-K">K</i> Kechikdi</span><span><i class="att-cell att-S">S</i> Sababli</span>
+      </div>
+    {% else %}<p class="empty-line">Sinfda faol o'quvchi yo'q.</p>{% endif %}
+  </form>
+
+{% elif tab == "week" %}
+  <section class="card tt-card my-schedule">
+    <div class="card-title">
+      <h3>{{ c.name }} — haftalik jadval <small class="muted">{{ grid.total }} soat</small></h3>
+      <nav class="tt-week" aria-label="Hafta">
+        <a class="btn btn-secondary btn-sm" href="?tab=week&amp;week={{ prev_week|date:'Y-m-d' }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Oldingi</a>
+        <b class="num">{{ grid.monday|date:"d.m" }} – {{ grid.saturday|date:"d.m.Y" }}</b>
+        <a class="btn btn-secondary btn-sm" href="?tab=week&amp;week={{ next_week|date:'Y-m-d' }}">Keyingi {% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+      </nav>
+    </div>
+    {% if grid.rows %}
+      <div class="table-wrap">
+        <table class="tt-grid">
+          <thead><tr><th class="tt-time">Soat</th>{% for d in grid.days %}<th class="{% if d.date == today %}is-today{% endif %}">{{ d.label }}<small class="num">{{ d.date|date:"j-M" }}</small></th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in grid.rows %}
+              <tr class="{% if row.slot.is_break %}tt-break{% endif %}">
+                <th class="tt-time" scope="row"><b>{% if row.slot.is_break %}OBED{% else %}{{ row.slot.start|time:"H:i" }}{% endif %}</b><small class="num">{{ row.slot.end|time:"H:i" }}</small></th>
+                {% for cell in row.cells %}
+                  <td class="tt-cell{% if cell.date == today %} is-today{% endif %}">
+                    {% for l in cell.lessons %}<div class="tt-lesson t{{ l.subject_id|tone }}"><b>{{ l.subject.name }}</b><small>{{ l.teacher.user.short_name }}{% if l.room %} · {{ l.room.name }}{% endif %}</small>{% if l.group.kind == "subset" %}<small class="tt-code">{{ l.group.code }}</small>{% endif %}</div>{% endfor %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<p class="empty-line">Qo'ng'iroq vaqtlari kiritilmagan.</p>{% endif %}
+  </section>
+
+{% else %}
+  <section class="card">
+    <div class="card-title">
+      <h3>Oylik statistika{% if stats.percent is not None %} <span class="badge badge-success">kelish {{ stats.percent }}%</span>{% endif %}</h3>
+      <nav class="tt-week" aria-label="Oy">
+        <a class="btn btn-secondary btn-sm btn-icon" href="?tab=month&amp;month={{ prev_month|date:'Y-m' }}" aria-label="Oldingi oy">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+        <b>{{ stats.month|date:"F Y" }}</b>
+        {% if stats.month < this_month %}<a class="btn btn-secondary btn-sm btn-icon" href="?tab=month&amp;month={{ next_month|date:'Y-m' }}" aria-label="Keyingi oy">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>{% endif %}
+      </nav>
+    </div>
+    <div class="chip-row hr-totals">
+      <span class="badge badge-success">✓ Keldi {{ stats.totals.B }}</span><span class="badge badge-danger">✗ Kelmadi {{ stats.totals.Y }}</span>
+      <span class="badge badge-warning">K Kechikdi {{ stats.totals.K }}</span><span class="badge badge-info">S Sababli {{ stats.totals.S }}</span>
+    </div>
+    {% if stats.rows and stats.days %}
+      <div class="table-wrap">
+        <table class="att-table">
+          <thead><tr>
+            <th class="att-name" scope="col">O'quvchi</th>
+            {% for d in stats.days %}<th class="att-day{% if d.weekend %} is-weekend{% endif %}{% if d.today %} is-today{% endif %}" scope="col"><b class="num">{{ d.date|date:"d" }}</b><small>{{ d.label }}</small></th>{% endfor %}
+            <th class="att-sum t-B">✓</th><th class="att-sum t-Y">✗</th><th class="att-sum t-K">K</th><th class="att-sum t-S">S</th><th class="att-sum">%</th>
+          </tr></thead>
+          <tbody>
+            {% for r in stats.rows %}
+              <tr>
+                <th class="att-name" scope="row"><b>{{ r.student.full_name }}</b></th>
+                {% for x in r.cells %}<td>{% if x %}<span class="att-cell att-{{ x }} att-sm">{% if x == "B" %}✓{% elif x == "Y" %}✗{% else %}{{ x }}{% endif %}</span>{% else %}<span class="att-off">·</span>{% endif %}</td>{% endfor %}
+                {% for k, n in r.totals.items %}<td class="att-sum t-{{ k }} num">{{ n }}</td>{% endfor %}
+                <td class="att-sum num">{% if r.percent is not None %}{{ r.percent }}%{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<p class="empty-line">Bu oy uchun ma'lumot yo'q.</p>{% endif %}
+  </section>
+{% endif %}
+{% endblock %}

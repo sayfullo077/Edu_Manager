@@ -5,27 +5,19 @@
 
 {% block content %}
 <div class="page-head">
-  <a class="back-link" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
-  <div class="page-actions">
-    <a class="btn btn-secondary" href="{% url 'contracts:contract_print' contract.pk %}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="file" class="sm" %} Chop etish</a>
-    {% if contract.is_editable %}<a class="btn btn-secondary" href="{% url 'contracts:contract_update' contract.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>{% endif %}
-  </div>
-</div>
-
-<div class="card profile-head">
-  <span class="avatar t{{ contract.student.code|tone }}">{% include "partials/icon.html" with name="file" %}</span>
   <div>
-    <h2>{{ contract.number }}</h2>
-    <div class="meta">
-      {% include "contracts/_status.html" %}
-      <a class="badge badge-accent" href="{% url 'people:student_detail' contract.student.pk %}">{{ contract.student.short_name }}</a>
-      <span class="badge badge-muted">{{ contract.academic_year.name }}</span>
-    </div>
+    <a class="back-link" href="{{ back_url }}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+    <h1 class="mt-12">{{ contract.number }}</h1>
+    <p class="sub">{% include "contracts/_status.html" %} <span class="num">{{ contract.created_at|date:"d.m.Y H:i" }}</span> · {{ contract.student.short_name }}</p>
+  </div>
+  <div class="page-actions">
+    {% if contract.is_editable %}<a data-write class="btn btn-secondary" href="{% url 'contracts:contract_update' contract.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>{% endif %}
+    <a class="btn btn-outline" href="{% url 'contracts:contract_print' contract.pk %}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="file" class="sm" %} PDF / Chop etish</a>
   </div>
 </div>
 
 {% if contract.status != "cancelled" %}
-<ol class="steps mt-20" aria-label="Shartnoma holati">
+<ol class="steps" aria-label="Shartnoma holati">
   <li class="done"><span>✓</span> Qabul</li>
   <li class="{% if contract.status == 'draft' %}current{% else %}done{% endif %}"><span>{% if contract.status == 'draft' %}2{% else %}✓{% endif %}</span> Qoralama</li>
   <li class="{% if contract.status == 'sent' %}current{% elif contract.status == 'signed' %}done{% endif %}"><span>{% if contract.status == 'signed' %}✓{% else %}3{% endif %}</span> SMS tasdiqlash</li>
@@ -33,25 +25,35 @@
 </ol>
 {% endif %}
 
-<div class="detail-grid mt-20">
-  <div class="card">
-    <div class="card-title"><h3>Shartnoma shartlari</h3></div>
-    <dl class="kv">
-      <dt>O'quvchi</dt><dd>{{ contract.student.full_name }}</dd>
-      <dt>Shartnoma tomoni</dt><dd>{{ contract.guardian.full_name }} · <span class="num">{{ contract.guardian.phone|phone }}</span></dd>
-      <dt>Sinf</dt><dd>{{ contract.class_name|default:"—" }}</dd>
-      <dt>Muddat</dt><dd class="num">{{ contract.start_date|date:"d.m.Y" }} — {{ contract.end_date|date:"d.m.Y" }} ({{ contract.months }} oy)</dd>
-      <dt>To'liq tarif</dt><dd class="num">{{ contract.full_tariff|money }} so'm</dd>
-      <dt>Chegirma</dt><dd>{% if contract.discount_percent %}{{ contract.discount_percent|floatformat:"-2" }}% · {{ contract.discount_reason }}{% else %}—{% endif %}</dd>
-      <dt>Oylik to'lov</dt><dd class="num fee-value">{{ contract.monthly_fee|money }} so'm</dd>
-      <dt>Jami (taxminiy)</dt><dd class="num">{{ contract.total_amount|money }} so'm</dd>
-      {% if contract.notes %}<dt>Izoh</dt><dd>{{ contract.notes|linebreaksbr }}</dd>{% endif %}
-      <dt>Tuzgan xodim</dt><dd>{{ contract.created_by.short_name }} · <span class="num">{{ contract.created_at|date:"d.m.Y H:i" }}</span></dd>
-    </dl>
-  </div>
-
+<div class="doc-grid">
   <div class="stack">
-    {% if contract.status == "draft" %}
+    <section class="card card-pad">
+      <h3 class="block-title">{% include "partials/icon.html" with name="info" class="sm" %} Shartnoma</h3>
+      <dl class="kv-plain">
+        <dt>O'quvchi</dt><dd><a class="link" href="{% url 'people:student_detail' contract.student.pk %}">{{ contract.student.full_name }}</a></dd>
+        <dt>Vasiy</dt><dd>{{ contract.guardian.full_name }}<small class="muted block num">{{ contract.guardian.phone|phone }}</small></dd>
+        <dt>Sinf</dt><dd>{{ contract.class_name|default:"—" }}</dd>
+        <dt>O'quv yili</dt><dd>{{ contract.academic_year.name }}</dd>
+        <dt>Oylik to'lov</dt><dd class="num fee-value">{{ contract.monthly_fee|money }} so'm</dd>
+        {% if contract.discount_percent %}<dt>Chegirma</dt><dd><span class="num">{{ contract.full_tariff|money }}</span> dan {{ contract.discount_percent|floatformat:"-2" }}%<small class="muted block">{{ contract.discount_reason }}</small></dd>{% endif %}
+        <dt>Muddat</dt><dd class="num">{{ contract.start_date|date:"d.m.Y" }} — {{ contract.end_date|date:"d.m.Y" }}<small class="muted block">{{ contract.months }} oy · jami {{ contract.total_amount|money }} so'm</small></dd>
+        <dt>Shablon</dt><dd>{{ doc.template_name|default:"—" }}</dd>
+        <dt>Yaratdi</dt><dd>{{ contract.created_by.short_name }}</dd>
+        {% if contract.notes %}<dt>Izoh</dt><dd>{{ contract.notes|linebreaksbr }}</dd>{% endif %}
+      </dl>
+    </section>
+
+    {% if contract.status == "signed" %}
+      <section class="card card-pad action-card signed">
+        <h3 class="block-title tone-success">{% include "partials/icon.html" with name="shield" class="sm" %} Imzo ma'lumotlari</h3>
+        <dl class="kv-plain">
+          <dt>Imzolangan sana</dt><dd class="num">{{ contract.signed_at|date:"d.m.Y H:i" }}</dd>
+          <dt>Imzolovchi</dt><dd>{{ contract.guardian.full_name }}</dd>
+          <dt>Telefon</dt><dd class="num">{{ contract.signed_phone|phone }}</dd>
+          <dt>Usul</dt><dd>SMS-OTP</dd>
+        </dl>
+      </section>
+    {% elif contract.status == "draft" %}
       <div class="card card-pad action-card">
         <h3>Ota-onadan tasdiq olish</h3>
         <p class="muted">Shartnomani chop eting va ota-onaga imzolatib oling. So'ng tasdiqlash kodi
@@ -77,11 +79,6 @@
           {% csrf_token %}<button class="link" type="submit">Kodni qayta yuborish</button>
         </form>
       </div>
-    {% elif contract.status == "signed" %}
-      <div class="card card-pad action-card signed">
-        <h3>{% include "partials/icon.html" with name="shield" class="sm" %} Imzolangan</h3>
-        <p class="muted num">{{ contract.signed_at|date:"d.m.Y H:i" }} · {{ contract.signed_phone|phone }} orqali SMS kod bilan tasdiqlangan.</p>
-      </div>
     {% else %}
       <div class="card card-pad action-card">
         <h3>Bekor qilingan</h3>
@@ -91,7 +88,7 @@
 
     {% if contract.status != "cancelled" %}
       <div class="card card-pad">
-        <h3>Qog'oz nusxa skaneri</h3>
+        <h3 class="block-title">{% include "partials/icon.html" with name="file" class="sm" %} Qog'oz nusxa skaneri</h3>
         {% if contract.scan %}
           <p class="mt-12"><a class="btn btn-secondary btn-block" href="{% url 'contracts:contract_scan' contract.pk %}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="eye" class="sm" %} PDF'ni ochish</a></p>
         {% endif %}
@@ -114,5 +111,15 @@
       </details>
     {% endif %}
   </div>
+
+  <section class="card doc-card">
+    <div class="card-title">
+      <h3 class="block-title">{% include "partials/icon.html" with name="file" class="sm" %} Shartnoma matni</h3>
+      {% if doc.sealed %}<span class="badge badge-success" title="Imzolangan paytdagi matn — shablon o'zgarsa ham o'zgarmaydi">{% include "partials/icon.html" with name="lock" class="sm" %} Muhrlangan</span>
+      {% elif contract.status == "signed" %}<span class="badge badge-warning" title="Muhr joriy qilinishidan oldin imzolangan — joriy shablon ko'rsatilmoqda">Joriy shablon</span>
+      {% else %}<span class="badge badge-muted" title="Imzolanganda matn muhrlanadi">Qoralama matn</span>{% endif %}
+    </div>
+    <div class="doc-scroll">{% include "contracts/_document.html" %}</div>
+  </section>
 </div>
 {% endblock %}

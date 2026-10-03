@@ -1,0 +1,86 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ c.name }} · Sinf{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'academics:class_list' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Sinflar va guruhlar</a>
+    <h1 class="mt-12">{{ c.name }}</h1>
+    <p class="sub">{{ c.get_kind_display }}{% if c.grade %} · {{ c.grade }}-sinf{% endif %} · {{ c.get_language_display }} tilida · {{ c.academic_year.name }}{% if not c.is_active %} · <span class="badge badge-muted">Faol emas</span>{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <form class="inline-form" method="post" action="{% url 'academics:class_delete' c.pk %}" data-confirm="«{{ c.name }}» sinfi o'chirilsinmi? O'quvchi yoki guruh tarixi bo'lsa, faolsizlantiriladi." data-confirm-ok="O'chirish">
+      {% csrf_token %}<button class="btn btn-danger-soft" type="submit">{% include "partials/icon.html" with name="trash" class="sm" %} O'chirish</button>
+    </form>
+    <a data-write class="btn btn-secondary" href="{% url 'academics:class_update' c.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>
+    <a data-write class="btn btn-primary" href="{% url 'academics:group_create' %}?class={{ c.pk }}">{% include "partials/icon.html" with name="plus" class="sm" %} Guruh qo'shish</a>
+  </div>
+</div>
+
+<div class="grid grid-4 stats-row">
+  <div class="card stat">
+    <div class="top"><span class="label">O'quvchilar</span><span class="ico tone-success">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div>
+    <div class="value">{{ c.n_students }} <span class="unit">/ {{ c.capacity }}</span></div>
+    {% widthratio c.n_students c.capacity 100 as pct %}<div class="mt-12">{% bar pct "success" %}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Sinf rahbari</span><span class="ico tone-info">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div>
+    <div class="value value-sm">{% if c.homeroom_teacher %}{{ c.homeroom_teacher.user.short_name }}{% else %}<span class="text-warning">Biriktirilmagan</span>{% endif %}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Xona</span><span class="ico">{% include "partials/icon.html" with name="building" class="sm" %}</span></div>
+    <div class="value value-sm">{{ c.room.name|default:"—" }}</div>
+  </div>
+  <div class="card stat">
+    <div class="top"><span class="label">Oylik tarif</span><span class="ico tone-warning">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div>
+    <div class="value money-sm">{{ c.monthly_tariff|money }} <span class="unit">so'm</span></div>
+    <div class="foot">Qabulda sukut bo'yicha</div>
+  </div>
+</div>
+
+{# ---------- Guruhlar ---------- #}
+<div class="section-intro">
+  <div><h2>{% include "partials/icon.html" with name="users" %} Guruhlar</h2><p class="muted">Shu sinf uchun o'qitish guruhlari — o'qituvchi oyligi shular bo'yicha</p></div>
+</div>
+{% if groups %}
+  <div class="group-grid">{% for g in groups %}{% include "academics/_group_card.html" %}{% endfor %}</div>
+{% else %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="users" class="lg" %}</span>
+    <h3>Guruh yo'q</h3>
+    <p>Butun sinf uchun (masalan, IT) yoki tanlov guruhi qo'shing.</p>
+    <a data-write class="btn btn-primary" href="{% url 'academics:group_create' %}?class={{ c.pk }}">{% include "partials/icon.html" with name="plus" class="sm" %} Guruh qo'shish</a>
+  </div>
+{% endif %}
+
+{# ---------- O'quvchilar ---------- #}
+<div class="section-intro">
+  <div><h2>{% include "partials/icon.html" with name="graduation" %} O'quvchilar</h2><p class="muted">Faol o'quvchilar · {{ c.n_students }} nafar</p></div>
+  <a class="btn btn-outline btn-sm" href="{% url 'people:student_print' %}?school_class={{ c.pk }}" target="_blank" rel="noopener">{% include "partials/icon.html" with name="list" class="sm" %} Ro'yxat</a>
+</div>
+<div class="card">
+  {% if students %}
+    <div class="table-wrap">
+      <table class="table table-dense">
+        <thead><tr><th class="num-col">#</th><th>O'quvchi</th><th class="hide-sm">Tug'ilgan</th><th class="hide-sm">Telefon</th><th>Jins</th><th class="actions">Amallar</th></tr></thead>
+        <tbody>
+          {% for s in students %}
+            <tr>
+              <td class="num-col">{{ forloop.counter }}</td>
+              <td><a class="person" href="{% url 'people:student_detail' s.pk %}"><span class="avatar t{{ s.code|tone }}">{{ s.initials }}</span><span><b>{{ s.full_name }}</b><small>{{ s.code }}</small></span></a></td>
+              <td class="hide-sm num">{{ s.birth_date|date:"d.m.Y" }}</td>
+              <td class="hide-sm num nowrap">{{ s.phone|phone }}</td>
+              <td><span class="badge {% if s.gender == 'F' %}badge-pink{% else %}badge-info{% endif %}">{{ s.get_gender_display }}</span></td>
+              <td class="actions"><a class="icon-btn tone-info" href="{% url 'people:student_detail' s.pk %}" title="Ko'rish" aria-label="Ko'rish">{% include "partials/icon.html" with name="eye" class="sm" %}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-line">Sinfda hali o'quvchi yo'q. O'quvchi qabul formasida yoki tahrirlash sahifasida sinfga biriktiriladi.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -19,11 +19,13 @@ from apps.finance.services import invoices
 from apps.people.models import Student
 
 from ..models import Contract
+from . import document
 
 logger = logging.getLogger(__name__)
 security_log = logging.getLogger("security")
 
-EDITABLE_FIELDS = ("full_tariff", "discount_percent", "discount_reason", "start_date", "end_date", "notes")
+EDITABLE_FIELDS = ("full_tariff", "discount_percent", "discount_reason", "start_date", "end_date", "notes",
+                   "template")
 
 
 @dataclass(frozen=True)
@@ -61,16 +63,25 @@ def _validate(contract: Contract, year: AcademicYear) -> None:
         raise ValidationError(errors)
 
 
-def create_contract(*, student: Student, by, academic_year: AcademicYear | None = None, **data) -> Contract:
-    """Qoralama shartnoma. O'quv yili berilmasa — joriy; tugash sanasi berilmasa — o'quv yili oxiri."""
+def create_contract(*, student: Student, by, academic_year: AcademicYear | None = None, guardian=None,
+                    **data) -> Contract:
+    """Qoralama shartnoma. O'quv yili berilmasa — joriy; boshlanish/tugash berilmasa — qabul sanasi yoki o'quv
+    yili boshi / o'quv yili oxiri. Vasiy berilmasa — asosiy vasiy; berilsa — shu o'quvchining vasiysi bo'lishi shart."""
     if student.status != Student.Status.ACTIVE:
         raise ValidationError("Faqat faol o'quvchi bilan shartnoma tuziladi.")
     year = academic_year or AcademicYear.current()
     if year is None:
         raise ValidationError("Joriy o'quv yili belgilanmagan (admin panel → O'quv yillari).")
-    data.setdefault("end_date", year.end_date)
+    if guardian is not None and not student.guardian_links.filter(guardian=guardian).exists():
+        raise ValidationError({"guardian": "Tanlangan vasiy bu o'quvchiga biriktirilmagan."})
+    if not data.get("start_date"):
+        data["start_date"] = max(student.joined_at, year.start_date)
+    if not data.get("end_date"):
+        data["end_date"] = year.end_date
+    if not data.get("template"):
+        data["template"] = document.default_template()
     contract = Contract(
-        branch=student.branch, academic_year=year, student=student, guardian=_primary_guardian(student),
+        branch=student.branch, academic_year=year, student=student, guardian=guardian or _primary_guardian(student),
         class_name=student.school_class.name if student.school_class else "", created_by=by,
         **{k: v for k, v in data.items() if k in EDITABLE_FIELDS})
     _validate(contract, year)
@@ -87,7 +98,7 @@ def update_contract(contract: Contract, *, by, **data) -> Contract:
     if not contract.is_editable:
         raise ValidationError("Faqat qoralama holatidagi shartnomani tahrirlash mumkin.")
     for field, value in data.items():
-        if field in EDITABLE_FIELDS:
+        if field in EDITABLE_FIELDS and not (field == "template" and value is None):
             setattr(contract, field, value)
     _validate(contract, contract.academic_year)
     contract.save()
@@ -128,6 +139,8 @@ def confirm_with_code(contract: Contract, *, code: str, by, ip: str) -> Contract
     with transaction.atomic():
         updated = Contract.objects.filter(pk=contract.pk, status=Contract.Status.SENT).update(
             status=Contract.Status.SIGNED, signed_at=timezone.now(), signed_phone=contract.guardian.phone)
+        if updated:
+            document.seal(contract)  # imzolangan matn muhrlanadi — keyin shablon o'zgarsa ham o'zgarmaydi
         contract.refresh_from_db()
         if updated:  # parallel so'rov ikkinchi marta grafik yaratmasin
             invoices.generate_for_contract(contract, through=timezone.localdate())  # qolgani — oyma-oy

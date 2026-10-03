@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Kunlik belgilash · Yotoqxona{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'dorm:attendance' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Yotoqxona davomati</a>
+    <h1 class="mt-12">Kunlik belgilash</h1>
+    <p class="sub">{{ day|date:"d.m.Y" }}{% if day == today %} · bugun{% endif %} · {{ sheet|length }} o'quvchi · belgilanmagan {{ unmarked }}</p>
+  </div>
+</div>
+
+<form class="card toolbar month-bar" method="get">
+  <a class="btn btn-secondary btn-sm btn-icon" href="?date={{ prev_day|date:'Y-m-d' }}{% if room %}&amp;room={{ room }}{% endif %}" aria-label="Oldingi kun">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+  <input class="input input-sm" type="date" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" aria-label="Sana" data-autosubmit>
+  {% if day < today %}<a class="btn btn-secondary btn-sm btn-icon" href="?date={{ next_day|date:'Y-m-d' }}{% if room %}&amp;room={{ room }}{% endif %}" aria-label="Keyingi kun">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>{% endif %}
+  <select class="input input-sm" name="room" aria-label="Xona" data-autosubmit>
+    <option value="">Barcha xonalar</option>
+    {% for r in rooms %}<option value="{{ r.pk }}" {% if r.pk == room %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+  </select>
+  {% if day != today %}<a class="btn btn-ghost btn-sm" href="?{% if room %}room={{ room }}{% endif %}">Bugun</a>{% endif %}
+</form>
+
+{% if sheet %}
+<form class="card" method="post" data-att-day>
+  {% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+  <div class="card-title">
+    <div class="chip-row">
+      <span class="badge badge-success">Bor {{ counts.B }}</span><span class="badge badge-danger">Yo'q {{ counts.Y }}</span>
+      <span class="badge badge-warning">Kechikdi {{ counts.K }}</span><span class="badge badge-info">Sababli {{ counts.S }}</span>
+    </div>
+    <button class="btn btn-secondary btn-sm" type="button" data-att-all="B">{% include "partials/icon.html" with name="check" class="sm" %} Belgilanmaganlar — Bor</button>
+  </div>
+  <ul class="att-day-list">
+    {% for item in sheet %}
+      {% with s=item.stay.student %}
+      <li>
+        <span class="grow"><b>{{ s.full_name }}</b><small class="muted block">{{ item.stay.room.name }}</small></span>
+        <span class="att-choice" role="radiogroup" aria-label="{{ s.short_name }}">
+          {% for value, label in statuses %}
+            <label class="att-cell att-{{ value }}{% if item.status == value %} is-on{% endif %}" title="{{ label }}"><input class="sr-only" type="radio" name="s{{ s.pk }}" value="{{ value }}" {% if item.status == value %}checked{% endif %}>{{ value }}</label>
+          {% endfor %}
+          <label class="att-cell att-empty{% if not item.status %} is-on{% endif %}" title="Belgilanmagan"><input class="sr-only" type="radio" name="s{{ s.pk }}" value="" {% if not item.status %}checked{% endif %}>O</label>
+        </span>
+      </li>
+      {% endwith %}
+    {% endfor %}
+  </ul>
+  <div class="form-footer att-day-footer">
+    <a class="btn btn-secondary" href="{% url 'dorm:attendance' %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+{% else %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="bed" class="lg" %}</span>
+    <h3>Bu kuni yotoqxonada o'quvchi yo'q</h3>
+  </div>
+{% endif %}
+{% endblock %}

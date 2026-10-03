@@ -1,0 +1,172 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ teacher.user.short_name }} · O'qituvchi{% endblock %}
+
+{% block content %}
+{# ---------- Sarlavha kartasi ---------- #}
+<section class="card student-hero">
+  <span class="avatar hero-avatar t{{ teacher.code|tone }}">{% if teacher.user.avatar %}<img src="{{ teacher.user.avatar.url }}" alt="">{% else %}{{ teacher.user.initials }}{% endif %}</span>
+  <div class="hero-info">
+    <h1>{{ teacher.user.full_name }}</h1>
+    <div class="meta">
+      <span class="badge {% if teacher.status == 'active' %}badge-success{% elif teacher.status == 'vacation' %}badge-warning{% elif teacher.status == 'dismissed' %}badge-danger{% else %}badge-muted{% endif %}">{{ teacher.get_status_display }}</span>
+      <span class="badge badge-info">{{ teacher.get_kind_display }}</span>
+    </div>
+    <ul class="hero-facts">
+      <li>{% include "partials/icon.html" with name="file" class="sm" %} <span class="num">{{ teacher.code }}</span></li>
+      <li>{% include "partials/icon.html" with name="building" class="sm" %} {{ teacher.branch.name }}</li>
+      <li>{% include "partials/icon.html" with name="phone" class="sm" %} <span class="num">{{ teacher.user.phone|phone }}</span></li>
+      {% if teacher.category %}<li class="text-warning">{% include "partials/icon.html" with name="star" class="sm" %} {{ teacher.get_category_display }}</li>{% endif %}
+    </ul>
+  </div>
+  <div class="hero-actions">
+    <a data-write class="btn btn-primary" href="{% url 'people:teacher_update' teacher.pk %}">{% include "partials/icon.html" with name="pencil" class="sm" %} Tahrirlash</a>
+    <a class="btn btn-secondary" href="{% url 'people:teacher_list' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+  </div>
+</section>
+
+{# ---------- Statistika ---------- #}
+<div class="grid grid-4 stats-row mt-20">
+  <div class="card stat"><div class="top"><span class="label">Fanlar</span><span class="ico tone-info">{% include "partials/icon.html" with name="book" class="sm" %}</span></div><div class="value">{{ teacher.subjects.all|length }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Sertifikatlar</span><span class="ico tone-success">{% include "partials/icon.html" with name="graduation" class="sm" %}</span></div><div class="value">{{ certificates|length }} <span class="unit">ta</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Tajriba</span><span class="ico tone-warning">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div><div class="value">{{ teacher.experience_years }} <span class="unit">yil</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Ishga qabul</span><span class="ico">{% include "partials/icon.html" with name="calendar" class="sm" %}</span></div><div class="value value-sm num">{{ teacher.hired_at|date:"d.m.Y"|default:"—" }}</div></div>
+</div>
+
+{# ---------- Bo'limlar ---------- #}
+<nav class="segmented seg-wide stats-row" aria-label="Bo'limlar">
+  <a href="?tab=info" {% if tab == "info" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="info" class="sm" %} Ma'lumotlar</a>
+  <a href="?tab=finance" {% if tab == "finance" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="wallet" class="sm" %} Moliya</a>
+  <a href="?tab=lessons" {% if tab == "lessons" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="calendar" class="sm" %} Darslar</a>
+  <a href="?tab=subjects" {% if tab == "subjects" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="book" class="sm" %} Fanlar <span class="tab-count">{{ teacher.subjects.all|length }}</span></a>
+  <a href="?tab=certificates" {% if tab == "certificates" %}aria-current="page"{% endif %}>{% include "partials/icon.html" with name="graduation" class="sm" %} Sertifikatlar <span class="tab-count">{{ certificates|length }}</span></a>
+</nav>
+
+{% if tab == "info" %}
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Shaxsiy ma'lumotlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <dl class="info-grid cols-3">
+      <div><dt>F.I.O</dt><dd>{{ teacher.user.full_name }}</dd></div>
+      <div><dt>Jinsi</dt><dd>{% if teacher.gender == 'F' %}Ayol{% elif teacher.gender == 'M' %}Erkak{% else %}—{% endif %}</dd></div>
+      <div><dt>Tug'ilgan sana</dt><dd class="num">{{ teacher.birth_date|date:"d.m.Y"|default:"—" }}</dd></div>
+      <div><dt>Telefon</dt><dd class="num">{{ teacher.user.phone|phone }}</dd></div>
+      <div><dt>Email</dt><dd>{{ teacher.email|default:"—" }}</dd></div>
+      <div><dt>Oilaviy holati</dt><dd>{{ teacher.get_marital_status_display|default:"—" }}</dd></div>
+      <div class="span-all"><dt>Manzil</dt><dd>{{ teacher.address|default:"—" }}</dd></div>
+    </dl>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="shield" class="sm" %} Hujjatlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <dl class="info-grid cols-4">
+      <div><dt>Passport</dt><dd class="num">{% if teacher.passport %}{{ teacher.passport|slice:":2" }} {{ teacher.passport|slice:"2:"|mask }}{% else %}—{% endif %}</dd></div>
+      <div><dt>JSHSHIR</dt><dd class="num">{{ teacher.pinfl|mask|default:"—" }}</dd></div>
+      <div><dt>Karta raqami</dt><dd class="num">{{ teacher.card_number|mask|default:"—" }}</dd></div>
+      <div><dt>O'qituvchi kodi</dt><dd class="num">{{ teacher.code }}</dd></div>
+    </dl>
+    <p class="note">{% include "partials/icon.html" with name="lock" class="sm" %} Shaxsiy raqamlar shifrlangan holda saqlanadi va ekranda niqoblanadi.</p>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="briefcase" class="sm" %} Ish ma'lumotlari</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <dl class="info-grid cols-4">
+      <div><dt>Filial</dt><dd>{{ teacher.branch.name }}</dd></div>
+      <div><dt>Toifa</dt><dd>{{ teacher.get_category_display|default:"—" }}</dd></div>
+      <div><dt>Ta'lim</dt><dd>{{ teacher.get_education_display|default:"—" }}</dd></div>
+      <div><dt>Mutaxassislik</dt><dd>{{ teacher.specialty|default:"—" }}</dd></div>
+      <div><dt>Tajriba</dt><dd>{{ teacher.experience_years }} yil</dd></div>
+      <div><dt>Ishga qabul</dt><dd class="num">{{ teacher.hired_at|date:"d.m.Y"|default:"—" }}</dd></div>
+      <div><dt>Shartnoma boshi</dt><dd class="num">{{ teacher.contract_start|date:"d.m.Y"|default:"—" }}</dd></div>
+      <div><dt>Shartnoma oxiri</dt><dd class="num">{{ teacher.contract_end|date:"d.m.Y"|default:"—" }}</dd></div>
+      <div><dt>Dars tili</dt><dd>{% for code in teacher.teaching_languages %}{% if code == "uz" %}O'zbek{% elif code == "ru" %}Rus{% else %}Ingliz{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
+      <div><dt>Sinf rahbarligi</dt><dd>{% for c in teacher.homeroom_classes.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
+      <div class="span-2">
+        <dt>Holati</dt>
+        <dd>
+          <form method="post" action="{% url 'people:teacher_set_status' teacher.pk %}">
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select class="input status-select status-{{ teacher.status }}" name="status" aria-label="Holatni o'zgartirish" data-autosubmit>
+              {% for value, label in statuses %}<option value="{{ value }}" {% if value == teacher.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </form>
+          <span class="badge ro-only {% if teacher.status == 'active' %}badge-success{% elif teacher.status == 'vacation' %}badge-warning{% elif teacher.status == 'dismissed' %}badge-danger{% else %}badge-muted{% endif %}">{{ teacher.get_status_display }}</span>
+        </dd>
+      </div>
+      {% if teacher.notes %}<div class="span-all"><dt>Izoh</dt><dd>{{ teacher.notes|linebreaksbr }}</dd></div>{% endif %}
+    </dl>
+  </details>
+
+{% elif tab == "finance" %}
+  <div class="grid grid-3 stats-row">
+    <div class="card stat"><div class="top"><span class="label">Belgilangan oylik</span><span class="ico tone-success">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value value-sm num">{% if teacher.fixed_salary %}{{ teacher.fixed_salary|money }} <span class="unit">so'm</span>{% else %}—{% endif %}</div><div class="foot">{% if teacher.fixed_salary %}oyiga qat'iy{% else %}darsbay / guruh bo'yicha{% endif %}</div></div>
+    <div class="card stat"><div class="top"><span class="label">Haftalik yuklama</span><span class="ico tone-info">{% include "partials/icon.html" with name="clock" class="sm" %}</span></div><div class="value">{{ week.total }} <span class="unit">soat</span></div><div class="foot">shu hafta jadval bo'yicha</div></div>
+    <div class="card stat"><div class="top"><span class="label">Ish staji</span><span class="ico tone-warning">{% include "partials/icon.html" with name="briefcase" class="sm" %}</span></div><div class="value value-sm">{% if teacher.official_employment %}Yoziladi{% else %}Yozilmaydi{% endif %}</div><div class="foot">rasmiy ishga joylashuv</div></div>
+  </div>
+  <section class="card">
+    <div class="card-title"><h3>Guruhlar bo'yicha yuklama</h3><span class="badge badge-muted">{{ group_subjects|length }}</span></div>
+    {% if group_subjects %}
+      <div class="table-wrap"><table class="table table-dense">
+        <thead><tr><th>Guruh</th><th>Fan</th><th class="hide-sm">To'lov sxemasi</th><th class="text-right">Soat/hafta</th></tr></thead>
+        <tbody>{% for gs in group_subjects %}<tr>
+          <td><a class="link" href="{% url 'academics:group_detail' gs.group_id %}">{{ gs.group.code }}</a> <small class="muted">· {{ gs.group.school_class.name }}</small></td>
+          <td>{{ gs.subject.name }}</td>
+          <td class="hide-sm">{% if gs.group.pay_scheme == 'per_student' %}Belgilangan summa{% else %}Darsbay{% endif %}</td>
+          <td class="text-right num">{{ gs.hours_per_week|default:"—" }}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+    {% else %}<p class="empty-line">Guruhga biriktirilmagan.</p>{% endif %}
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Oylik hisob-kitobi va to'lovlar tarixi «Ish haqi» bo'limi qurilganda shu yerda chiqadi.</p>
+  </section>
+
+{% elif tab == "lessons" %}
+  <section class="card">
+    <div class="card-title">
+      <h3>Shu haftalik darslar <small class="muted num">{{ week.monday|date:"j-M" }} — {{ week.saturday|date:"j-M" }}</small></h3>
+      <a class="btn btn-secondary btn-sm" href="{% url 'academics:timetable' %}?by=teacher&amp;teacher={{ teacher.pk }}">{% include "partials/icon.html" with name="calendar" class="sm" %} To'liq jadval</a>
+    </div>
+    {% if week.total %}
+      <div class="lesson-days">
+        {% for d in week_days %}
+          <div class="lesson-day">
+            <h4>{{ d.label }} <small class="muted num">{{ d.date|date:"d.m" }}</small></h4>
+            {% for slot, l in d.lessons %}
+              <div class="lesson-row t{{ l.subject_id|tone }}">
+                <span class="num lesson-time">{{ slot.start|time:"H:i" }}</span>
+                <span class="grow"><b>{{ l.subject.name }}</b><small class="muted block">{{ l.group.school_class.name }}{% if l.group.kind == "subset" %} · {{ l.group.code }}{% endif %}{% if l.room %} · {{ l.room.name }}{% endif %}</small></span>
+              </div>
+            {% empty %}<p class="muted small">Dars yo'q</p>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}<p class="empty-line">Bu hafta jadvalda darsi yo'q.</p>{% endif %}
+  </section>
+
+{% elif tab == "subjects" %}
+  <section class="card">
+    <div class="card-title"><h3>Fanlar</h3><span class="badge badge-muted">{{ teacher.subjects.all|length }}</span></div>
+    {% for s in teacher.subjects.all %}
+      <div class="teacher-subject">
+        <span class="badge t{{ s.pk|tone }} badge-tone">{{ s.name }}</span>
+        <span class="grow small muted">{% for gs in group_subjects %}{% if gs.subject_id == s.pk %}<a class="link" href="{% url 'academics:group_detail' gs.group_id %}">{{ gs.group.code }}</a>{% if gs.hours_per_week %} ({{ gs.hours_per_week }} soat){% endif %} {% endif %}{% endfor %}</span>
+      </div>
+    {% empty %}<p class="empty-line">Fan biriktirilmagan — «Tahrirlash» orqali qo'shing.</p>{% endfor %}
+  </section>
+
+{% else %}
+  <section class="card">
+    <div class="card-title"><h3>Sertifikatlar</h3><span class="badge badge-muted">{{ certificates|length }}</span></div>
+    {% if certificates %}
+      <div class="table-wrap"><table class="table table-dense">
+        <thead><tr><th>Turi</th><th>Fan</th><th class="hide-sm">Raqami</th><th>Amal qiladi</th><th class="text-right">Ball</th><th class="hide-sm">Kim bergan</th></tr></thead>
+        <tbody>{% for c in certificates %}<tr>
+          <td><span class="badge {% if c.is_valid %}badge-success{% else %}badge-muted{% endif %}">{{ c.get_kind_display }}</span></td>
+          <td>{{ c.subject.name|default:"—" }}</td><td class="hide-sm">{{ c.number|default:"—" }}</td>
+          <td class="num nowrap">{{ c.issued_on|date:"d.m.Y" }} — {{ c.expires_on|date:"d.m.Y"|default:"…" }}{% if not c.is_valid %} <small class="text-danger">muddati o'tgan</small>{% endif %}</td>
+          <td class="text-right num">{{ c.score|default:"—" }}</td><td class="hide-sm">{{ c.issued_by|default:"—" }}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+    {% else %}<p class="empty-line">Sertifikat kiritilmagan.</p>{% endif %}
+  </section>
+{% endif %}
+{% endblock %}

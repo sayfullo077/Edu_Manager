@@ -27,7 +27,7 @@
       <div><span>Hisoblangan</span><b class="num">{{ record.charged|money }}</b></div>
       <div><span>To'langan</span><b class="num text-success">{{ record.paid|money }}</b></div>
       {% if record.debt %}
-        <div class="is-debt"><span>Qarz qoldi</span><b class="num">{{ record.debt|money }}</b><a class="small link" href="{% url 'finance:payment_create' student.pk %}">To'lov qabul qilish</a></div>
+        <div class="is-debt"><span>Qarz qoldi</span><b class="num">{{ record.debt|money }}</b><a data-write class="small link" href="{% url 'finance:payment_create' student.pk %}">To'lov qabul qilish</a></div>
       {% else %}
         <div class="{% if record.refund %}is-refund{% endif %}"><span>Qaytarildi</span><b class="num">{{ record.refund|money }}</b>{% if record.refund %}<small class="muted">{{ record.get_refund_method_display }}</small>{% endif %}</div>
       {% endif %}

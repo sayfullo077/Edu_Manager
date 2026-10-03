@@ -50,6 +50,16 @@ Parollar **Argon2** bilan xeshlanadi. OTP kodlar bazada ochiq saqlanmaydi (HMAC)
   shaxsiy sahifalar `Cache-Control: no-store`, `robots.txt` indekslashni taqiqlaydi.
 - **Supply chain**: tashqi CDN skriptlari yo'q (faqat Google Fonts CSS/shrift).
 
+### Kod qoidalari (audit 2026-10-03 dan keyin)
+- **ID sifatida ishlatiladigan har qanday GET/POST qiymat** — `common.http.int_param(value, default)` orqali
+  (aks holda "abc" kabi qiymat 500 xato beradi). Sana — `date.fromisoformat` + `except ValueError`.
+- **`?next=` / `back`** — faqat `common.http.safe_next`: endi faqat `/` bilan boshlanadigan ichki yo'l qabul qilinadi.
+- **Moliyaviy yozuvlar admin'da faqat o'qish** (`ReadOnlyAdmin`: to'lov, tranzaksiya, xarajat, kassa sessiyasi,
+  grafik, jarima, oylik to'lovi) — o'zgarish faqat servis orqali, storno/bekor qilish bilan.
+- **Rol cheklovi**: har view'da `@role_required`; obyekt doim `branch=request.branch` bilan olinadi; forma
+  tanlovlari (`ModelChoiceField`) filial bo'yicha cheklangan queryset bilan. Direktor POST — `@director_can_write`.
+- **Fuzz testi** — `apps/common/tests/test_hardening.py` (buzuq parametrlar 500 bermasin).
+
 ## 4. Unumdorlik va masshtablash
 
 - **Redis**: rate limit, sessiyalar (`cached_db`), maktab sozlamalari keshi. Stateless worker'lar → gorizontal masshtablash mumkin.
@@ -68,3 +78,5 @@ Parollar **Argon2** bilan xeshlanadi. OTP kodlar bazada ochiq saqlanmaydi (HMAC)
 - [ ] Kunlik DB backup (`pg_dump`) + tiklashni sinash
 - [ ] `security` logger'ini monitoring qilish (xato parollar, 429'lar)
 - [ ] Bog'liqliklar zaifligini tekshirish: `uvx pip-audit` (oyiga bir marta)
+- [ ] `SMS_BACKEND` / `TELEGRAM_BACKEND` — haqiqiy provayder (Console backend kodlarni logga yozadi!) — OTP bosqichida
+- [ ] Demo ma'lumotlar (`seed_demo`, «Demo-» o'quvchilar, demo to'lovlar) production bazaga tushmasin

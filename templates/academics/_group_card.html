@@ -1,0 +1,28 @@
+{% load ui %}
+{# Guruh kartasi (o'qituvchi panelidagi "Guruhlarim" kartasi mazmuni). Kontekst: g — groups_list annotatsiyalari bilan. #}
+<article class="card group-card{% if not g.is_active %} is-off{% endif %}">
+  <div class="group-card-head">
+    <span class="avatar class-avatar t{{ g.school_class.name|tone }}">{{ g.school_class.name|class_short }}</span>
+    <div class="grow">
+      <a class="entity-name" href="{% url 'academics:group_detail' g.pk %}">{{ g.code }}</a>
+      <small class="muted block">{{ g.school_class.name }} · {% for gs in g.subjects.all %}{{ gs.subject.name }}{% if not forloop.last %}, {% endif %}{% empty %}fan yo'q{% endfor %}</small>
+    </div>
+    {% if not g.is_active %}<span class="badge badge-muted">Faol emas</span>{% endif %}
+  </div>
+  <div class="chip-row">
+    <span class="badge {% if g.kind == 'subset' %}badge-accent{% else %}badge-info{% endif %}">{{ g.get_kind_display }}</span>
+    {% if g.level %}<span class="badge badge-success">{{ g.level }}</span>{% endif %}
+    <span class="badge badge-warning">{% if g.pay_scheme == 'per_student' %}Belgilangan summa{% else %}Darsbay{% endif %}</span>
+  </div>
+  {% with subjects=g.subjects.all %}
+    {% if subjects|length > 1 %}<p class="small group-merge"><b>Birlashma:</b> {% for gs in subjects %}{{ gs.subject.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    <ul class="group-teachers">
+      {% for gs in subjects %}<li>{% include "partials/icon.html" with name="briefcase" class="sm" %}<span>{{ gs.teacher.user.short_name }}</span><small class="muted">{{ gs.subject.name }}{% if gs.hours_per_week %} · {{ gs.hours_per_week }} soat{% endif %}</small></li>{% endfor %}
+    </ul>
+  {% endwith %}
+  <div class="group-meta">
+    <span title="O'quvchilar / sig'im">{% include "partials/icon.html" with name="users" class="sm" %} <b class="num">{% if g.kind == 'whole_class' %}{{ g.n_class }}{% else %}{{ g.n_members }}{% endif %}</b>/{{ g.capacity }}</span>
+    {% if g.room %}<span title="Xona">{% include "partials/icon.html" with name="building" class="sm" %} {{ g.room.name }}</span>{% endif %}
+  </div>
+  <a class="btn btn-secondary btn-block" href="{% url 'academics:group_detail' g.pk %}">Boshqarish</a>
+</article>

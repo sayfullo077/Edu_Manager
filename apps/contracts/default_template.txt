@@ -1,0 +1,35 @@
+# Ta'lim xizmatlari ko'rsatish shartnomasi
+### № {{ raqam }} · {{ oquv_yili }} o'quv yili
+>> {{ filial_manzili }}, {{ sana }}
+**{{ yuridik_nomi }}** («{{ maktab }}», {{ filial }}) nomidan direktor **{{ direktor }}** (keyingi o'rinlarda — «Maktab») va o'quvchining qonuniy vakili **{{ vasiy }}** (keyingi o'rinlarda — «Ota-ona») o'rtasida quyidagilar haqida ushbu shartnoma tuzildi.
+## 1. Shartnoma mavzusi
+1.1. Maktab **{{ oquvchi }}**ni (o'quvchi kodi: {{ oquvchi_kodi }}) **{{ sinf_darajasi }}** bo'yicha o'qitadi, Ota-ona esa ta'lim xizmati uchun ushbu shartnomada belgilangan haqni to'laydi.
+1.2. Shartnoma muddati: **{{ boshlanish }}** — **{{ tugash }}**.
+1.3. Ta'lim davlat ta'lim standartlari va Maktab tasdiqlagan o'quv rejasi asosida olib boriladi.
+## 2. To'lov
+2.1. Oylik to'lov: **{{ oylik_tolov }} so'm** (to'liq tarif {{ tarif }} so'm, chegirma {{ chegirma }}%).
+2.2. Shartnoma davomida jami: **{{ jami }} so'm** ({{ oylar }} oy).
+2.3. To'lov har oyning 10-sanasigacha amalga oshiriladi. Naqd, plastik karta yoki bank o'tkazmasi orqali to'lash mumkin; har bir to'lov uchun kvitansiya beriladi.
+2.4. O'quvchi oy o'rtasida qabul qilinsa, birinchi oy to'lovi qolgan kunlarga mutanosib hisoblanadi.
+2.5. Tarif o'quv yili davomida bir tomonlama oshirilmaydi.
+## 3. Maktabning majburiyatlari
+- Sifatli ta'lim berish, malakali o'qituvchilar va xavfsiz, qulay sharoit bilan ta'minlash.
+- Dars jadvali, davomat, o'zlashtirish va to'lovlar haqida Ota-onani muntazam xabardor qilish.
+- O'quvchining shaxsiy ma'lumotlarini maxfiy saqlash va faqat ta'lim maqsadida ishlatish.
+- Har bir to'lovni hisobga olish va Ota-ona so'roviga ko'ra hisob-kitob ma'lumotini taqdim etish.
+## 4. Ota-onaning majburiyatlari
+- To'lovni o'z vaqtida va to'liq amalga oshirish.
+- O'quvchining darslarga muntazam qatnashishini ta'minlash; sababli qoldirilgan kunlar haqida sinf rahbariga xabar berish.
+- Maktab ichki tartib qoidalariga rioya qilish, aloqa ma'lumotlari o'zgarsa, darhol xabar berish.
+## 5. Shartnomani o'zgartirish va bekor qilish
+5.1. Shartnoma tomonlarning yozma kelishuvi bilan o'zgartiriladi.
+5.2. Ota-ona shartnomani 10 kun oldin yozma ogohlantirib bekor qilishi mumkin. Bunda o'qilgan kunlar uchun hisob-kitob qilinadi, ortiqcha to'langan summa qaytariladi.
+5.3. To'lov 2 oydan ortiq kechiktirilsa, Maktab Ota-onani ogohlantirgan holda shartnomani bekor qilishi mumkin.
+## 6. Nizolar
+6.1. Kelishmovchiliklar muzokara yo'li bilan, kelishilmasa — O'zbekiston Respublikasi qonunchiligida belgilangan tartibda hal qilinadi.
+6.2. Shartnoma imzolangan kundan kuchga kiradi va ikki nusxada tuziladi; har ikkalasi teng yuridik kuchga ega.
+## 7. Tomonlar rekvizitlari
+**Maktab:** {{ yuridik_nomi }}, {{ filial_manzili }}, tel: {{ maktab_telefon }}
+H/R: {{ bank_hisob }}, {{ bank_nomi }}, MFO: {{ mfo }}, STIR: {{ stir }}
+Direktor: {{ direktor }} ____________
+**Ota-ona:** {{ vasiy }}, tel: {{ vasiy_telefon }} ____________

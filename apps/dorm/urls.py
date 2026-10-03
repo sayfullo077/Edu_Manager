@@ -14,5 +14,9 @@ urlpatterns = [
     path("dorm/invoices/export/", views.invoice_export, name="invoice_export"),
     path("dorm/debtors/", views.debtor_list, name="debtor_list"),
     path("dorm/debtors/export/", views.debtor_export, name="debtor_export"),
+    path("dorm/attendance/", views.attendance, name="attendance"),
+    path("dorm/attendance/export/", views.attendance_export, name="attendance_export"),
+    path("dorm/attendance/mark/", views.attendance_mark, name="attendance_mark"),
+    path("dorm/attendance/day/", views.attendance_day, name="attendance_day"),
     path("dorm/stays/<int:pk>/check-out/", views.stay_check_out, name="stay_check_out"),
 ]

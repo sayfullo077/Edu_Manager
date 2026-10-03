@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Contract
+from .models import Contract, ContractTemplate
 
 
 @admin.register(Contract)
@@ -13,3 +13,9 @@ class ContractAdmin(admin.ModelAdmin):
     readonly_fields = ["number", "status", "monthly_fee", "sent_at", "signed_at", "signed_phone", "cancelled_at",
                        "created_by", "created_at", "updated_at"]
     autocomplete_fields = ["student", "guardian"]
+
+
+@admin.register(ContractTemplate)
+class ContractTemplateAdmin(admin.ModelAdmin):
+    list_display = ["name", "is_active", "is_default", "updated_at"]
+    list_filter = ["is_active"]

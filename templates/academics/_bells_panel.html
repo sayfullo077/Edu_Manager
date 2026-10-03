@@ -1,0 +1,20 @@
+{% load ui %}
+<header class="drawer-head">
+  <div><h2>{% include "partials/icon.html" with name="clock" class="sm" %} Qo'ng'iroqlar</h2><p class="muted small">Dars vaqtlari — har biri alohida o'zgartiriladi</p></div>
+  <button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button>
+</header>
+<form class="drawer-body" method="post" action="{% url 'academics:bells' %}" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="bells">
+    <div class="bells-head"><span>Dars</span><span>Boshlanishi</span><span>Tugashi</span><span>Obed</span></div>
+    {% for n, start, end, is_break in form.rows %}
+      <div class="bells-row"><b>{{ n }}</b>{{ start }}{{ end }}<label class="check" title="Tanaffus (obed) — dars qo'yilmaydi">{{ is_break }}</label></div>
+    {% endfor %}
+  </div>
+  <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Bo'sh qator — o'sha dars yo'q. <b>Obed</b> belgilangan vaqtga dars qo'yilmaydi. Darsi bor vaqtni olib tashlab bo'lmaydi; vaqtni o'zgartirish jadvalga ta'sir qilmaydi.</p>
+  <div class="drawer-actions">
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+    <button class="btn btn-secondary" type="button" data-close-dialog>Bekor qilish</button>
+  </div>
+</form>

@@ -1,0 +1,53 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}{% if c %}{{ c.name }} · tahrirlash{% else %}Yangi sinf{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% if c %}{% url 'academics:class_detail' c.pk %}{% else %}{% url 'academics:class_list' %}{% endif %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+    <h1 class="mt-12">{% if c %}{{ c.name }} — tahrirlash{% else %}Yangi sinf{% endif %}</h1>
+    <p class="sub">Oddiy sinf (3-B) yoki yo'nalish (Aniq1 — turli sinf o'quvchilari aralash)</p>
+  </div>
+</div>
+
+<form class="edit-form narrow" method="post" novalidate>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="school" class="sm" %} Asosiy</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.academic_year %}
+      {% include "partials/field.html" with field=form.name %}
+      {% include "partials/field.html" with field=form.kind class="span-all" %}
+      {% include "partials/field.html" with field=form.grade %}
+      {% include "partials/field.html" with field=form.capacity %}
+      {% include "partials/field.html" with field=form.language class="span-all" %}
+    </div>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="briefcase" class="sm" %} Sinf rahbari va xona</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.homeroom_teacher %}
+      {% include "partials/field.html" with field=form.room %}
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} O'qituvchilar va xonalar ro'yxati hozircha admin panel orqali to'ldiriladi.</p>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="wallet" class="sm" %} Tarif va holat</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.monthly_tariff %}
+      <div class="field align-end">{% include "partials/field.html" with field=form.is_active %}</div>
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} Tarif yangi o'quvchi qabulida sukut bo'yicha qo'yiladi. Tuzilgan shartnomalardagi summa o'zgarmaydi.</p>
+  </details>
+
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% if c %}{% url 'academics:class_detail' c.pk %}{% else %}{% url 'academics:class_list' %}{% endif %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+{% endblock %}

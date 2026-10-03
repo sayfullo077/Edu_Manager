@@ -1,0 +1,54 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Guruhlarim{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Guruhlarim</h1>
+    <p class="sub">{{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }}{% if teacher %} · {{ groups|length }} ta guruh{% endif %}</p>
+  </div>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+{% if not teacher %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="users" class="lg" %}</span>
+    {% if preview_teachers is not None %}<h3>Qaysi o'qituvchi guruhlarini ko'rmoqchisiz?</h3><p>Yuqoridagi ro'yxatdan o'qituvchini tanlang.</p>
+    {% else %}<h3>O'qituvchi profili topilmadi</h3><p>Bu filialda sizning o'qituvchi kartangiz yo'q. Zavuchga murojaat qiling.</p>{% endif %}
+  </div>
+{% elif groups %}
+  <div class="group-grid">
+    {% for g in groups %}
+      <article class="card group-card">
+        <div class="group-card-head">
+          <span class="avatar class-avatar t{{ g.school_class.name|tone }}">{{ g.school_class.name|slice:":2"|upper }}</span>
+          <div class="grow">
+            <a class="entity-name" href="{% url 'academics:my_group_detail' g.pk %}">{{ g.code }}</a>
+            <small class="muted block">{{ g.school_class.name }} · {% for s in g.my_subjects %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
+          </div>
+        </div>
+        <div class="chip-row">
+          {% if g.level %}<span class="badge badge-success">{{ g.level }}</span>{% endif %}
+          <span class="badge badge-warning">{% if g.pay_scheme == 'per_student' %}Belgilangan summa{% else %}Darsbay{% endif %}</span>
+        </div>
+        {% if g.all_subjects|length > 1 %}<p class="small group-merge"><b>Birlashma:</b> {% for s in g.all_subjects %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+        <p class="small my-subject"><b>Men o'qitaman:</b> {% for s in g.my_subjects %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+        <div class="group-meta">
+          <span title="O'quvchilar / sig'im">{% include "partials/icon.html" with name="users" class="sm" %} <b class="num">{{ g.n_members }}</b>/{{ g.capacity }}</span>
+          {% with room=g.room|default:g.school_class.room %}{% if room %}<span title="Xona">{% include "partials/icon.html" with name="building" class="sm" %} {{ room.name }}</span>{% endif %}{% endwith %}
+        </div>
+        <a class="btn btn-primary btn-block" href="{% url 'academics:my_group_detail' g.pk %}">Boshqarish</a>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="users" class="lg" %}</span>
+    <h3>Tanlov guruhlaringiz yo'q</h3>
+    <p>Butun sinf darslaringiz «Mening jadvalim»da. Guruhlarni Zavuch biriktiradi.</p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{# Superadmin o'qituvchi panelini ko'rganda: qaysi o'qituvchi nomidan (sessiyada eslab qolinadi). #}
+{% if preview_teachers is not None %}
+  <form class="card toolbar preview-bar" method="get">
+    <span class="badge badge-accent">{% include "partials/icon.html" with name="eye" class="sm" %} Superadmin ko'rinishi</span>
+    <label class="sr-only" for="preview-teacher">O'qituvchi</label>
+    <select class="input input-sm" id="preview-teacher" name="teacher" data-autosubmit>
+      <option value="">— O'qituvchini tanlang —</option>
+      {% for t in preview_teachers %}<option value="{{ t.pk }}" {% if teacher and t.pk == teacher.pk %}selected{% endif %}>{{ t.user.full_name }} · {{ t.code }}</option>{% endfor %}
+    </select>
+    <small class="muted">Panel tanlangan o'qituvchi ma'lumotlari bilan ko'rsatiladi</small>
+  </form>
+{% endif %}

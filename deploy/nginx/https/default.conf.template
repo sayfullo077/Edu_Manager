@@ -1,6 +1,5 @@
 # Edu Manager — nginx (teskari proksi). DDoS va brute-force'ga qarshi BIRINCHI himoya chizig'i.
-# Django'dagi rate limit — oxirgi chiziq; ko'p so'rovlar ilovaga yetib kelmasdan shu yerda to'xtaydi.
-# Eng yaxshi himoya: domen Cloudflare orqali (L3/L4 volumetrik hujumlarni faqat CDN to'xtata oladi).
+# Bu fayl shablon: ${DOMAIN} konteyner ishga tushganda .env.prod'dan qo'yiladi (nginx rasmiy image envsubst).
 
 # ---- Rate limit zonalari (IP bo'yicha) ----
 limit_req_zone  $binary_remote_addr zone=general:20m rate=20r/s;
@@ -12,7 +11,6 @@ limit_conn_status 429;
 # ---- Slowloris va katta so'rovlarga qarshi ----
 client_body_timeout        10s;
 client_header_timeout      10s;
-keepalive_timeout          15s;
 send_timeout               10s;
 client_max_body_size       5m;
 client_body_buffer_size    16k;
@@ -24,21 +22,28 @@ upstream django {
     keepalive 32;
 }
 
+# ===== HTTPS rejimi (domen + Let's Encrypt) =====
 server {
     listen 80;
-    server_name _;
-    # Let's Encrypt tekshiruvi va HTTPS'ga yo'naltirish
+    server_name ${DOMAIN};
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
     location / { return 301 https://$host$request_uri; }
+}
+
+# Domen bo'lmagan so'rovlar (IP orqali skanerlash) — javobsiz yopiladi
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
 }
 
 server {
     listen 443 ssl;
     http2 on;
-    server_name maktab.example.uz;                       # <-- o'z domeningiz
+    server_name ${DOMAIN};
 
-    ssl_certificate     /etc/letsencrypt/live/maktab.example.uz/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/maktab.example.uz/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
     ssl_session_cache   shared:SSL:10m;

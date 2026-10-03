@@ -1,0 +1,152 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Ish haqi qoidalari{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Ish haqi qoidalari</h1>
+    <p class="sub">Hisob qanday tuziladi — formula, sizning shu oydagi raqamlaringiz va kalkulyatorlar</p>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'payroll:my_salary' %}">{% include "partials/icon.html" with name="wallet" class="sm" %} Ish haqim</a>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+<div class="rules" data-rules>
+
+{# ---------- 1. Formula ---------- #}
+<section class="card card-pad">
+  <h2 class="rules-title">{% include "partials/icon.html" with name="sparkles" class="sm" %} Formula</h2>
+  <p class="muted small">Bo'lakni bosing — tushuntirish chiqadi.</p>
+  <div class="formula" role="tablist" aria-label="Formula bo'laklari">
+    <button class="formula-part tone-info" type="button" role="tab" aria-selected="true" aria-controls="fp-base" data-formula="fp-base">Asosiy</button>
+    <span class="formula-op" aria-hidden="true">+</span>
+    <button class="formula-part tone-warning" type="button" role="tab" aria-selected="false" aria-controls="fp-bonus" data-formula="fp-bonus">Ustamalar</button>
+    <span class="formula-op" aria-hidden="true">+</span>
+    <button class="formula-part tone-success" type="button" role="tab" aria-selected="false" aria-controls="fp-home" data-formula="fp-home">Sinf rahbarlik</button>
+    <span class="formula-op" aria-hidden="true">−</span>
+    <button class="formula-part tone-danger" type="button" role="tab" aria-selected="false" aria-controls="fp-minus" data-formula="fp-minus">Ushlanma</button>
+    <span class="formula-op" aria-hidden="true">=</span>
+    <span class="formula-result">Ish haqi</span>
+  </div>
+  <div class="formula-panel" id="fp-base" role="tabpanel">
+    <p>Har bir guruh va har bir o'quvchi alohida hisoblanadi. Hamma narsa <b>o'quvchi ulushi</b>ga bog'liq:
+      <span class="formula-mini">ulush = o'quvchi shu oy uchun to'lagan / uning to'liq tarifi</span></p>
+    <ul>
+      <li><b>Darsbay guruh:</b> oydagi darslar × dars stavkasi × ulush.</li>
+      <li><b>Belgilangan summali guruh:</b> o'quvchi boshiga stavka × ulush.</li>
+      <li>Belgilangan oylik (bo'lsa) — to'liq qo'shiladi.</li>
+    </ul>
+  </div>
+  <div class="formula-panel" id="fp-bonus" role="tabpanel" hidden>
+    <table class="table table-dense rules-rates">
+      <tbody>
+        {% for label, pct in categories %}<tr><td>{{ label }}</td><td class="text-right num">+{{ pct|floatformat:"-2" }}%</td><td class="muted small">darsbay qismiga</td></tr>{% endfor %}
+        <tr><td>Amaldagi sertifikat</td><td class="text-right num">+{{ cfg.certificate_percent|floatformat:"-2" }}%</td><td class="muted small">sertifikat fanidan tushgan qismga</td></tr>
+        <tr><td>Rus / ingliz tilidagi sinf</td><td class="text-right num">+{{ cfg.language_percent|floatformat:"-2" }}%</td><td class="muted small">o'sha sinf darslariga</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="formula-panel" id="fp-home" role="tabpanel" hidden>
+    <p>Rahbarlik qilayotgan sinfingizdagi har bir o'quvchi uchun <b>{{ cfg.homeroom_rate|money }} so'm × uning ulushi</b>. Sinf to'liq to'lasa — o'quvchilar soni × {{ cfg.homeroom_rate|money }} so'm.</p>
+  </div>
+  <div class="formula-panel" id="fp-minus" role="tabpanel" hidden>
+    <ul>
+      <li><b>Guruh ushlanmasi</b> — ba'zi belgilangan summali guruhlarda (foizi guruh sozlamasida).</li>
+      <li><b>Jarima</b> — Zavuch sabab bilan kiritadi; bekor qilinishi mumkin, tarixda qoladi.</li>
+    </ul>
+  </div>
+</section>
+
+{# ---------- 2. Shaxsiy hisob ---------- #}
+{% if pay %}
+<section class="card">
+  <div class="card-title">
+    <h2 class="rules-title">{% include "partials/icon.html" with name="chart" class="sm" %} Sizning shu oydagi hisobingiz</h2>
+    <a class="btn btn-ghost btn-sm" href="{% url 'payroll:my_salary' %}">Batafsil {% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+  </div>
+  <table class="pay-table rules-mine">
+    <thead><tr><th></th><th class="text-right">Haqiqiy</th><th class="text-right">Reja (100%)</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Asosiy</th><td class="num">{{ pay.base.real|money }}</td><td class="num muted">{{ pay.base.max|money }}</td></tr>
+      <tr><th scope="row">Ustamalar</th><td class="num text-warning">+{{ pay.bonuses.real|money }}</td><td class="num muted">+{{ pay.bonuses.max|money }}</td></tr>
+      <tr><th scope="row">Sinf rahbarlik</th><td class="num text-success">+{{ pay.homeroom_bonus.real|money }}</td><td class="num muted">+{{ pay.homeroom_bonus.max|money }}</td></tr>
+      <tr><th scope="row">Ushlanma</th><td class="num text-danger">−{{ pay.deductions.real|money }}</td><td class="num muted">−{{ pay.deductions.max|money }}</td></tr>
+    </tbody>
+    <tfoot><tr><th scope="row">Ish haqi</th><td class="num">{{ pay.total.real|money }}</td><td class="num muted">{{ pay.total.max|money }}</td></tr></tfoot>
+  </table>
+  <p class="note rules-note">{% include "partials/icon.html" with name="info" class="sm" %} <span>«Reja» — o'quvchilaringiz shu oyni to'liq to'lasa. Farq ({{ pay.gap|money }} so'm) to'lov kelgan sari kamayadi.</span></p>
+</section>
+{% endif %}
+
+<div class="grid grid-2 rules-calcs">
+  {# ---------- 3. Bitta o'quvchi ulushi ---------- #}
+  <section class="card card-pad" data-share-calc>
+    <h2 class="rules-title">{% include "partials/icon.html" with name="users" class="sm" %} Bitta o'quvchi sizga qancha keltiradi</h2>
+    <div class="radio-row" role="radiogroup" aria-label="Guruh turi">
+      <label><input type="radio" name="scheme" value="lesson" checked data-share-scheme> Darsbay</label>
+      <label><input type="radio" name="scheme" value="student" data-share-scheme> Belgilangan summa</label>
+    </div>
+    <div class="form-grid cols-2 mt-12">
+      <label class="field" data-only="lesson"><span class="label">Oydagi darslar</span><input class="input num" type="number" min="0" max="60" value="12" data-share-lessons></label>
+      <label class="field" data-only="lesson"><span class="label">Dars stavkasi (so'm)</span><input class="input num" type="number" min="0" step="100" value="2400" data-share-rate-lesson></label>
+      <label class="field" data-only="student" hidden><span class="label">O'quvchi boshiga (so'm)</span><input class="input num" type="number" min="0" step="1000" value="120000" data-share-rate-student></label>
+      <label class="field" data-only="student" hidden><span class="label">Guruh ushlanmasi (%)</span><input class="input num" type="number" min="0" max="100" value="15" data-share-cut></label>
+      <label class="field"><span class="label">To'liq tarif (so'm)</span><input class="input num" type="number" min="0" step="10000" value="1750000" data-share-tariff></label>
+      <label class="field"><span class="label">Chegirma (%)</span><input class="input num" type="number" min="0" max="100" value="0" data-share-discount></label>
+    </div>
+    <label class="field mt-12"><span class="label split">Shu oy to'lagani <b class="num" data-share-paid-out>100%</b></span>
+      <input class="range" type="range" min="0" max="100" value="100" data-share-paid aria-label="O'quvchi to'lagan foiz"></label>
+    <dl class="kv pay-kv rules-out">
+      <dt>O'quvchi to'lashi kerak</dt><dd class="num" data-share-due>—</dd>
+      <dt>To'lagani</dt><dd class="num" data-share-paid-sum>—</dd>
+      <dt>Ulush</dt><dd class="num" data-share-ratio>—</dd>
+      <dt><b>Sizga</b></dt><dd class="num pay-big text-success" data-share-you>—</dd>
+      <dt>To'liq to'lasa</dt><dd class="num muted" data-share-max>—</dd>
+    </dl>
+  </section>
+
+  {# ---------- 4. Avans kalkulyatori ---------- #}
+  <section class="card card-pad" data-advance-calc>
+    <h2 class="rules-title">{% include "partials/icon.html" with name="wallet" class="sm" %} Avans va oy oxiri</h2>
+    <label class="field"><span class="label">Hisoblangan ish haqi (so'm)</span>
+      <input class="input num" type="text" inputmode="numeric" value="{% if pay and pay.total.real %}{{ pay.total.real|money }}{% elif pay and pay.total.max %}{{ pay.total.max|money }}{% else %}8 000 000{% endif %}" data-adv-total aria-label="Hisoblangan ish haqi"></label>
+    <label class="field mt-12"><span class="label split">Avans <b class="num" data-adv-pct-out>{{ advance_percent }}%</b></span>
+      <input class="range" type="range" min="0" max="60" value="{{ advance_percent }}" data-adv-pct aria-label="Avans foizi"></label>
+    <dl class="kv pay-kv rules-out">
+      <dt>Avans (oy o'rtasida)</dt><dd class="num text-warning" data-adv-sum>—</dd>
+      <dt><b>Oy oxirida</b></dt><dd class="num pay-big" data-adv-final>—</dd>
+      <dt>Keyingi to'lovga qoladi</dt><dd class="num muted" data-adv-carry>—</dd>
+    </dl>
+    <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} <span>To'lovlar mingga pastga yaxlitlanadi; qolgan so'mlar «Qoldiq»da turadi.</span></p>
+  </section>
+</div>
+
+{# ---------- 5. Oy taqvimi ---------- #}
+<section class="card card-pad">
+  <h2 class="rules-title">{% include "partials/icon.html" with name="calendar" class="sm" %} Oy taqvimi</h2>
+  <ol class="rules-timeline">
+    <li><b>1–10-sana</b><span>O'quvchilar shu oy uchun to'laydi — hisobingiz har to'lov bilan o'sadi.</span></li>
+    <li><b>Oy o'rtasi</b><span>Avans — o'sha kungacha hisoblangan summaning bir qismi.</span></li>
+    <li><b>Oy oxiri</b><span>Qolgan ish haqi beriladi (hisoblangan − avans).</span></li>
+    <li><b>Keyinroq</b><span>Kechikkan to'lov o'z oyiga qo'shiladi va farq o'sha oy «Qoldiq»ida chiqadi — yo'qolmaydi.</span></li>
+  </ol>
+</section>
+
+{# ---------- 6. Savol-javob ---------- #}
+<section class="card card-pad">
+  <h2 class="rules-title">{% include "partials/icon.html" with name="message" class="sm" %} Savol-javob</h2>
+  <input class="input mt-12" type="search" placeholder="Qidirish… (masalan: chegirma)" aria-label="Savollarni qidirish" data-search-for="rules-faq" autocomplete="off">
+  <div class="rules-faq" id="rules-faq">
+    <details data-search-item><summary>O'quvchi umuman to'lamasa-chi?</summary><p>Shu o'quvchi uchun 0 hisoblanadi. Boshqa o'quvchilar ulushiga ta'sir qilmaydi.</p></details>
+    <details data-search-item><summary>O'quvchida chegirma bo'lsa?</summary><p>Ulush to'liq tarifga nisbatan olinadi: 30% chegirmali o'quvchi oyni to'liq to'lasa ham, siz uning uchun 70% olasiz.</p></details>
+    <details data-search-item><summary>O'quvchi oy o'rtasida kelsa?</summary><p>Uning birinchi oy to'lovi kamroq bo'ladi — ulush ham shunga mos kichikroq.</p></details>
+    <details data-search-item><summary>Kechikkan to'lov qaysi oyga yoziladi?</summary><p>To'lov qaysi oy grafigini yopsa, o'sha oyga. O'tgan oy hisobingiz oshadi va farq «Qoldiq»da ko'rinadi.</p></details>
+    <details data-search-item><summary>Ustama foizlarini kim belgilaydi?</summary><p>Maktab rahbariyati — «Ish haqi sozlamalari»da. Yuqoridagi raqamlar o'sha sozlamadan olinadi.</p></details>
+    <details data-search-item><summary>Hisobda xato ko'rsam?</summary><p>Zavuchga guruh, oy va o'quvchini ayting — hisob o'quvchi kesimida ko'rinadi, tekshirish oson.</p></details>
+  </div>
+</section>
+</div>
+{% endblock %}

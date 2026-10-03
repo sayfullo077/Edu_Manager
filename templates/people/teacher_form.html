@@ -1,0 +1,106 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{% if teacher %}O'qituvchini tahrirlash{% else %}Yangi o'qituvchi{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% if teacher %}{% url 'people:teacher_detail' teacher.pk %}{% else %}{% url 'people:teacher_list' %}{% endif %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Orqaga</a>
+    <h1 class="mt-12">{% if teacher %}O'qituvchini tahrirlash{% else %}Yangi o'qituvchi{% endif %}</h1>
+    <p class="sub">{% if teacher %}{{ teacher.user.full_name }} · {{ teacher.code }}{% else %}O'qituvchilar ro'yxati va ma'lumotlari{% endif %}</p>
+  </div>
+</div>
+
+<form class="edit-form" method="post" novalidate>
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  {% if certs.non_form_errors %}<div class="alert alert-error">{{ certs.non_form_errors|join:" " }}</div>{% endif %}
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="briefcase" class="sm" %} Asosiy</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-4">
+      <div class="field"><span class="label">Filial</span><div class="input input-static">{{ request.branch.name }}</div></div>
+      {% include "partials/field.html" with field=form.kind %}
+      {% include "partials/field.html" with field=form.status %}
+      {% include "partials/field.html" with field=form.category %}
+    </div>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="users" class="sm" %} Shaxsiy ma'lumotlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-3">
+      {% include "partials/field.html" with field=form.last_name %}
+      {% include "partials/field.html" with field=form.first_name %}
+      {% include "partials/field.html" with field=form.middle_name %}
+      {% include "partials/field.html" with field=form.birth_date %}
+      {% include "partials/field.html" with field=form.gender %}
+      {% include "partials/field.html" with field=form.marital_status %}
+    </div>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="phone" class="sm" %} Aloqa va hujjatlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-3">
+      <div class="field">
+        <label class="label" for="{{ form.phone.id_for_label }}">{{ form.phone.label }} *</label>
+        <div class="input-group"><span class="addon">+998</span>{{ form.phone }}</div>
+        <span class="hint">Tizimga shu telefon bilan kiradi. Yangi o'qituvchiga vaqtinchalik parol beriladi.</span>
+        {% for e in form.phone.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+      </div>
+      {% include "partials/field.html" with field=form.email %}
+      <div class="field">
+        <span class="label">Pasport (seriya / raqam)</span>
+        <div class="passport-pair">{{ form.passport_series }}{{ form.passport_number }}</div>
+        {% for e in form.passport_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        {% for e in form.errors.passport %}<span class="field-error">{{ e }}</span>{% endfor %}
+      </div>
+      {% include "partials/field.html" with field=form.pinfl %}
+      {% include "partials/field.html" with field=form.card_number %}
+      {% include "partials/field.html" with field=form.address %}
+      <div class="field align-end">{% include "partials/field.html" with field=form.official_employment %}</div>
+      {% include "partials/field.html" with field=form.fixed_salary %}
+    </div>
+    <p class="note">{% include "partials/icon.html" with name="lock" class="sm" %} Pasport, JSHSHIR va karta raqami shifrlangan holda saqlanadi, ekranda niqoblanadi.</p>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="graduation" class="sm" %} Kasbiy ma'lumotlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    <div class="form-grid cols-3">
+      {% include "partials/field.html" with field=form.education %}
+      {% include "partials/field.html" with field=form.specialty %}
+      {% include "partials/field.html" with field=form.experience_years %}
+      <div class="field">
+        <span class="label">{{ form.teaching_languages.label }}</span>
+        <div class="flag-checks">{% for c in form.teaching_languages %}<label class="check-item inline">{{ c.tag }} {{ c.choice_label }}</label>{% endfor %}</div>
+      </div>
+      {% include "partials/field.html" with field=form.hired_at %}
+      {% include "partials/field.html" with field=form.contract_start %}
+      {% include "partials/field.html" with field=form.contract_end %}
+      <div class="field span-2">
+        <span class="label">{{ form.subjects.label }}</span>
+        <input class="input" type="search" placeholder="Fanni qidirish…" aria-label="Fanni qidirish" data-search-for="subject-checks" autocomplete="off">
+        <div class="check-list subject-checks" id="subject-checks">
+          {% for c in form.subjects %}<label class="check-item">{{ c.tag }} <span>{{ c.choice_label }}</span></label>{% endfor %}
+        </div>
+      </div>
+      {% include "partials/field.html" with field=form.notes class="span-all" %}
+    </div>
+  </details>
+
+  <details class="card form-fold" open>
+    <summary><h3>{% include "partials/icon.html" with name="file" class="sm" %} Sertifikatlar</h3>{% include "partials/icon.html" with name="chevron" class="sm fold-chevron" %}</summary>
+    {{ certs.management_form }}
+    <div class="stack" data-formset-list="cert">
+      {% for f in certs.forms %}{% include "people/_certificate_form.html" with f=f n=forloop.counter %}{% endfor %}
+    </div>
+    <template id="cert-empty">{% include "people/_certificate_form.html" with f=certs.empty_form n="" %}</template>
+    <button class="btn btn-outline btn-sm mt-12" type="button" data-formset-add="cert">{% include "partials/icon.html" with name="plus" class="sm" %} Sertifikat qo'shish</button>
+  </details>
+
+  <div class="form-footer">
+    <a class="btn btn-secondary" href="{% if teacher %}{% url 'people:teacher_detail' teacher.pk %}{% else %}{% url 'people:teacher_list' %}{% endif %}">Bekor qilish</a>
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+  </div>
+</form>
+{% endblock %}

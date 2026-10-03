@@ -1,0 +1,29 @@
+{% load ui %}
+<header class="drawer-head">
+  <div><h2>{% include "partials/icon.html" with name="plus" class="sm" %} Dars qo'shish</h2><p class="muted small">{{ school_class.name }} · {{ weekday_label }}, {{ slot.number }}-dars ({{ slot.start|time:"H:i" }}–{{ slot.end|time:"H:i" }})</p></div>
+  <button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button>
+</header>
+<form class="drawer-body" method="post" action="{% url 'academics:lesson_create' %}" novalidate data-lesson-form>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  {{ form.weekday }}{{ form.slot }}
+  {% if form.fields.group.queryset %}
+    {% include "partials/field.html" with field=form.group %}
+    {% include "partials/field.html" with field=form.subject %}
+    {% include "partials/field.html" with field=form.room %}
+    {% include "partials/field.html" with field=form.on %}
+    <p class="note">{% include "partials/icon.html" with name="shield" class="sm" %} Saqlashda tekshiriladi: o'qituvchi, xona, guruh, sinf va o'quvchilar shu vaqtda band emasligi.</p>
+    <div class="drawer-actions">
+      <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Qo'shish</button>
+      <button class="btn btn-secondary" type="button" data-close-dialog>Bekor qilish</button>
+    </div>
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="users" class="lg" %}</span>
+      <h3>Guruh yo'q</h3>
+      <p>Avval «{{ school_class.name }}» uchun guruh (fan va o'qituvchi bilan) yarating.</p>
+      <a data-write class="btn btn-primary" href="{% url 'academics:group_create' %}?class={{ school_class.pk }}">Guruh qo'shish</a>
+    </div>
+  {% endif %}
+  {{ subject_map|json_script:"lesson-subjects" }}
+</form>

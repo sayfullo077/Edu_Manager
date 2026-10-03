@@ -11,7 +11,7 @@
     <p class="sub">{{ month_label }} · har bir xarajat kategoriyasi uchun oylik limit</p>
   </div>
 </div>
-<form class="card form-card narrow" method="post" novalidate>
+<form class="card form-card narrow" method="post" novalidate data-readonly-ok>
   {% csrf_token %}
   {% for title, rows in groups %}
     <section class="form-section">

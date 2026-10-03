@@ -20,6 +20,7 @@ DEMO_USERS = [
     ("998900000002", "Rahimova", "Dilnoza", [Role.TEACHER]),
     ("998900000003", "Tursunov", "Bekzod", [Role.HEAD_TEACHER]),
     ("998900000004", "Yusupova", "Malika", [Role.RECEPTION]),
+    ("998900000005", "Abdullayev", "Sardor", [Role.DIRECTOR]),
 ]
 
 

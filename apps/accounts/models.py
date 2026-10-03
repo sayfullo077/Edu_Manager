@@ -82,11 +82,11 @@ class Role(models.TextChoices):
     TEACHER = "teacher", "O'qituvchi"
     HEAD_TEACHER = "head_teacher", "Zavuch"
     RECEPTION = "reception", "Qabul | Reception"
-    # Keyinroq: DIRECTOR, SUPERADMIN
+    DIRECTOR = "director", "Direktor"
 
 
-# Rol almashtirgichdagi tartib (asl tizimdagidek): Reception → Zavuch → O'qituvchi.
-ROLE_ORDER = {Role.RECEPTION: 0, Role.HEAD_TEACHER: 1, Role.TEACHER: 2}
+# Rol almashtirgichdagi tartib: Direktor → Reception → Zavuch → O'qituvchi (asl tizimdagidek).
+ROLE_ORDER = {Role.DIRECTOR: 0, Role.RECEPTION: 1, Role.HEAD_TEACHER: 2, Role.TEACHER: 3}
 
 
 class UserRole(TimeStampedModel):

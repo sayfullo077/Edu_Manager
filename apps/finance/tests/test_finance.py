@@ -413,7 +413,8 @@ def test_invoice_list_waived_cancelled_and_student_status(staff_client, contract
 
 # ---------- Qarzdorlar ----------
 
-def test_debtors_list_panels_and_pay_flow(staff_client, partial_contract, student, reception):
+def test_debtors_list_panels_and_pay_flow(staff_client, partial_contract, student, reception, monkeypatch):
+    monkeypatch.setattr(timezone, "localdate", lambda *a: date(2026, 9, 28))  # "joriy oy" — sentabr
     url = reverse("finance:debtor_list")
     invoices.extend_schedule(partial_contract, start_month=date(2026, 10, 1), months=3, by=reception)
     resp = staff_client.get(url)

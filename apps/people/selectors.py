@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
 
-from apps.academics.models import Group, SchoolClass
+from apps.academics.models import SchoolClass
 from apps.common import crypto
 from apps.contracts.models import Contract
 from apps.core.models import AcademicYear
@@ -133,9 +133,7 @@ def student_detail(branch, pk: int) -> Student:
             .select_related("school_class__academic_year", "branch")
             .prefetch_related(Prefetch("guardian_links",
                                        queryset=StudentGuardian.objects.select_related("guardian")
-                                       .order_by("-is_primary", "relation")),
-                              Prefetch("groups", queryset=Group.objects.select_related("school_class")
-                                       .prefetch_related("subjects__subject", "subjects__teacher__user")))
+                                       .order_by("-is_primary", "relation")))
             .get(branch=branch, pk=pk))
 
 
@@ -236,7 +234,7 @@ def head_teacher_dashboard(branch) -> dict:
         not_erp=Count("id", filter=active & Q(in_erp=False)),
         not_emaktab=Count("id", filter=active & Q(in_emaktab=False)),
     )
-    teachers = Teacher.objects.filter(branch=branch).exclude(status=Teacher.Status.DISMISSED).aggregate(
+    teachers = Teacher.objects.filter(branch=branch).exclude(status__in=Teacher.NOT_WORKING).aggregate(
         total=Count("id"), vacation=Count("id", filter=Q(status=Teacher.Status.VACATION)))
     classes = list(SchoolClass.objects.filter(branch=branch, is_active=True, academic_year=year)
                    .annotate(n=Count("students", filter=Q(students__status=Student.Status.ACTIVE)))
@@ -254,3 +252,54 @@ def head_teacher_dashboard(branch) -> dict:
         "recent": list(students.select_related("school_class").order_by("-joined_at", "-pk")[:8]),
         "today": today,
     }
+
+
+# ---------- Xodimlar (HR): o'qituvchilar ----------
+
+@dataclass(frozen=True)
+class TeacherFilters:
+    q: str = ""
+    kind: str = ""
+    status: str = ""
+    subject: int | None = None
+    gender: str = ""
+    category: str = ""
+
+
+def teachers(branch, f: TeacherFilters) -> QuerySet[Teacher]:
+    qs = (Teacher.objects.filter(branch=branch).select_related("user")
+          .prefetch_related("subjects").order_by("user__last_name", "user__first_name"))
+    for field in ("kind", "status", "gender", "category"):
+        if getattr(f, field):
+            qs = qs.filter(**{field: getattr(f, field)})
+    if f.subject:
+        qs = qs.filter(subjects=f.subject)
+    for term in f.q.split()[:4]:
+        digits = "".join(ch for ch in term if ch.isdigit())
+        cond = (Q(user__last_name__icontains=term) | Q(user__first_name__icontains=term)
+                | Q(user__middle_name__icontains=term) | Q(code__icontains=term))
+        if len(digits) >= 3:
+            cond |= Q(user__phone__contains=digits)
+        qs = qs.filter(cond)
+    return qs.distinct()
+
+
+def teacher_stats(branch) -> dict:
+    return Teacher.objects.filter(branch=branch).aggregate(
+        total=Count("id"),
+        active=Count("id", filter=Q(status=Teacher.Status.ACTIVE)),
+        vacation=Count("id", filter=Q(status=Teacher.Status.VACATION)),
+        dismissed=Count("id", filter=Q(status=Teacher.Status.DISMISSED)),
+    )
+
+
+def teacher_detail(branch, pk: int) -> Teacher:
+    return (Teacher.objects.select_related("user", "branch").prefetch_related("subjects", "homeroom_classes")
+            .get(branch=branch, pk=pk))
+
+
+def teacher_group_subjects(teacher: Teacher) -> list:
+    """O'qituvchining faol guruhlardagi fanlari (guruh, sinf, haftalik soat)."""
+    return list(teacher.group_subjects.filter(group__is_active=True)
+                .select_related("group__school_class", "subject").order_by("subject__name", "group__code"))
+

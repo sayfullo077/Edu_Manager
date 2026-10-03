@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Sinf rahbarlik{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Sinf rahbarlik</h1>
+    <p class="sub">{{ today|date:"l" }}, {{ today|date:"j-F Y"|lower }}</p>
+  </div>
+</div>
+
+{% include "academics/_preview_bar.html" %}
+
+{% if not teacher %}
+  <div class="card empty">
+    <span class="ico">{% include "partials/icon.html" with name="school" class="lg" %}</span>
+    {% if preview_teachers is not None %}<h3>Qaysi o'qituvchi sinfini ko'rmoqchisiz?</h3><p>Yuqoridagi ro'yxatdan o'qituvchini tanlang.</p>
+    {% else %}<h3>O'qituvchi profili topilmadi</h3><p>Bu filialda sizning o'qituvchi kartangiz yo'q.</p>{% endif %}
+  </div>
+{% else %}
+  <section class="card">
+    <div class="card-title"><h3>Sinf rahbarligi <small class="muted">— {{ classes|length }} sinf</small></h3></div>
+    {% if classes %}
+      <ul class="entity-list">
+        {% for c in classes %}
+          <li class="homeroom-row">
+            <a class="homeroom-link" href="{% url 'academics:my_homeroom_class' c.pk %}">
+              <span class="avatar class-avatar t{{ c.name|tone }}">{{ c.name|class_short }}</span>
+              <span class="grow"><b>{{ c.name }}</b><small>{{ c.n_students }} o'quvchi · bugungi davomat</small></span>
+              {% if c.att_state == "full" %}<span class="badge badge-success">Kiritilgan</span>
+              {% elif c.att_state == "partial" %}<span class="badge badge-warning">Qisman · {{ c.n_marked }}/{{ c.n_students }}</span>
+              {% else %}<span class="badge badge-info">Kiritilmagan</span>{% endif %}
+              {% include "partials/icon.html" with name="arrow-right" class="sm muted" %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-line">Siz hech qaysi sinfga rahbar etib tayinlanmagansiz. Sinf rahbarini Zavuch belgilaydi.</p>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

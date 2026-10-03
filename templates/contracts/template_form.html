@@ -1,0 +1,47 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}{% if t %}{{ t.name }}{% else %}Yangi shablon{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back-link" href="{% url 'contracts:template_list' %}">{% include "partials/icon.html" with name="arrow-left" class="sm" %} Shablonlar</a>
+    <h1 class="mt-12">{% if t %}{{ t.name }}{% else %}Yangi shablon{% endif %}</h1>
+    <p class="sub">O'zgarish faqat yangi va hali imzolanmagan shartnomalarga ta'sir qiladi.</p>
+  </div>
+</div>
+
+<form method="post" novalidate class="template-layout">
+  {% csrf_token %}
+  <section class="card card-pad">
+    {% include "partials/form_errors.html" %}
+    <div class="form-grid cols-2">
+      {% include "partials/field.html" with field=form.name class="span-all" %}
+      {% include "partials/field.html" with field=form.body class="span-all" %}
+      {% include "partials/field.html" with field=form.is_active %}
+      {% include "partials/field.html" with field=form.is_default %}
+    </div>
+    <div class="form-footer">
+      <a class="btn btn-secondary" href="{% url 'contracts:template_list' %}">Bekor qilish</a>
+      <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+    </div>
+  </section>
+
+  <aside class="card card-pad template-help">
+    <h3 class="block-title">{% include "partials/icon.html" with name="info" class="sm" %} Belgilash</h3>
+    <dl class="kv-plain">
+      <dt><code class="doc-code"># </code></dt><dd>Hujjat sarlavhasi</dd>
+      <dt><code class="doc-code">## </code></dt><dd>Bo'lim sarlavhasi</dd>
+      <dt><code class="doc-code">### </code></dt><dd>Kichik sarlavha</dd>
+      <dt><code class="doc-code">&gt;&gt; </code></dt><dd>O'ngga (sana)</dd>
+      <dt><code class="doc-code">- </code></dt><dd>Ro'yxat bandi</dd>
+      <dt><code class="doc-code">**…**</code></dt><dd>Qalin matn</dd>
+    </dl>
+    <p class="note">Har bir qator — alohida xatboshi. Rekvizitlar va imzo bloki hujjat oxiriga avtomatik qo'shiladi.</p>
+    <h3 class="block-title mt-20">{% include "partials/icon.html" with name="sparkles" class="sm" %} O'rinbosarlar</h3>
+    <ul class="placeholder-list">
+      {% for key, label in placeholders %}<li><code class="doc-code">{% templatetag openvariable %} {{ key }} {% templatetag closevariable %}</code><span class="muted small">{{ label }}</span></li>{% endfor %}
+    </ul>
+  </aside>
+</form>
+{% endblock %}

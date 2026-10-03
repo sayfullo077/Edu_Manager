@@ -1,0 +1,27 @@
+{% load ui %}
+<header class="drawer-head">
+  <div><h2>{% include "partials/icon.html" with name="sliders" class="sm" %} Ish haqi sozlamalari</h2><p class="muted small">Ustama foizlari va sinf rahbarlik summasi</p></div>
+  <button class="btn btn-ghost btn-icon" type="button" data-close-dialog aria-label="Yopish">{% include "partials/icon.html" with name="x" %}</button>
+</header>
+<form class="drawer-body" method="post" action="{% url 'payroll:settings' %}" novalidate data-readonly-ok>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <h3 class="block-title">Toifa ustamasi <small class="muted">· darsbay qismiga, %</small></h3>
+  <div class="form-grid cols-2">
+    {% include "partials/field.html" with field=form.first_category_percent %}
+    {% include "partials/field.html" with field=form.second_category_percent %}
+    {% include "partials/field.html" with field=form.highest_category_percent %}
+    {% include "partials/field.html" with field=form.specialist_category_percent %}
+  </div>
+  <h3 class="block-title mt-20">Boshqa ustamalar</h3>
+  <div class="form-grid cols-2">
+    {% include "partials/field.html" with field=form.certificate_percent %}
+    {% include "partials/field.html" with field=form.language_percent %}
+    {% include "partials/field.html" with field=form.homeroom_rate class="span-2" %}
+  </div>
+  <p class="note">{% include "partials/icon.html" with name="info" class="sm" %} O'zgarish hisobga darhol ta'sir qiladi (o'tgan oylar ham shu foizlar bilan ko'rsatiladi). Yo'nalish guruhlaridagi ushlanma (%) — guruh sozlamasida.</p>
+  <div class="drawer-actions">
+    <button class="btn btn-primary" type="submit">{% include "partials/icon.html" with name="check" class="sm" %} Saqlash</button>
+    <button class="btn btn-secondary" type="button" data-close-dialog>Bekor qilish</button>
+  </div>
+</form>

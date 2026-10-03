@@ -1,0 +1,100 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Ish haqi hisobi{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Ish haqi hisobi</h1>
+    <p class="sub">{{ month_label }} — {{ data.rows|length }} ta o'qituvchi</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary" type="button" data-panel-url="{% url 'payroll:settings' %}?next={{ request.get_full_path|urlencode:'' }}">{% include "partials/icon.html" with name="sliders" class="sm" %} Sozlamalar</button>
+    <a class="btn btn-excel" href="{% url 'payroll:export' %}?month={{ month|date:'Y-m' }}" download>{% include "partials/icon.html" with name="sheet" class="sm" %} Excel</a>
+  </div>
+</div>
+
+<form class="card toolbar month-bar" method="get">
+  <a class="btn btn-secondary btn-sm btn-icon" href="?month={{ prev_month|date:'Y-m' }}" aria-label="Oldingi oy">{% include "partials/icon.html" with name="arrow-left" class="sm" %}</a>
+  <label class="sr-only" for="month">Oy</label>
+  <input class="input input-sm" type="month" id="month" name="month" value="{{ month|date:'Y-m' }}" data-autosubmit>
+  <a class="btn btn-secondary btn-sm btn-icon" href="?month={{ next_month|date:'Y-m' }}" aria-label="Keyingi oy">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a>
+  {% if month != this_month %}<a class="btn btn-ghost btn-sm" href="?month={{ this_month|date:'Y-m' }}">Joriy oy</a>{% endif %}
+</form>
+
+<div class="grid grid-3 stats-row stats-lead">
+  <div class="card stat"><div class="top"><span class="label">Jami hisoblangan</span><span class="ico tone-info">{% include "partials/icon.html" with name="wallet" class="sm" %}</span></div><div class="value value-sm num">{{ totals.total.real|money }} <span class="unit">so'm</span></div><div class="foot">100% bo'lsa: <span class="num">{{ totals.total.max|money }}</span></div></div>
+  <div class="card stat"><div class="top"><span class="label">Shartnomalar</span><span class="ico tone-success">{% include "partials/icon.html" with name="file" class="sm" %}</span></div><div class="value">{{ data.contracts }} <span class="unit">ta</span></div><div class="foot">shu oy to'lov grafigi bor</div></div>
+  <div class="card stat"><div class="top"><span class="label">O'qituvchilar</span><span class="ico tone-warning">{% include "partials/icon.html" with name="users" class="sm" %}</span></div><div class="value">{{ data.rows|length }} <span class="unit">ta</span></div></div>
+</div>
+
+<div class="card">
+  {% if data.rows %}
+    <div class="table-wrap">
+      <table class="table table-dense payroll-table">
+        <thead>
+          <tr>
+            <th class="num-col" rowspan="2">#</th><th rowspan="2">O'qituvchi</th>
+            <th class="text-right" rowspan="2">Fanlar</th><th class="text-right" rowspan="2">Darslar</th><th class="text-right" rowspan="2">O'quvchilar</th>
+            <th class="text-right" rowspan="2">Asosiy</th>
+            <th class="th-group" colspan="3">Ustamalar</th>
+            <th class="text-right" rowspan="2">Ushlanma</th><th class="text-right" rowspan="2" title="Sinf rahbarlik">Rahbarlik</th>
+            <th class="text-right" rowspan="2">Reja (100%)</th><th class="text-right" rowspan="2">Hisoblangan</th>
+            <th class="actions" rowspan="2"><span class="sr-only">Batafsil</span></th>
+          </tr>
+          <tr><th class="text-right">Toifa</th><th class="text-right">Sertifikat</th><th class="text-right">Til</th></tr>
+        </thead>
+        <tbody>
+          {% for r in data.rows %}
+            {% with p=r.pay %}
+            <tr>
+              <td class="num-col">{{ forloop.counter }}</td>
+              <td><a class="person" href="{% url 'payroll:teacher' r.teacher.pk %}?month={{ month|date:'Y-m' }}">
+                <span class="avatar t{{ r.teacher.code|tone }}">{{ r.teacher.user.initials }}</span>
+                <span><b>{{ r.teacher.user.full_name }}</b><small>{{ r.teacher.code }}{% if r.teacher.category %} · {{ r.teacher.get_category_display }}{% endif %}</small></span></a></td>
+              <td class="text-right num">{{ p.subjects_count }}</td>
+              <td class="text-right num">{{ p.lessons }}</td>
+              <td class="text-right num">{{ p.students_count }}</td>
+              <td class="text-right num">{{ p.base.real|money }}</td>
+              <td class="text-right num">{% if p.category_bonus.real %}<span class="text-warning">+{{ p.category_bonus.real|money }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="text-right num">{% if p.certificate_bonus.real %}<span class="text-info">+{{ p.certificate_bonus.real|money }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="text-right num">{% if p.language_bonus.real %}<span class="text-info">+{{ p.language_bonus.real|money }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="text-right num">{% if p.deductions.real %}<span class="text-danger">−{{ p.deductions.real|money }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="text-right num">{% if p.homeroom_bonus.real %}<span class="text-info">+{{ p.homeroom_bonus.real|money }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td class="text-right num muted">{{ p.total.max|money }}</td>
+              <td class="text-right num"><b>{{ p.total.real|money }}</b></td>
+              <td class="actions"><a class="icon-btn" href="{% url 'payroll:teacher' r.teacher.pk %}?month={{ month|date:'Y-m' }}" title="Batafsil" aria-label="{{ r.teacher.user.short_name }} — batafsil">{% include "partials/icon.html" with name="arrow-right" class="sm" %}</a></td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="2" class="text-right">Jami:</th>
+            <td class="text-right num">{{ totals.subjects }}</td><td class="text-right num">{{ totals.lessons }}</td><td class="text-right num">{{ totals.students }}</td>
+            <td class="text-right num">{{ totals.base.real|money }}</td>
+            <td class="text-right num text-warning">{{ totals.category_bonus.real|money }}</td>
+            <td class="text-right num text-info">{{ totals.certificate_bonus.real|money }}</td>
+            <td class="text-right num text-info">{{ totals.language_bonus.real|money }}</td>
+            <td class="text-right num text-danger">{{ totals.deductions.real|money }}</td>
+            <td class="text-right num text-info">{{ totals.homeroom_bonus.real|money }}</td>
+            <td class="text-right num">{{ totals.total.max|money }}</td>
+            <td class="text-right num"><b>{{ totals.total.real|money }}</b></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <span class="ico">{% include "partials/icon.html" with name="wallet" class="lg" %}</span>
+      <h3>Bu oy uchun hisob yo'q</h3>
+      <p>Faol o'qituvchi, guruh yoki to'lov grafigi topilmadi.</p>
+    </div>
+  {% endif %}
+</div>
+<p class="note">{% include "partials/icon.html" with name="info" class="sm" %} <b>Hisoblangan</b> — o'quvchilar shu oy uchun to'lagan pul bo'yicha, <b>Reja</b> — hammasi to'liq to'lasa. Hisob jonli: to'lov kelishi bilan yangilanadi.</p>
+
+<dialog class="side-panel" id="side-panel" aria-label="Yon panel"><div class="side-panel-body" data-panel-body></div></dialog>
+{% endblock %}
